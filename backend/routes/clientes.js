@@ -18,6 +18,8 @@ router.get('/', verifyToken, async (req, res) => {
                 direccion,
                 saldo,
                 retornables,
+                latitud,
+                longitud,
                 activo,
                 codigoEmpresa,
                 CONCAT(nombre, ' ', IFNULL(apellido, '')) as nombreCompleto
@@ -56,13 +58,19 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear cliente
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables } = req.body;
+        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables, latitud, longitud } = req.body;
 
-        console.log('👤 Creando cliente:', { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables });
+        console.log('👤 Creando cliente:', { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables, latitud, longitud });
 
-        // Usar los nombres correctos de columnas: saldo y retornables
-        const sql = 'INSERT INTO clientes (nombre, apellido, direccion, telefono, saldo, retornables, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)';
-        const params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.user.codigoEmpresa];
+        // Incluir coordenadas si están disponibles
+        let sql, params;
+        if (latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
+            sql = 'INSERT INTO clientes (nombre, apellido, direccion, telefono, saldo, retornables, latitud, longitud, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)';
+            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.user.codigoEmpresa];
+        } else {
+            sql = 'INSERT INTO clientes (nombre, apellido, direccion, telefono, saldo, retornables, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)';
+            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.user.codigoEmpresa];
+        }
 
         const result = await query(sql, params);
         
@@ -81,13 +89,19 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar cliente
 router.put('/:id', verifyToken, async (req, res) => {
     try {
-        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables } = req.body;
+        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables, latitud, longitud } = req.body;
 
-        console.log('👤 Actualizando cliente:', req.params.id, { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables });
+        console.log('👤 Actualizando cliente:', req.params.id, { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables, latitud, longitud });
 
-        // Usar los nombres correctos de columnas: saldo y retornables
-        const sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, telefono = ?, saldo = ?, retornables = ? WHERE codigo = ? AND codigoEmpresa = ?';
-        const params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.params.id, req.user.codigoEmpresa];
+        // Incluir coordenadas si están disponibles
+        let sql, params;
+        if (latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
+            sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, telefono = ?, saldo = ?, retornables = ?, latitud = ?, longitud = ? WHERE codigo = ? AND codigoEmpresa = ?';
+            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.params.id, req.user.codigoEmpresa];
+        } else {
+            sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, telefono = ?, saldo = ?, retornables = ? WHERE codigo = ? AND codigoEmpresa = ?';
+            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.params.id, req.user.codigoEmpresa];
+        }
 
         await query(sql, params);
         

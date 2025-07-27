@@ -243,7 +243,15 @@ async function loadPedidos() {
     allPedidos = pedidos;
     currentPedidos = pedidos;
 
-    renderPedidos(pedidos);
+    // Configurar filtro por defecto a "pendient"
+    const filterEstado = document.getElementById('filterEstado');
+    if (filterEstado && filterEstado.value === '') {
+      filterEstado.value = 'pendient';
+      console.log('🔍 Filtro configurado por defecto: pendient');
+    }
+
+    // Aplicar filtros (por defecto mostrará solo pendientes)
+    filterPedidos();
   } catch (error) {
     console.error('💥 Error cargando pedidos:', error);
     const contentArea = document.getElementById('contentArea');
@@ -261,6 +269,35 @@ async function loadPedidos() {
   }
 }
 
+// Obtener items de un pedido específico
+async function getPedidoItems(pedidoId) {
+  console.log('📋 Obteniendo items del pedido:', pedidoId);
+  const token = localStorage.getItem('token');
+
+  try {
+    const response = await fetch(`/api/pedidos/${pedidoId}/items`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    const items = await response.json();
+    console.log('✅ Items del pedido cargados:', items.length, 'items');
+    console.log('📋 Items:', items);
+
+    return items;
+  } catch (error) {
+    console.error('💥 Error obteniendo items del pedido:', error);
+    return [];
+  }
+}
+
 function renderPedidos(pedidos) {
   const contentArea = document.getElementById('contentArea');
 
@@ -270,6 +307,14 @@ function renderPedidos(pedidos) {
       <div style="text-align: center; padding: 3rem; color: #6b7280;">
         <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No hay pedidos registrados</p>
         <p style="font-size: 0.875rem;">Los pedidos aparecerán aquí cuando se registren en el sistema.</p>
+        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem;">
+          <button onclick="showMapModal()" class="btn-secondary">
+            🗺️ Ver Mapa
+          </button>
+          <button onclick="showCreateOrderModal()" class="btn-primary">
+            + Crear Primer Pedido
+          </button>
+        </div>
       </div>
     `;
     return;
@@ -278,17 +323,22 @@ function renderPedidos(pedidos) {
   const html = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
       <h3 class="content-title" style="margin-bottom: 0;">Gestión de Pedidos</h3>
-      <button class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
-        + Nuevo Pedido
-      </button>
+      <div style="display: flex; gap: 0.5rem;">
+        <button onclick="showMapModal()" class="btn-secondary" style="width: auto; padding: 0.5rem 1rem;">
+          🗺️ Mapa
+        </button>
+        <button onclick="showCreateOrderModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+          + Nuevo Pedido
+        </button>
+      </div>
     </div>
 
     <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
       <select id="filterEstado" onchange="filterPedidos()" class="form-input" style="width: auto;">
         <option value="">Todos los estados</option>
-        <option value="Pendiente">Pendiente</option>
-        <option value="En Preparación">En Preparación</option>
-        <option value="Entregado">Entregado</option>
+        <option value="pendient" selected>Pendient</option>
+        <option value="anulado">Anulado</option>
+        <option value="entregad">Entregado</option>
       </select>
 
       <input
@@ -298,6 +348,10 @@ function renderPedidos(pedidos) {
         class="form-input"
         style="width: auto;"
       />
+
+      <button onclick="clearPedidosFilters()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+        Limpiar Filtros
+      </button>
     </div>
 
     <div style="display: grid; gap: 1rem;">
@@ -308,7 +362,7 @@ function renderPedidos(pedidos) {
         const direccion = pedido.direccion || 'Dirección no especificada';
         const fechaPedido = pedido.fecha_pedido || pedido.fechaPedido;
         const total = pedido.total || 0;
-        const estado = pedido.estado || 'Pendiente';
+        const estado = pedido.estado || 'pendient';
 
         // Formatear fecha
         let fechaFormateada = 'Fecha no disponible';
@@ -362,12 +416,14 @@ function renderPedidos(pedidos) {
 
 function getStatusColor(estado) {
   switch (estado) {
-    case 'Pendiente':
+    case 'pendient':
       return 'background-color: #fef3c7; color: #92400e;';
     case 'En Preparación':
       return 'background-color: #dbeafe; color: #1e40af;';
     case 'Entregado':
       return 'background-color: #d1fae5; color: #065f46;';
+    case 'anulado':
+      return 'background-color: #fee2e2; color: #dc2626;';
     default:
       return 'background-color: #f3f4f6; color: #374151;';
   }
@@ -382,38 +438,116 @@ function filterPedidos() {
   const estadoFilter = document.getElementById('filterEstado')?.value || '';
   const fechaFilter = document.getElementById('filterFecha')?.value || '';
 
+  console.log('🔍 Aplicando filtros:', { estadoFilter, fechaFilter });
+  console.log('📋 Total pedidos antes del filtro:', allPedidos.length);
+
   let filteredPedidos = allPedidos;
 
   if (estadoFilter) {
-    filteredPedidos = filteredPedidos.filter(pedido => pedido.estado === estadoFilter);
+    const beforeFilter = filteredPedidos.length;
+    filteredPedidos = filteredPedidos.filter(pedido => {
+      const match = pedido.estado === estadoFilter;
+      if (!match) {
+        console.log(`❌ Pedido ${pedido.codigo} estado "${pedido.estado}" no coincide con filtro "${estadoFilter}"`);
+      }
+      return match;
+    });
+    console.log(`🔍 Filtro por estado "${estadoFilter}": ${beforeFilter} → ${filteredPedidos.length} pedidos`);
   }
 
   if (fechaFilter) {
+    const beforeFilter = filteredPedidos.length;
     filteredPedidos = filteredPedidos.filter(pedido => {
-      const pedidoFecha = new Date(pedido.fecha_pedido || pedido.fechaPedido);
+      const pedidoFecha = new Date(pedido.FechaPedido || pedido.fecha_pedido || pedido.fechaPedido);
       const filterFecha = new Date(fechaFilter);
       return pedidoFecha.toDateString() === filterFecha.toDateString();
     });
+    console.log(`📅 Filtro por fecha "${fechaFilter}": ${beforeFilter} → ${filteredPedidos.length} pedidos`);
   }
+
+  console.log('✅ Pedidos después del filtro:', filteredPedidos.length);
 
   currentPedidos = filteredPedidos;
   renderPedidos(filteredPedidos);
 }
 
+// Limpiar filtros de pedidos
+function clearPedidosFilters() {
+  console.log('🧹 Limpiando filtros de pedidos');
+
+  // Limpiar campos de filtro
+  const filterEstado = document.getElementById('filterEstado');
+  const filterFecha = document.getElementById('filterFecha');
+
+  if (filterEstado) filterEstado.value = 'pendient'; // Volver al filtro por defecto
+  if (filterFecha) filterFecha.value = '';
+
+  // Aplicar filtros (mostrará solo pendientes por defecto)
+  filterPedidos();
+}
+
 // Ver detalles del pedido
-function viewPedido(pedidoId) {
+async function viewPedido(pedidoId) {
   const pedido = currentPedidos.find(p => (p.id || p.codigo) == pedidoId);
   if (!pedido) {
     alert('Pedido no encontrado');
     return;
   }
 
-  const clienteNombre = pedido.cliente_nombre || pedido.nombre || 'Cliente sin nombre';
-  const total = parseFloat(pedido.total || 0).toFixed(2);
-  const estado = pedido.estado || 'Pendiente';
-  const direccion = pedido.direccion || 'Dirección no especificada';
+  console.log('👁️ Viendo detalles del pedido:', pedidoId);
 
-  alert(`Pedido #${pedidoId}\nCliente: ${clienteNombre}\nDirección: ${direccion}\nTotal: $${total}\nEstado: ${estado}`);
+  const clienteNombre = pedido.cliente_nombre || pedido.nombre || 'Cliente sin nombre';
+  const apellido = pedido.apellido || '';
+  const nombreCompleto = `${clienteNombre} ${apellido}`.trim();
+  const total = parseFloat(pedido.total || 0).toFixed(2);
+  const estado = pedido.estado || 'pendient';
+  const direccion = pedido.direccion || 'Dirección no especificada';
+  const telefono = pedido.telefono || 'Sin teléfono';
+  const fecha = pedido.FechaPedido || pedido.fecha || 'Fecha no disponible';
+
+  try {
+    // Obtener items del pedido
+    const items = await getPedidoItems(pedidoId);
+
+    let itemsText = '';
+    if (items.length > 0) {
+      itemsText = '\n\n📦 PRODUCTOS:\n';
+      items.forEach(item => {
+        const subtotal = parseFloat(item.subtotal || 0).toFixed(2);
+        itemsText += `• ${item.nombreProducto}\n  Cantidad: ${item.cantidad} x $${parseFloat(item.precioUnitario || 0).toFixed(2)} = $${subtotal}\n`;
+      });
+    } else {
+      itemsText = '\n\n📦 No hay items registrados para este pedido';
+    }
+
+    const detalles = `🧾 PEDIDO #${pedidoId}
+
+👤 CLIENTE: ${nombreCompleto}
+📞 Teléfono: ${telefono}
+📍 Dirección: ${direccion}
+📅 Fecha: ${fecha}
+📊 Estado: ${estado}
+💰 Total: $${total}${itemsText}`;
+
+    alert(detalles);
+
+  } catch (error) {
+    console.error('Error obteniendo detalles del pedido:', error);
+
+    // Mostrar información básica si falla la carga de items
+    const detallesBasicos = `🧾 PEDIDO #${pedidoId}
+
+👤 CLIENTE: ${nombreCompleto}
+📞 Teléfono: ${telefono}
+📍 Dirección: ${direccion}
+📅 Fecha: ${fecha}
+📊 Estado: ${estado}
+💰 Total: $${total}
+
+⚠️ No se pudieron cargar los items del pedido`;
+
+    alert(detallesBasicos);
+  }
 }
 
 // Editar pedido
@@ -534,6 +668,11 @@ function renderClientes(clientes) {
                   <span style="background: #f3f4f6; color: #6b7280; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
                     #${codigo}
                   </span>
+                  ${(cliente.latitud && cliente.longitud) ? `
+                    <span style="background: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 500;" title="Cliente con ubicación GPS">
+                      📍 GPS
+                    </span>
+                  ` : ''}
                 </div>
 
                 <div style="margin-bottom: 0.75rem;">
@@ -570,13 +709,26 @@ function renderClientes(clientes) {
                   Editar
                 </button>
 
+                ${(cliente.latitud && cliente.longitud) ? `
+                  <button
+                    onclick="showClientLocation(${id})"
+                    style="padding: 0.5rem; background: #7c3aed; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                    title="Ver ubicación en el mapa"
+                  >
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
+                    </svg>
+                    Mapa
+                  </button>
+                ` : ''}
+
                 <button
                   onclick="showClientAccount(${id})"
                   style="padding: 0.5rem; background: #059669; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
                   title="Ver cuenta corriente"
                 >
                   <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1H1zM7 5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5zM9 13V6h5v7H9z"/>
+                    <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1H1zM7 5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5zM9 13V6h5v7H9z"/>
                     <path d="M2 6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6zm5 0H3v6h4V6z"/>
                   </svg>
                   Cta Cte
@@ -799,7 +951,9 @@ let currentClients = [];
 let editingClientId = null;
 let clientSearchTimeout = null;
 
-// Función de debounce para la búsqueda (definida globalmente)
+// ========== FUNCIONES PARA PRODUCTOS ==========
+
+// Función de debounce para la búsqueda de productos
 function debounceSearch(searchTerm) {
   // Limpiar el timeout anterior
   if (searchTimeout) {
@@ -812,7 +966,7 @@ function debounceSearch(searchTerm) {
   }, 300); // Esperar 300ms después de que el usuario deje de escribir
 }
 
-// Limpiar búsqueda (definida globalmente)
+// Limpiar búsqueda de productos
 function clearSearch() {
   const searchInput = document.getElementById('searchProducts');
   if (searchInput) {
@@ -821,7 +975,7 @@ function clearSearch() {
   }
 }
 
-// Función para editar producto (definida globalmente)
+// Función para editar producto
 function editProduct(productId) {
   console.log('✏️ Editando producto ID:', productId);
   console.log('📋 Productos disponibles:', currentProducts.length);
@@ -849,7 +1003,7 @@ function editProduct(productId) {
   }
 }
 
-// Eliminar producto (definida globalmente)
+// Eliminar producto
 async function deleteProduct(productId) {
   console.log('🗑️ Eliminando producto ID:', productId);
 
@@ -891,7 +1045,7 @@ async function deleteProduct(productId) {
   }
 }
 
-// Funciones para mostrar mensajes (definidas globalmente)
+// Funciones para mostrar mensajes
 function showSuccessMessage(message) {
   const messageDiv = document.createElement('div');
   messageDiv.style.cssText = `
@@ -1064,6 +1218,37 @@ function editClient(clientId) {
   }
 }
 
+// Mostrar ubicación del cliente en el mapa
+function showClientLocation(clientId) {
+  console.log('📍 Mostrando ubicación del cliente ID:', clientId);
+
+  const cliente = currentClients.find(c => (c.codigo || c.id) == clientId);
+
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    alert('Cliente no encontrado');
+    return;
+  }
+
+  if (!cliente.latitud || !cliente.longitud) {
+    alert('Este cliente no tiene ubicación GPS registrada.');
+    return;
+  }
+
+  const nombreCompleto = cliente.nombreCompleto || `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'Cliente sin nombre';
+
+  // Abrir Google Maps con la ubicación
+  const googleMapsUrl = `https://www.google.com/maps?q=${cliente.latitud},${cliente.longitud}&z=15&t=m`;
+  window.open(googleMapsUrl, '_blank');
+
+  // También mostrar información en consola
+  console.log(`📍 Ubicación de ${nombreCompleto}:`, {
+    latitud: cliente.latitud,
+    longitud: cliente.longitud,
+    direccion: cliente.direccion
+  });
+}
+
 // Mostrar cuenta corriente del cliente
 function showClientAccount(clientId) {
   console.log('💰 Mostrando cuenta corriente del cliente ID:', clientId);
@@ -1149,17 +1334,60 @@ window.deleteProduct = deleteProduct;
 window.showSuccessMessage = showSuccessMessage;
 window.showErrorMessage = showErrorMessage;
 
+// ========== FUNCIONES PARA PEDIDOS ==========
+
+// Mostrar modal para crear pedido
+function showCreateOrderModal() {
+  if (window.orderModal) {
+    window.orderModal.show();
+  } else {
+    console.error('❌ OrderModal no está disponible');
+    alert('Error: Modal no disponible');
+  }
+}
+
+// Mostrar modal del mapa de pedidos
+function showMapModal() {
+  console.log('🗺️ Abriendo mapa de pedidos...');
+
+  if (window.mapModal) {
+    window.mapModal.show();
+  } else {
+    console.error('❌ MapModal no está disponible');
+    alert('Error: Modal del mapa no disponible');
+  }
+}
+
 // Funciones de clientes
 window.searchClients = searchClients;
 window.debounceSearchClients = debounceSearchClients;
 window.clearClientSearch = clearClientSearch;
 window.editClient = editClient;
+window.showClientLocation = showClientLocation;
 window.showClientAccount = showClientAccount;
 window.deleteClient = deleteClient;
 window.showCreateClientModal = showCreateClientModal;
 window.setCurrentClients = setCurrentClients;
+
+// Funciones de productos
+window.debounceSearch = debounceSearch;
+window.clearSearch = clearSearch;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.showSuccessMessage = showSuccessMessage;
+window.showErrorMessage = showErrorMessage;
+
+// Funciones de pedidos
+window.showCreateOrderModal = showCreateOrderModal;
+window.showMapModal = showMapModal;
+window.getPedidoItems = getPedidoItems;
+window.viewPedido = viewPedido;
+window.filterPedidos = filterPedidos;
+window.clearPedidosFilters = clearPedidosFilters;
 </script>
 
 <!-- Cargar los componentes modales -->
 <script src="/js/ProductModal.js" is:inline></script>
 <script src="/js/ClientModal.js" is:inline></script>
+<script src="/js/OrderModal.js" is:inline></script>
+<script src="/js/MapModal.js" is:inline></script>
