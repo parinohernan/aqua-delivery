@@ -1,0 +1,366 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Dashboard - AquaDelivery">
+  <!-- Pantalla de carga -->
+  <div id="loading" class="loading-screen">
+    <div class="spinner"></div>
+    <p>Cargando aplicación...</p>
+  </div>
+
+  <!-- Aplicación principal -->
+  <div id="mainApp" class="hidden">
+    <div class="app-container">
+      <!-- Header con gradiente -->
+      <header class="header">
+        <div class="header-content">
+          <div class="header-left">
+            <div class="app-icon">💧</div>
+            <h1 class="app-title">AquaDelivery</h1>
+          </div>
+          <div class="header-right">
+            <span id="userInfo" class="user-info"></span>
+            <button onclick="logout()" class="logout-button">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                <path d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+              </svg>
+              Salir
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Navegación Desktop -->
+      <nav class="nav-buttons">
+        <button data-route="pedidos" class="nav-button active">
+          <div class="nav-icon">📦</div>
+          <span>Pedidos</span>
+        </button>
+        <button data-route="clientes" class="nav-button">
+          <div class="nav-icon">👥</div>
+          <span>Clientes</span>
+        </button>
+        <button data-route="productos" class="nav-button">
+          <div class="nav-icon">🛍️</div>
+          <span>Productos</span>
+        </button>
+        <button data-route="pagos" class="nav-button">
+          <div class="nav-icon">💰</div>
+          <span>Pagos</span>
+        </button>
+      </nav>
+
+      <!-- Contenido principal -->
+      <main class="main-content">
+        <div id="contentArea" class="content-card">
+          <!-- El contenido se cargará aquí dinámicamente -->
+        </div>
+      </main>
+
+      <!-- Navegación Móvil -->
+      <nav class="mobile-nav">
+        <button data-route="pedidos" class="mobile-nav-button active">
+          <div class="mobile-nav-icon">📦</div>
+          <span>Pedidos</span>
+        </button>
+        <button data-route="clientes" class="mobile-nav-button">
+          <div class="mobile-nav-icon">👥</div>
+          <span>Clientes</span>
+        </button>
+        <button data-route="productos" class="mobile-nav-button">
+          <div class="mobile-nav-icon">🛍️</div>
+          <span>Productos</span>
+        </button>
+        <button data-route="pagos" class="mobile-nav-button">
+          <div class="mobile-nav-icon">💰</div>
+          <span>Pagos</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+</Layout>
+
+<script>
+// Estado global de la aplicación
+let currentUser = null;
+let currentRoute = 'pedidos';
+
+// Verificar autenticación al cargar la página
+document.addEventListener('DOMContentLoaded', async () => {
+  await checkAuth();
+});
+
+// Verificar si el usuario está autenticado
+async function checkAuth() {
+  const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
+  
+  if (!token || !userStr) {
+    redirectToLogin();
+    return;
+  }
+  
+  try {
+    // Verificar que el token sea válido
+    const response = await fetch('/api/pedidos', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Token inválido');
+    }
+    
+    currentUser = JSON.parse(userStr);
+    showMainApp();
+    loadRoute(currentRoute);
+  } catch (error) {
+    console.error('Error de autenticación:', error);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    redirectToLogin();
+  }
+}
+
+// Redirigir al login
+function redirectToLogin() {
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
+
+// Mostrar la aplicación principal
+function showMainApp() {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+
+  // Mostrar información del usuario
+  const userInfo = document.getElementById('userInfo');
+  if (userInfo && currentUser) {
+    userInfo.textContent = `Hola, ${currentUser.nombre || currentUser.telegramId}`;
+  }
+}
+
+// Función de logout
+function logout() {
+  if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+  }
+}
+
+// Navegación
+document.addEventListener('click', (e) => {
+  if (e.target.matches('[data-route]') || e.target.closest('[data-route]')) {
+    const button = e.target.matches('[data-route]') ? e.target : e.target.closest('[data-route]');
+    const route = button.getAttribute('data-route');
+    navigateTo(route);
+  }
+});
+
+function navigateTo(route) {
+  currentRoute = route;
+  
+  // Actualizar botones activos
+  document.querySelectorAll('.nav-button, .mobile-nav-button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  document.querySelectorAll(`[data-route="${route}"]`).forEach(btn => {
+    btn.classList.add('active');
+  });
+  
+  loadRoute(route);
+}
+
+// Cargar contenido de la ruta
+async function loadRoute(route) {
+  const contentArea = document.getElementById('contentArea');
+  contentArea.innerHTML = '<div style="display: flex; justify-content: center; padding: 2rem;"><div class="spinner"></div></div>';
+
+  try {
+    switch (route) {
+      case 'pedidos':
+        await loadPedidos();
+        break;
+      case 'clientes':
+        await loadClientes();
+        break;
+      case 'productos':
+        await loadProductos();
+        break;
+      case 'pagos':
+        await loadPagos();
+        break;
+      default:
+        contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">Página no encontrada</div>';
+    }
+  } catch (error) {
+    console.error('Error cargando ruta:', error);
+    contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando contenido</div>';
+  }
+}
+
+// Cargar pedidos
+async function loadPedidos() {
+  const token = localStorage.getItem('token');
+  const response = await fetch('/api/pedidos', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Error cargando pedidos');
+  }
+
+  const pedidos = await response.json();
+  renderPedidos(pedidos);
+}
+
+function renderPedidos(pedidos) {
+  const contentArea = document.getElementById('contentArea');
+
+  const html = `
+    <h3 class="content-title">Gestión de Pedidos</h3>
+
+    <div style="margin-bottom: 1rem;">
+      <button class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+        + Nuevo Pedido
+      </button>
+    </div>
+
+    <div style="display: grid; gap: 1rem;">
+      ${pedidos.map(pedido => `
+        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">#${pedido.id}</h4>
+              <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">${pedido.cliente_nombre}</p>
+              <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">${pedido.direccion}</p>
+              <p style="font-size: 0.875rem; color: #6b7280;">${new Date(pedido.fecha_pedido).toLocaleDateString()}</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="font-weight: 600; color: #059669; margin-bottom: 0.5rem;">$${pedido.total}</p>
+              <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; ${getStatusColor(pedido.estado)}">
+                ${pedido.estado}
+              </span>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  contentArea.innerHTML = html;
+}
+
+function getStatusColor(estado) {
+  switch (estado) {
+    case 'Pendiente':
+      return 'background-color: #fef3c7; color: #92400e;';
+    case 'En Preparación':
+      return 'background-color: #dbeafe; color: #1e40af;';
+    case 'Entregado':
+      return 'background-color: #d1fae5; color: #065f46;';
+    default:
+      return 'background-color: #f3f4f6; color: #374151;';
+  }
+}
+
+// Cargar clientes
+async function loadClientes() {
+  const token = localStorage.getItem('token');
+  const response = await fetch('/api/clientes', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Error cargando clientes');
+  }
+
+  const clientes = await response.json();
+  renderClientes(clientes);
+}
+
+function renderClientes(clientes) {
+  const contentArea = document.getElementById('contentArea');
+
+  const html = `
+    <h3 class="content-title">Gestión de Clientes</h3>
+
+    <div style="display: grid; gap: 1rem;">
+      ${clientes.map(cliente => `
+        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">${cliente.nombre}</h4>
+          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">${cliente.telefono}</p>
+          <p style="font-size: 0.875rem; color: #6b7280;">${cliente.direccion}</p>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  contentArea.innerHTML = html;
+}
+
+// Cargar productos
+async function loadProductos() {
+  const token = localStorage.getItem('token');
+  const response = await fetch('/api/productos', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Error cargando productos');
+  }
+
+  const productos = await response.json();
+  renderProductos(productos);
+}
+
+function renderProductos(productos) {
+  const contentArea = document.getElementById('contentArea');
+
+  const html = `
+    <h3 class="content-title">Gestión de Productos</h3>
+
+    <div style="margin-bottom: 1rem;">
+      <button class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+        + Nuevo Producto
+      </button>
+    </div>
+
+    <div style="display: grid; gap: 1rem;">
+      ${productos.map(producto => `
+        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">${producto.nombre || 'Sin nombre'}</h4>
+          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">$${producto.precio || '0.00'}</p>
+          <p style="font-size: 0.875rem; color: #6b7280;">${producto.descripcion || 'Sin descripción'}</p>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  contentArea.innerHTML = html;
+}
+
+// Cargar pagos
+async function loadPagos() {
+  const contentArea = document.getElementById('contentArea');
+
+  const html = `
+    <h3 class="content-title">Gestión de Pagos</h3>
+    <p style="color: #4b5563;">Funcionalidad de pagos en desarrollo...</p>
+  `;
+
+  contentArea.innerHTML = html;
+}
+</script>

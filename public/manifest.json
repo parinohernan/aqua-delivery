@@ -1,0 +1,16 @@
+{
+    "name": "AquaDelivery - Gestión de Pedidos",
+    "short_name": "AquaDelivery",
+    "description": "Sistema de gestión para delivery de agua",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#6366f1",
+    "icons": [
+        {
+            "src": "favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}

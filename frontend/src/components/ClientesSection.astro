@@ -1,0 +1,135 @@
+---
+// Componente para la gestión de clientes
+---
+
+<div id="clientesSection">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h3 class="content-title" style="margin-bottom: 0;">Gestión de Clientes</h3>
+    <button onclick="showCreateClienteModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+      + Nuevo Cliente
+    </button>
+  </div>
+  
+  <div style="margin-bottom: 1rem;">
+    <input 
+      type="text" 
+      id="searchClientes" 
+      placeholder="Buscar clientes..." 
+      class="form-input" 
+      style="max-width: 300px;"
+      onkeyup="searchClientes(this.value)"
+    />
+  </div>
+  
+  <div id="clientesList" style="display: grid; gap: 1rem;">
+    <!-- Los clientes se cargarán aquí dinámicamente -->
+  </div>
+</div>
+
+<script>
+// Variables globales para clientes
+let currentClientes = [];
+
+// Cargar clientes
+async function loadClientes() {
+  console.log('👥 Cargando clientes...');
+  const token = localStorage.getItem('token');
+  
+  try {
+    const response = await fetch('/api/clientes', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+    
+    const clientes = await response.json();
+    console.log('✅ Clientes cargados:', clientes.length, 'clientes');
+    currentClientes = clientes;
+    renderClientesList(clientes);
+  } catch (error) {
+    console.error('💥 Error cargando clientes:', error);
+    const clientesList = document.getElementById('clientesList');
+    if (clientesList) {
+      clientesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando clientes: ' + error.message + '</div>';
+    }
+  }
+}
+
+function renderClientesList(clientes) {
+  const clientesList = document.getElementById('clientesList');
+  if (!clientesList) return;
+  
+  if (clientes.length === 0) {
+    clientesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">No hay clientes registrados</div>';
+    return;
+  }
+  
+  clientesList.innerHTML = clientes.map(cliente => `
+    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.5rem;">${cliente.nombre}</h4>
+          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">📞 ${cliente.telefono}</p>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">📍 ${cliente.direccion}</p>
+          ${cliente.email ? `<p style="font-size: 0.875rem; color: #6b7280;">✉️ ${cliente.email}</p>` : ''}
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="editCliente(${cliente.id})" class="btn-small btn-edit">
+            Editar
+          </button>
+          <button onclick="deleteCliente(${cliente.id})" class="btn-small btn-delete">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Buscar clientes
+async function searchClientes(searchTerm) {
+  const token = localStorage.getItem('token');
+  const url = searchTerm ? `/api/clientes?search=${encodeURIComponent(searchTerm)}` : '/api/clientes';
+  
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error buscando clientes');
+    }
+    
+    const clientes = await response.json();
+    currentClientes = clientes;
+    renderClientesList(clientes);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Crear nuevo cliente
+function showCreateClienteModal() {
+  alert('Funcionalidad de creación de clientes en desarrollo...');
+}
+
+// Editar cliente
+function editCliente(clienteId) {
+  alert('Funcionalidad de edición de clientes en desarrollo...');
+}
+
+// Eliminar cliente
+function deleteCliente(clienteId) {
+  if (!confirm('¿Estás seguro de que quieres eliminar este cliente?')) {
+    return;
+  }
+  alert('Funcionalidad de eliminación de clientes en desarrollo...');
+}
+</script>

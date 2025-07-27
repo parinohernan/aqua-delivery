@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaDelivery - Gestión de Pedidos</title>
+
+    <!-- PWA y Favicon -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="AquaDelivery">
+
+    <!-- Fuentes modernas -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Iconos Lucide -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header moderno -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <h1>
+                    <i data-lucide="droplets"></i>
+                    AquaDelivery
+                </h1>
+                <div class="nav-buttons">
+                    <button class="nav-button active" data-route="pedidos">
+                        <i data-lucide="package"></i>
+                        Pedidos
+                    </button>
+                    <button class="nav-button" data-route="clientes">
+                        <i data-lucide="users"></i>
+                        Clientes
+                    </button>
+                    <button class="nav-button" data-route="productos">
+                        <i data-lucide="tag"></i>
+                        Productos
+                    </button>
+                    <button class="nav-button" data-route="pagos">
+                        <i data-lucide="credit-card"></i>
+                        Pagos
+                    </button>
+                    <button class="nav-button logout-button" onclick="logout()">
+                        <i data-lucide="log-out"></i>
+                        Salir
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Contenido principal -->
+        <main id="main-content">
+            <div class="loading">
+                <div class="spinner"></div>
+                Cargando aplicación...
+            </div>
+        </main>
+
+        <!-- Navegación móvil -->
+        <nav class="bottom-nav">
+            <div class="bottom-nav-items">
+                <a href="#" class="bottom-nav-item active" data-route="pedidos">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="package"></i>
+                    </div>
+                    Pedidos
+                </a>
+                <a href="#" class="bottom-nav-item" data-route="clientes">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="users"></i>
+                    </div>
+                    Clientes
+                </a>
+                <a href="#" class="bottom-nav-item" data-route="productos">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="tag"></i>
+                    </div>
+                    Productos
+                </a>
+                <a href="#" class="bottom-nav-item" data-route="pagos">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="credit-card"></i>
+                    </div>
+                    Pagos
+                </a>
+                <a href="#" class="bottom-nav-item" onclick="logout()">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="log-out"></i>
+                    </div>
+                    Salir
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <!-- Sistema de UI moderno -->
+    <script src="js/ui.js"></script>
+
+    <!-- Modelos -->
+    <script src="js/models/Cliente.js"></script>
+    <script src="js/models/Producto.js"></script>
+    <script src="js/models/Pedido.js"></script>
+
+    <!-- Servicios -->
+    <script src="js/services/api.js"></script>
+    <script src="js/services/storage.js"></script>
+
+    <!-- Componentes -->
+    <script src="js/components/pedidos.js"></script>
+    <script src="js/components/clientes.js"></script>
+    <script src="js/components/productos.js"></script>
+    <script src="js/components/pagos.js"></script>
+
+    <!-- App principal -->
+    <script src="js/app.js"></script>
+
+    <script>
+        // Inicializar iconos cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+---
+// Componente para la gestión de pagos
+---
+
+<div id="pagosSection">
+  <h3 class="content-title">Gestión de Pagos</h3>
+  
+  <div style="display: grid; gap: 1.5rem;">
+    <!-- Resumen de pagos -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+      <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+        <h4 style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Total Pendiente</h4>
+        <p style="font-size: 1.5rem; font-weight: 600; color: #dc2626;">$0.00</p>
+      </div>
+      
+      <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+        <h4 style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Total Cobrado</h4>
+        <p style="font-size: 1.5rem; font-weight: 600; color: #059669;">$0.00</p>
+      </div>
+      
+      <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+        <h4 style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Pagos del Mes</h4>
+        <p style="font-size: 1.5rem; font-weight: 600; color: #3b82f6;">$0.00</p>
+      </div>
+    </div>
+    
+    <!-- Lista de pagos -->
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+      <h4 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem;">Historial de Pagos</h4>
+      
+      <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+        <select class="form-input" style="width: auto;">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="pagado">Pagado</option>
+          <option value="vencido">Vencido</option>
+        </select>
+        
+        <input type="date" class="form-input" style="width: auto;" />
+      </div>
+      
+      <div style="text-align: center; padding: 2rem; color: #6b7280;">
+        <p>Funcionalidad de pagos en desarrollo...</p>
+        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Próximamente: gestión completa de pagos, reportes y estadísticas.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Cargar datos de pagos
+async function loadPagos() {
+  console.log('💰 Cargando datos de pagos...');
+  
+  // Por ahora solo mostramos la interfaz
+  // En el futuro aquí cargaremos los datos reales de pagos
+  
+  console.log('✅ Sección de pagos cargada');
+}
+</script>

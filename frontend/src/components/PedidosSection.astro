@@ -1,0 +1,160 @@
+---
+// Componente para la gestión de pedidos
+---
+
+<div id="pedidosSection">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h3 class="content-title" style="margin-bottom: 0;">Gestión de Pedidos</h3>
+    <button onclick="showCreatePedidoModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+      + Nuevo Pedido
+    </button>
+  </div>
+  
+  <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+    <select id="filterEstado" onchange="filterPedidos()" class="form-input" style="width: auto;">
+      <option value="">Todos los estados</option>
+      <option value="Pendiente">Pendiente</option>
+      <option value="En Preparación">En Preparación</option>
+      <option value="Entregado">Entregado</option>
+    </select>
+    
+    <input 
+      type="date" 
+      id="filterFecha" 
+      onchange="filterPedidos()" 
+      class="form-input" 
+      style="width: auto;"
+    />
+  </div>
+  
+  <div id="pedidosList" style="display: grid; gap: 1rem;">
+    <!-- Los pedidos se cargarán aquí dinámicamente -->
+  </div>
+</div>
+
+<script>
+// Variables globales para pedidos
+let currentPedidos = [];
+let allPedidos = [];
+
+// Cargar pedidos
+async function loadPedidos() {
+  console.log('📦 Cargando pedidos...');
+  const token = localStorage.getItem('token');
+  
+  try {
+    const response = await fetch('/api/pedidos', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+    
+    const pedidos = await response.json();
+    console.log('✅ Pedidos cargados:', pedidos.length, 'pedidos');
+    allPedidos = pedidos;
+    currentPedidos = pedidos;
+    renderPedidosList(pedidos);
+  } catch (error) {
+    console.error('💥 Error cargando pedidos:', error);
+    const pedidosList = document.getElementById('pedidosList');
+    if (pedidosList) {
+      pedidosList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando pedidos: ' + error.message + '</div>';
+    }
+  }
+}
+
+function renderPedidosList(pedidos) {
+  const pedidosList = document.getElementById('pedidosList');
+  if (!pedidosList) return;
+  
+  if (pedidos.length === 0) {
+    pedidosList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">No hay pedidos registrados</div>';
+    return;
+  }
+  
+  pedidosList.innerHTML = pedidos.map(pedido => `
+    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">#${pedido.id}</h4>
+          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">${pedido.cliente_nombre}</p>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">${pedido.direccion}</p>
+          <p style="font-size: 0.875rem; color: #6b7280;">${new Date(pedido.fecha_pedido).toLocaleDateString()}</p>
+        </div>
+        <div style="text-align: right;">
+          <p style="font-weight: 600; color: #059669; margin-bottom: 0.5rem;">$${parseFloat(pedido.total).toFixed(2)}</p>
+          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; ${getStatusColor(pedido.estado)}">
+            ${pedido.estado}
+          </span>
+          <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem;">
+            <button onclick="viewPedido(${pedido.id})" class="btn-small" style="background: #6b7280; color: white;">
+              Ver
+            </button>
+            <button onclick="editPedido(${pedido.id})" class="btn-small btn-edit">
+              Editar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getStatusColor(estado) {
+  switch (estado) {
+    case 'Pendiente':
+      return 'background-color: #fef3c7; color: #92400e;';
+    case 'En Preparación':
+      return 'background-color: #dbeafe; color: #1e40af;';
+    case 'Entregado':
+      return 'background-color: #d1fae5; color: #065f46;';
+    default:
+      return 'background-color: #f3f4f6; color: #374151;';
+  }
+}
+
+// Filtrar pedidos
+function filterPedidos() {
+  const estadoFilter = document.getElementById('filterEstado').value;
+  const fechaFilter = document.getElementById('filterFecha').value;
+  
+  let filteredPedidos = allPedidos;
+  
+  if (estadoFilter) {
+    filteredPedidos = filteredPedidos.filter(pedido => pedido.estado === estadoFilter);
+  }
+  
+  if (fechaFilter) {
+    filteredPedidos = filteredPedidos.filter(pedido => {
+      const pedidoFecha = new Date(pedido.fecha_pedido).toISOString().split('T')[0];
+      return pedidoFecha === fechaFilter;
+    });
+  }
+  
+  currentPedidos = filteredPedidos;
+  renderPedidosList(filteredPedidos);
+}
+
+// Ver detalles del pedido
+function viewPedido(pedidoId) {
+  const pedido = currentPedidos.find(p => p.id == pedidoId);
+  if (!pedido) return;
+  
+  alert(`Pedido #${pedido.id}\nCliente: ${pedido.cliente_nombre}\nTotal: $${pedido.total}\nEstado: ${pedido.estado}`);
+}
+
+// Editar pedido
+function editPedido(pedidoId) {
+  alert('Funcionalidad de edición en desarrollo...');
+}
+
+// Crear nuevo pedido
+function showCreatePedidoModal() {
+  alert('Funcionalidad de creación en desarrollo...');
+}
+</script>

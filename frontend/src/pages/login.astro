@@ -1,0 +1,161 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Login - AquaDelivery">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="text-center">
+        <div class="login-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 2rem; height: 2rem; color: #3b82f6;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 7.172V5L8 4z"></path>
+          </svg>
+        </div>
+        <h1 class="login-title">AquaDelivery</h1>
+        <p class="login-subtitle">Ingresa a tu cuenta</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="telegramId" class="form-label">
+            ID de Telegram
+          </label>
+          <input
+            type="text"
+            id="telegramId"
+            name="telegramId"
+            required
+            class="form-input"
+            placeholder="Ingresa tu ID de Telegram"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="codigoEmpresa" class="form-label">
+            Código de Empresa
+          </label>
+          <input
+            type="text"
+            id="codigoEmpresa"
+            name="codigoEmpresa"
+            required
+            class="form-input"
+            placeholder="Código de empresa"
+          />
+        </div>
+
+        <button type="submit" class="btn-primary">
+          Iniciar Sesión
+        </button>
+      </form>
+
+      <div id="errorMessage" class="error-message hidden">
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  console.log('🚀 Script de login cargado');
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM cargado, buscando formulario...');
+    const loginForm = document.getElementById('loginForm');
+    if (!loginForm) {
+      console.error('❌ No se encontró el formulario de login');
+      return;
+    }
+    console.log('✅ Formulario encontrado, agregando event listener');
+
+    loginForm.addEventListener('submit', async function(e) {
+      try {
+        console.log('🔥 Evento submit capturado');
+        e.preventDefault();
+        console.log('✅ preventDefault ejecutado');
+
+        const formData = new FormData(e.target);
+        const telegramId = formData.get('telegramId');
+        const codigoEmpresa = formData.get('codigoEmpresa');
+
+        console.log('📝 Datos del formulario:', { telegramId, codigoEmpresa });
+
+        const errorDiv = document.getElementById('errorMessage');
+        const submitButton = e.target.querySelector('button[type="submit"]');
+    
+      // Mostrar loading
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Iniciando sesión...';
+      }
+      if (errorDiv) {
+        errorDiv.classList.add('hidden');
+      }
+    
+    try {
+      console.log('Enviando petición de login...');
+      const response = await fetch('/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegramId,
+          codigoEmpresa
+        })
+      });
+
+      console.log('Respuesta recibida:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error del servidor:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText || 'Error del servidor'}`);
+      }
+
+      const data = await response.json();
+      
+      console.log('📦 Datos recibidos del servidor:', data);
+
+      if (response.ok && data.token) {
+        console.log('✅ Login exitoso! Token recibido');
+
+        // Guardar token y datos del usuario
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user || data.vendedor || {}));
+
+        console.log('💾 Datos guardados en localStorage');
+        console.log('🔄 Redirigiendo al dashboard...');
+
+        // Redirigir inmediatamente
+        window.location.href = '/';
+      } else {
+        console.log('❌ Login falló:', data);
+        throw new Error(data.message || data.error || 'Error al iniciar sesión');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      if (errorDiv) {
+        errorDiv.textContent = error instanceof Error ? error.message : 'Error al iniciar sesión';
+        errorDiv.classList.remove('hidden');
+      }
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Iniciar Sesión';
+      }
+    }
+      } catch (globalError) {
+        console.error('💥 Error global en el evento submit:', globalError);
+        console.error('🔍 Stack trace:', globalError.stack);
+        // Asegurar que no se recargue la página
+        e.preventDefault();
+
+        // Mostrar error en la UI
+        const errorDiv = document.getElementById('errorMessage');
+        if (errorDiv) {
+          errorDiv.textContent = 'Error inesperado: ' + globalError.message;
+          errorDiv.classList.remove('hidden');
+        }
+      }
+    });
+  });
+</script>

@@ -1,0 +1,278 @@
+---
+// Componente para la gestión de productos
+---
+
+<div id="productosSection">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h3 class="content-title" style="margin-bottom: 0;">Gestión de Productos</h3>
+    <button onclick="showCreateProductModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+      + Nuevo Producto
+    </button>
+  </div>
+  
+  <div style="margin-bottom: 1rem;">
+    <input 
+      type="text" 
+      id="searchProducts" 
+      placeholder="Buscar productos..." 
+      class="form-input" 
+      style="max-width: 300px;"
+      onkeyup="searchProducts(this.value)"
+    />
+  </div>
+  
+  <div id="productsList" style="display: grid; gap: 1rem;">
+    <!-- Los productos se cargarán aquí dinámicamente -->
+  </div>
+  
+  <!-- Modal para crear/editar producto -->
+  <div id="productModal" class="hidden modal-overlay">
+    <div class="modal-content">
+      <h4 id="modalTitle" class="modal-title">Nuevo Producto</h4>
+      
+      <form id="productForm">
+        <div class="form-group">
+          <label class="form-label">Nombre del Producto</label>
+          <input type="text" id="productName" name="nombre" required class="form-input" />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <textarea id="productDescription" name="descripcion" class="form-input" rows="3"></textarea>
+        </div>
+        
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Precio</label>
+            <input type="number" id="productPrice" name="precio" step="0.01" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Stock</label>
+            <input type="number" id="productStock" name="stock" required class="form-input" />
+          </div>
+        </div>
+        
+        <div class="modal-buttons">
+          <button type="button" onclick="closeProductModal()" class="btn-secondary">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Variables globales para productos
+let currentProducts = [];
+let editingProductId = null;
+
+// Cargar productos
+async function loadProductos() {
+  console.log('🛍️ Cargando productos...');
+  const token = localStorage.getItem('token');
+  console.log('🔑 Token:', token ? 'Presente' : 'No encontrado');
+  
+  try {
+    console.log('📡 Haciendo petición a /api/productos');
+    const response = await fetch('/api/productos', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    console.log('📥 Respuesta recibida:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+    
+    const productos = await response.json();
+    console.log('✅ Productos cargados:', productos.length, 'productos');
+    currentProducts = productos;
+    renderProductsList(productos);
+  } catch (error) {
+    console.error('💥 Error completo:', error);
+    const productsList = document.getElementById('productsList');
+    if (productsList) {
+      productsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando productos: ' + error.message + '</div>';
+    }
+  }
+}
+
+function renderProductsList(productos) {
+  const productsList = document.getElementById('productsList');
+  if (!productsList) return;
+  
+  if (productos.length === 0) {
+    productsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">No hay productos registrados</div>';
+    return;
+  }
+  
+  productsList.innerHTML = productos.map(producto => `
+    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.5rem;">${producto.nombre || producto.name || 'Sin nombre'}</h4>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">${producto.descripcion || producto.description || 'Sin descripción'}</p>
+          <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
+            <span style="color: #059669; font-weight: 600;">$${parseFloat(producto.precio || producto.price || 0).toFixed(2)}</span>
+            <span style="color: #4b5563;">Stock: ${producto.stock || producto.quantity || 0}</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="editProduct(${producto.codigo || producto.id})" class="btn-small btn-edit">
+            Editar
+          </button>
+          <button onclick="deleteProduct(${producto.codigo || producto.id})" class="btn-small btn-delete">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Buscar productos
+async function searchProducts(searchTerm) {
+  const token = localStorage.getItem('token');
+  const url = searchTerm ? `/api/productos?search=${encodeURIComponent(searchTerm)}` : '/api/productos';
+  
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error buscando productos');
+    }
+    
+    const productos = await response.json();
+    currentProducts = productos;
+    renderProductsList(productos);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Mostrar modal para crear producto
+function showCreateProductModal() {
+  editingProductId = null;
+  document.getElementById('modalTitle').textContent = 'Nuevo Producto';
+  document.getElementById('productForm').reset();
+  document.getElementById('productModal').classList.remove('hidden');
+}
+
+// Mostrar modal para editar producto
+function editProduct(productId) {
+  const producto = currentProducts.find(p => (p.codigo || p.id) == productId);
+  if (!producto) return;
+  
+  editingProductId = productId;
+  document.getElementById('modalTitle').textContent = 'Editar Producto';
+  document.getElementById('productName').value = producto.nombre || producto.name || '';
+  document.getElementById('productDescription').value = producto.descripcion || producto.description || '';
+  document.getElementById('productPrice').value = producto.precio || producto.price || '';
+  document.getElementById('productStock').value = producto.stock || producto.quantity || '';
+  document.getElementById('productModal').classList.remove('hidden');
+}
+
+// Cerrar modal
+function closeProductModal() {
+  document.getElementById('productModal').classList.add('hidden');
+  editingProductId = null;
+}
+
+// Manejar envío del formulario
+async function handleProductSubmit(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const productData = {
+    nombre: formData.get('nombre'),
+    descripcion: formData.get('descripcion'),
+    precio: parseFloat(formData.get('precio')),
+    stock: parseInt(formData.get('stock'))
+  };
+  
+  const token = localStorage.getItem('token');
+  
+  try {
+    let response;
+    if (editingProductId) {
+      response = await fetch(`/api/productos/${editingProductId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productData)
+      });
+    } else {
+      response = await fetch('/api/productos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productData)
+      });
+    }
+    
+    if (!response.ok) {
+      throw new Error('Error guardando producto');
+    }
+    
+    closeProductModal();
+    loadProductos();
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error guardando producto: ' + error.message);
+  }
+}
+
+// Eliminar producto
+async function deleteProduct(productId) {
+  if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+    return;
+  }
+  
+  const token = localStorage.getItem('token');
+  
+  try {
+    const response = await fetch(`/api/productos/${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error eliminando producto');
+    }
+    
+    loadProductos();
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error eliminando producto: ' + error.message);
+  }
+}
+
+// Inicializar cuando se carga el componente
+document.addEventListener('DOMContentLoaded', function() {
+  const productForm = document.getElementById('productForm');
+  if (productForm) {
+    productForm.addEventListener('submit', handleProductSubmit);
+  }
+});
+</script>
