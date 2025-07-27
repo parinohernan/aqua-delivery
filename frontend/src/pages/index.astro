@@ -94,31 +94,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Verificar si el usuario está autenticado
 async function checkAuth() {
+  console.log('🔐 Verificando autenticación...');
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
-  
+
+  console.log('🔑 Token encontrado:', token ? 'Sí' : 'No');
+  console.log('👤 Usuario encontrado:', userStr ? 'Sí' : 'No');
+
   if (!token || !userStr) {
+    console.log('❌ No hay token o usuario, redirigiendo al login');
     redirectToLogin();
     return;
   }
-  
+
   try {
-    // Verificar que el token sea válido
+    console.log('📡 Verificando token con el servidor...');
+    // Verificar que el token sea válido haciendo una petición simple
     const response = await fetch('/api/pedidos', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
-    
+
+    console.log('📥 Respuesta del servidor:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error('Token inválido');
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Token inválido: ${response.status} - ${errorText}`);
     }
-    
+
+    console.log('✅ Token válido, mostrando aplicación');
     currentUser = JSON.parse(userStr);
     showMainApp();
     loadRoute(currentRoute);
   } catch (error) {
-    console.error('Error de autenticación:', error);
+    console.error('💥 Error de autenticación:', error);
+    console.log('🧹 Limpiando localStorage y redirigiendo al login');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     redirectToLogin();
@@ -207,52 +219,141 @@ async function loadRoute(route) {
 
 // Cargar pedidos
 async function loadPedidos() {
+  console.log('📦 Cargando pedidos...');
   const token = localStorage.getItem('token');
-  const response = await fetch('/api/pedidos', {
-    headers: {
-      'Authorization': `Bearer ${token}`
+
+  try {
+    const response = await fetch('/api/pedidos', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error('Error cargando pedidos');
+    const pedidos = await response.json();
+    console.log('✅ Pedidos cargados:', pedidos.length, 'pedidos');
+    console.log('📋 Datos de pedidos:', pedidos);
+
+    // Guardar en variables globales para filtros
+    allPedidos = pedidos;
+    currentPedidos = pedidos;
+
+    renderPedidos(pedidos);
+  } catch (error) {
+    console.error('💥 Error cargando pedidos:', error);
+    const contentArea = document.getElementById('contentArea');
+    if (contentArea) {
+      contentArea.innerHTML = `
+        <h3 class="content-title">Gestión de Pedidos</h3>
+        <div style="text-align: center; padding: 2rem; color: #dc2626;">
+          <p>Error cargando pedidos: ${error.message}</p>
+          <button onclick="loadPedidos()" class="btn-primary" style="margin-top: 1rem;">
+            Reintentar
+          </button>
+        </div>
+      `;
+    }
   }
-
-  const pedidos = await response.json();
-  renderPedidos(pedidos);
 }
 
 function renderPedidos(pedidos) {
   const contentArea = document.getElementById('contentArea');
 
-  const html = `
-    <h3 class="content-title">Gestión de Pedidos</h3>
+  if (pedidos.length === 0) {
+    contentArea.innerHTML = `
+      <h3 class="content-title">Gestión de Pedidos</h3>
+      <div style="text-align: center; padding: 3rem; color: #6b7280;">
+        <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No hay pedidos registrados</p>
+        <p style="font-size: 0.875rem;">Los pedidos aparecerán aquí cuando se registren en el sistema.</p>
+      </div>
+    `;
+    return;
+  }
 
-    <div style="margin-bottom: 1rem;">
+  const html = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 class="content-title" style="margin-bottom: 0;">Gestión de Pedidos</h3>
       <button class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
         + Nuevo Pedido
       </button>
     </div>
 
+    <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+      <select id="filterEstado" onchange="filterPedidos()" class="form-input" style="width: auto;">
+        <option value="">Todos los estados</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="En Preparación">En Preparación</option>
+        <option value="Entregado">Entregado</option>
+      </select>
+
+      <input
+        type="date"
+        id="filterFecha"
+        onchange="filterPedidos()"
+        class="form-input"
+        style="width: auto;"
+      />
+    </div>
+
     <div style="display: grid; gap: 1rem;">
-      ${pedidos.map(pedido => `
-        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
-          <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div>
-              <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">#${pedido.id}</h4>
-              <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">${pedido.cliente_nombre}</p>
-              <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">${pedido.direccion}</p>
-              <p style="font-size: 0.875rem; color: #6b7280;">${new Date(pedido.fecha_pedido).toLocaleDateString()}</p>
-            </div>
-            <div style="text-align: right;">
-              <p style="font-weight: 600; color: #059669; margin-bottom: 0.5rem;">$${pedido.total}</p>
-              <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; ${getStatusColor(pedido.estado)}">
-                ${pedido.estado}
-              </span>
+      ${pedidos.map(pedido => {
+        // Asegurar que todos los campos tengan valores por defecto
+        const id = pedido.id || pedido.codigo || 'N/A';
+        const clienteNombre = pedido.cliente_nombre || pedido.nombre || 'Cliente sin nombre';
+        const direccion = pedido.direccion || 'Dirección no especificada';
+        const fechaPedido = pedido.fecha_pedido || pedido.fechaPedido;
+        const total = pedido.total || 0;
+        const estado = pedido.estado || 'Pendiente';
+
+        // Formatear fecha
+        let fechaFormateada = 'Fecha no disponible';
+        if (fechaPedido) {
+          try {
+            const fecha = new Date(fechaPedido);
+            if (!isNaN(fecha.getTime())) {
+              fechaFormateada = fecha.toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              });
+            }
+          } catch (e) {
+            console.error('Error formateando fecha:', e);
+          }
+        }
+
+        return `
+          <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div style="flex: 1;">
+                <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.5rem;">#${id}</h4>
+                <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">👤 ${clienteNombre}</p>
+                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">📍 ${direccion}</p>
+                <p style="font-size: 0.875rem; color: #6b7280;">📅 ${fechaFormateada}</p>
+              </div>
+              <div style="text-align: right;">
+                <p style="font-weight: 600; color: #059669; margin-bottom: 0.5rem; font-size: 1.125rem;">$${parseFloat(total).toFixed(2)}</p>
+                <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; ${getStatusColor(estado)}">
+                  ${estado}
+                </span>
+                <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end;">
+                  <button onclick="viewPedido(${id})" style="padding: 0.25rem 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
+                    Ver
+                  </button>
+                  <button onclick="editPedido(${id})" style="padding: 0.25rem 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
+                    Editar
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
     </div>
   `;
 
@@ -270,6 +371,54 @@ function getStatusColor(estado) {
     default:
       return 'background-color: #f3f4f6; color: #374151;';
   }
+}
+
+// Variables globales para pedidos
+let currentPedidos = [];
+let allPedidos = [];
+
+// Filtrar pedidos
+function filterPedidos() {
+  const estadoFilter = document.getElementById('filterEstado')?.value || '';
+  const fechaFilter = document.getElementById('filterFecha')?.value || '';
+
+  let filteredPedidos = allPedidos;
+
+  if (estadoFilter) {
+    filteredPedidos = filteredPedidos.filter(pedido => pedido.estado === estadoFilter);
+  }
+
+  if (fechaFilter) {
+    filteredPedidos = filteredPedidos.filter(pedido => {
+      const pedidoFecha = new Date(pedido.fecha_pedido || pedido.fechaPedido);
+      const filterFecha = new Date(fechaFilter);
+      return pedidoFecha.toDateString() === filterFecha.toDateString();
+    });
+  }
+
+  currentPedidos = filteredPedidos;
+  renderPedidos(filteredPedidos);
+}
+
+// Ver detalles del pedido
+function viewPedido(pedidoId) {
+  const pedido = currentPedidos.find(p => (p.id || p.codigo) == pedidoId);
+  if (!pedido) {
+    alert('Pedido no encontrado');
+    return;
+  }
+
+  const clienteNombre = pedido.cliente_nombre || pedido.nombre || 'Cliente sin nombre';
+  const total = parseFloat(pedido.total || 0).toFixed(2);
+  const estado = pedido.estado || 'Pendiente';
+  const direccion = pedido.direccion || 'Dirección no especificada';
+
+  alert(`Pedido #${pedidoId}\nCliente: ${clienteNombre}\nDirección: ${direccion}\nTotal: $${total}\nEstado: ${estado}`);
+}
+
+// Editar pedido
+function editPedido(pedidoId) {
+  alert('Funcionalidad de edición en desarrollo...');
 }
 
 // Cargar clientes

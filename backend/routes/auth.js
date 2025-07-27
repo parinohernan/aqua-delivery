@@ -40,18 +40,26 @@ router.post('/login', async (req, res) => {
 
 // Middleware para verificar token
 const verifyToken = (req, res, next) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+    console.log('🔐 Verificando token para:', req.method, req.path);
+    const authHeader = req.header('Authorization');
+    console.log('📋 Authorization header:', authHeader ? 'Presente' : 'Ausente');
+
+    const token = authHeader?.replace('Bearer ', '');
+
     if (!token) {
+        console.log('❌ No se encontró token');
         return res.status(401).json({ error: 'Token requerido' });
     }
-    
+
     try {
+        console.log('🔍 Verificando token con JWT_SECRET...');
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('✅ Token válido para usuario:', decoded.telegramId);
         req.user = decoded;
         next();
     } catch (error) {
-        res.status(401).json({ error: 'Token inválido' });
+        console.log('❌ Error verificando token:', error.message);
+        res.status(401).json({ error: 'Token inválido', details: error.message });
     }
 };
 
