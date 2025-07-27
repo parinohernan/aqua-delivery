@@ -7,17 +7,45 @@ const router = express.Router();
 router.get('/', verifyToken, async (req, res) => {
     try {
         const { search } = req.query;
-        let sql = 'SELECT * FROM clientes WHERE codigoEmpresa = ? AND activo = 1';
+
+        let sql = `
+            SELECT
+                codigo as id,
+                codigo,
+                nombre,
+                apellido,
+                telefono,
+                direccion,
+                saldo,
+                retornables,
+                activo,
+                codigoEmpresa,
+                CONCAT(nombre, ' ', IFNULL(apellido, '')) as nombreCompleto
+            FROM clientes
+            WHERE codigoEmpresa = ? AND activo = 1
+        `;
         let params = [req.user.codigoEmpresa];
-        
+
         if (search) {
-            sql += ' AND (nombre LIKE ? OR apellido LIKE ?)';
-            params.push(`%${search}%`, `%${search}%`);
+            sql += ' AND (nombre LIKE ? OR apellido LIKE ? OR telefono LIKE ?)';
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
-        
+
         sql += ' ORDER BY nombre, apellido';
-        
+
+        console.log('👥 Obteniendo clientes para empresa:', req.user.codigoEmpresa);
+        if (search) {
+            console.log('🔍 Búsqueda:', search);
+        }
+
         const clientes = await query(sql, params);
+
+        console.log('✅ Clientes encontrados:', clientes.length);
+        if (clientes.length > 0) {
+            console.log('📋 Columnas disponibles:', Object.keys(clientes[0]));
+            console.log('📋 Primer cliente:', clientes[0]);
+        }
+
         res.json(clientes);
         
     } catch (error) {
@@ -28,12 +56,15 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear cliente
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { nombre, apellido, descripcion, direccion, telefono } = req.body;
-        
-        const result = await query(
-            'INSERT INTO clientes (nombre, apellido, descripcion, direccion, telefono, codigoEmpresa) VALUES (?, ?, ?, ?, ?, ?)',
-            [nombre, apellido, descripcion, direccion, telefono, req.user.codigoEmpresa]
-        );
+        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables } = req.body;
+
+        console.log('👤 Creando cliente:', { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables });
+
+        // Usar los nombres correctos de columnas: saldo y retornables
+        const sql = 'INSERT INTO clientes (nombre, apellido, direccion, telefono, saldo, retornables, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)';
+        const params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.user.codigoEmpresa];
+
+        const result = await query(sql, params);
         
         const cliente = await query(
             'SELECT * FROM clientes WHERE codigo = ? AND codigoEmpresa = ?',
@@ -50,12 +81,15 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar cliente
 router.put('/:id', verifyToken, async (req, res) => {
     try {
-        const { nombre, apellido, descripcion, direccion, telefono } = req.body;
-        
-        await query(
-            'UPDATE clientes SET nombre = ?, apellido = ?, descripcion = ?, direccion = ?, telefono = ? WHERE codigo = ? AND codigoEmpresa = ?',
-            [nombre, apellido, descripcion, direccion, telefono, req.params.id, req.user.codigoEmpresa]
-        );
+        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables } = req.body;
+
+        console.log('👤 Actualizando cliente:', req.params.id, { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables });
+
+        // Usar los nombres correctos de columnas: saldo y retornables
+        const sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, telefono = ?, saldo = ?, retornables = ? WHERE codigo = ? AND codigoEmpresa = ?';
+        const params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.params.id, req.user.codigoEmpresa];
+
+        await query(sql, params);
         
         const cliente = await query(
             'SELECT * FROM clientes WHERE codigo = ? AND codigoEmpresa = ?',

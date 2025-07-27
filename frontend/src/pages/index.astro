@@ -423,82 +423,358 @@ function editPedido(pedidoId) {
 
 // Cargar clientes
 async function loadClientes() {
+  console.log('👥 Cargando clientes...');
   const token = localStorage.getItem('token');
-  const response = await fetch('/api/clientes', {
-    headers: {
-      'Authorization': `Bearer ${token}`
+
+  try {
+    const response = await fetch('/api/clientes', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error('Error cargando clientes');
+    const clientes = await response.json();
+    console.log('✅ Clientes cargados:', clientes.length, 'clientes');
+    console.log('📋 Datos de clientes:', clientes);
+
+    // Guardar en variable global para búsquedas y edición
+    currentClients = clientes;
+
+    renderClientes(clientes);
+  } catch (error) {
+    console.error('💥 Error cargando clientes:', error);
+    const contentArea = document.getElementById('contentArea');
+    if (contentArea) {
+      contentArea.innerHTML = `
+        <h3 class="content-title">Gestión de Clientes</h3>
+        <div style="text-align: center; padding: 2rem; color: #dc2626;">
+          <p>Error cargando clientes: ${error.message}</p>
+          <button onclick="loadClientes()" class="btn-primary" style="margin-top: 1rem;">
+            Reintentar
+          </button>
+        </div>
+      `;
+    }
   }
-
-  const clientes = await response.json();
-  renderClientes(clientes);
 }
 
 function renderClientes(clientes) {
   const contentArea = document.getElementById('contentArea');
 
+  if (clientes.length === 0) {
+    contentArea.innerHTML = `
+      <h3 class="content-title">Gestión de Clientes</h3>
+      <div style="text-align: center; padding: 3rem; color: #6b7280;">
+        <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No hay clientes registrados</p>
+        <p style="font-size: 0.875rem;">Los clientes aparecerán aquí cuando se registren en el sistema.</p>
+        <button onclick="showCreateClientModal()" class="btn-primary" style="margin-top: 1rem;">
+          + Agregar Primer Cliente
+        </button>
+      </div>
+    `;
+    return;
+  }
+
   const html = `
-    <h3 class="content-title">Gestión de Clientes</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 class="content-title" style="margin-bottom: 0;">Gestión de Clientes</h3>
+      <button onclick="showCreateClientModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+        + Nuevo Cliente
+      </button>
+    </div>
+
+    <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+      <div style="position: relative; max-width: 300px; flex: 1;">
+        <input
+          type="text"
+          id="searchClients"
+          placeholder="Buscar clientes por nombre, apellido o teléfono..."
+          class="form-input"
+          style="padding-left: 2.5rem;"
+          onkeyup="debounceSearchClients(this.value)"
+          oninput="debounceSearchClients(this.value)"
+        />
+        <svg style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: #6b7280;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+      <button onclick="clearClientSearch()" style="padding: 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+        Limpiar
+      </button>
+    </div>
 
     <div style="display: grid; gap: 1rem;">
-      ${clientes.map(cliente => `
-        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
-          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">${cliente.nombre}</h4>
-          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">${cliente.telefono}</p>
-          <p style="font-size: 0.875rem; color: #6b7280;">${cliente.direccion}</p>
-        </div>
-      `).join('')}
+      ${clientes.map(cliente => {
+        // Asegurar que todos los campos tengan valores por defecto
+        // Intentar diferentes nombres de columnas que podrían existir
+        const id = cliente.id || cliente.codigo || cliente.Code || 'N/A';
+        const codigo = cliente.codigo || cliente.Code || cliente.id || 'N/A';
+        const nombre = cliente.nombre || cliente.name || cliente.Name || 'Sin nombre';
+        const apellido = cliente.apellido || cliente.lastname || cliente.LastName || '';
+        const nombreCompleto = cliente.nombreCompleto || `${nombre} ${apellido}`.trim() || 'Cliente sin nombre';
+        const telefono = cliente.telefono || cliente.phone || cliente.Phone || 'Sin teléfono';
+        const direccion = cliente.direccion || cliente.address || cliente.Address || 'Sin dirección';
+
+        // Usar los nombres correctos de columnas
+        const saldoDinero = parseFloat(cliente.saldo || 0);
+        const saldoRetornables = parseInt(cliente.retornables || 0);
+
+        return `
+          <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                  <h4 style="font-weight: 600; color: #111827; margin: 0;">${nombreCompleto}</h4>
+                  <span style="background: #f3f4f6; color: #6b7280; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                    #${codigo}
+                  </span>
+                </div>
+
+                <div style="margin-bottom: 0.75rem;">
+                  <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">📞 ${telefono}</p>
+                  <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">📍 ${direccion}</p>
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                  <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span style="color: #6b7280; font-size: 0.875rem;">Saldo $:</span>
+                    <span style="color: ${saldoDinero >= 0 ? '#059669' : '#dc2626'}; font-weight: 600; font-size: 0.875rem;">
+                      $${saldoDinero.toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span style="color: #6b7280; font-size: 0.875rem;">Retornables:</span>
+                    <span style="color: ${saldoRetornables > 0 ? '#dc2626' : '#059669'}; font-weight: 600; font-size: 0.875rem;">
+                      ${saldoRetornables} ${saldoRetornables === 1 ? 'unidad' : 'unidades'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 0.5rem; margin-left: 1rem; flex-wrap: wrap;">
+                <button
+                  onclick="editClient(${id})"
+                  style="padding: 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Editar cliente"
+                >
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708L10.5 8.207l-3-3L12.146.146zM11.207 9l-3-3L2.5 11.707V14.5a.5.5 0 0 0 .5.5h2.793L11.207 9z"/>
+                  </svg>
+                  Editar
+                </button>
+
+                <button
+                  onclick="showClientAccount(${id})"
+                  style="padding: 0.5rem; background: #059669; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Ver cuenta corriente"
+                >
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1H1zM7 5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5zM9 13V6h5v7H9z"/>
+                    <path d="M2 6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6zm5 0H3v6h4V6z"/>
+                  </svg>
+                  Cta Cte
+                </button>
+
+                <button
+                  onclick="deleteClient(${id})"
+                  style="padding: 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Eliminar cliente"
+                >
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                  </svg>
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 
   contentArea.innerHTML = html;
+
+  // Pasar los clientes a las funciones globales
+  if (window.setCurrentClients) {
+    window.setCurrentClients(clientes);
+  }
 }
 
 // Cargar productos
 async function loadProductos() {
+  console.log('🛍️ Cargando productos...');
   const token = localStorage.getItem('token');
-  const response = await fetch('/api/productos', {
-    headers: {
-      'Authorization': `Bearer ${token}`
+
+  try {
+    const response = await fetch('/api/productos', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error('Error cargando productos');
+    const productos = await response.json();
+    console.log('✅ Productos cargados:', productos.length, 'productos');
+    console.log('📋 Datos de productos:', productos);
+
+    // Guardar en variable global para búsquedas y edición
+    currentProducts = productos;
+
+    renderProductos(productos);
+  } catch (error) {
+    console.error('💥 Error cargando productos:', error);
+    const contentArea = document.getElementById('contentArea');
+    if (contentArea) {
+      contentArea.innerHTML = `
+        <h3 class="content-title">Gestión de Productos</h3>
+        <div style="text-align: center; padding: 2rem; color: #dc2626;">
+          <p>Error cargando productos: ${error.message}</p>
+          <button onclick="loadProductos()" class="btn-primary" style="margin-top: 1rem;">
+            Reintentar
+          </button>
+        </div>
+      `;
+    }
   }
-
-  const productos = await response.json();
-  renderProductos(productos);
 }
 
 function renderProductos(productos) {
   const contentArea = document.getElementById('contentArea');
 
-  const html = `
-    <h3 class="content-title">Gestión de Productos</h3>
+  if (productos.length === 0) {
+    contentArea.innerHTML = `
+      <h3 class="content-title">Gestión de Productos</h3>
+      <div style="text-align: center; padding: 3rem; color: #6b7280;">
+        <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No hay productos registrados</p>
+        <p style="font-size: 0.875rem;">Los productos aparecerán aquí cuando se registren en el sistema.</p>
+        <button onclick="productModal.show()" class="btn-primary" style="margin-top: 1rem;">
+          + Agregar Primer Producto
+        </button>
+      </div>
+    `;
+    return;
+  }
 
-    <div style="margin-bottom: 1rem;">
-      <button class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+  const html = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 class="content-title" style="margin-bottom: 0;">Gestión de Productos</h3>
+      <button onclick="productModal.show()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
         + Nuevo Producto
       </button>
     </div>
 
+    <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+      <div style="position: relative; max-width: 300px; flex: 1;">
+        <input
+          type="text"
+          id="searchProducts"
+          placeholder="Buscar productos por descripción..."
+          class="form-input"
+          style="padding-left: 2.5rem;"
+          onkeyup="debounceSearch(this.value)"
+          oninput="debounceSearch(this.value)"
+        />
+        <svg style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: #6b7280;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+      <button onclick="clearSearch()" style="padding: 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+        Limpiar
+      </button>
+    </div>
+
     <div style="display: grid; gap: 1rem;">
-      ${productos.map(producto => `
-        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
-          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">${producto.nombre || 'Sin nombre'}</h4>
-          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">$${producto.precio || '0.00'}</p>
-          <p style="font-size: 0.875rem; color: #6b7280;">${producto.descripcion || 'Sin descripción'}</p>
-        </div>
-      `).join('')}
+      ${productos.map(producto => {
+        // Asegurar que todos los campos tengan valores por defecto
+        // Intentar diferentes nombres de columnas que podrían existir
+        const id = producto.id || producto.codigo || producto.Code || 'N/A';
+        const codigo = producto.codigo || producto.Code || producto.id || 'N/A';
+        const nombre = producto.descripcion || producto.Description || producto.description || 'Sin nombre';
+        const precio = parseFloat(producto.precio || producto.price || producto.Price || 0);
+        const stock = parseInt(producto.stock || producto.Stock || producto.cantidad || producto.Cantidad || 0);
+        const esRetornable = producto.esRetornable == 1;
+
+        return `
+          <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                  <h4 style="font-weight: 600; color: #111827; margin: 0;">${nombre}</h4>
+                  <span style="background: #f3f4f6; color: #6b7280; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                    #${codigo}
+                  </span>
+                  ${esRetornable ? `
+                    <span style="background: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 500;">
+                      🔄 Retornable
+                    </span>
+                  ` : ''}
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                  <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span style="color: #059669; font-weight: 600; font-size: 1.125rem;">$${precio.toFixed(2)}</span>
+                  </div>
+
+                  <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span style="color: #6b7280; font-size: 0.875rem;">Stock:</span>
+                    <span style="color: ${stock > 0 ? '#059669' : '#dc2626'}; font-weight: 600; font-size: 0.875rem;">
+                      ${stock} ${stock === 1 ? 'unidad' : 'unidades'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                <button
+                  onclick="editProduct(${id})"
+                  style="padding: 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Editar producto"
+                >
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708L10.5 8.207l-3-3L12.146.146zM11.207 9l-3-3L2.5 11.707V14.5a.5.5 0 0 0 .5.5h2.793L11.207 9z"/>
+                  </svg>
+                  Editar
+                </button>
+
+                <button
+                  onclick="deleteProduct(${id})"
+                  style="padding: 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Eliminar producto"
+                >
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                  </svg>
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 
   contentArea.innerHTML = html;
+
+  // Pasar los productos al modal para que pueda acceder a ellos
+  if (window.productModal) {
+    window.productModal.setCurrentProducts(productos);
+  }
 }
 
 // Cargar pagos
@@ -512,4 +788,378 @@ async function loadPagos() {
 
   contentArea.innerHTML = html;
 }
+
+// Variables globales para productos
+let currentProducts = [];
+let editingProductId = null;
+let searchTimeout = null;
+
+// Variables globales para clientes
+let currentClients = [];
+let editingClientId = null;
+let clientSearchTimeout = null;
+
+// Función de debounce para la búsqueda (definida globalmente)
+function debounceSearch(searchTerm) {
+  // Limpiar el timeout anterior
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+
+  // Establecer un nuevo timeout
+  searchTimeout = setTimeout(() => {
+    searchProducts(searchTerm);
+  }, 300); // Esperar 300ms después de que el usuario deje de escribir
+}
+
+// Limpiar búsqueda (definida globalmente)
+function clearSearch() {
+  const searchInput = document.getElementById('searchProducts');
+  if (searchInput) {
+    searchInput.value = '';
+    searchProducts(''); // Mostrar todos los productos
+  }
+}
+
+// Función para editar producto (definida globalmente)
+function editProduct(productId) {
+  console.log('✏️ Editando producto ID:', productId);
+  console.log('📋 Productos disponibles:', currentProducts.length);
+
+  const producto = currentProducts.find(p => {
+    const id = p.codigo || p.id;
+    console.log('🔍 Comparando:', id, 'con', productId);
+    return id == productId;
+  });
+
+  if (!producto) {
+    console.error('❌ Producto no encontrado:', productId);
+    alert('Producto no encontrado');
+    return;
+  }
+
+  console.log('✅ Producto encontrado:', producto);
+
+  // Usar el modal component
+  if (window.productModal) {
+    window.productModal.show(producto);
+  } else {
+    console.error('❌ ProductModal no está disponible');
+    alert('Error: Modal no disponible');
+  }
+}
+
+// Eliminar producto (definida globalmente)
+async function deleteProduct(productId) {
+  console.log('🗑️ Eliminando producto ID:', productId);
+
+  const producto = currentProducts.find(p => (p.codigo || p.id) == productId);
+  const nombreProducto = producto ? (producto.descripcion || `Producto #${productId}`) : `Producto #${productId}`;
+
+  if (!confirm(`¿Estás seguro de que quieres eliminar "${nombreProducto}"?\n\nEsta acción no se puede deshacer.`)) {
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+
+  try {
+    console.log('📡 Enviando petición DELETE...');
+    const response = await fetch(`/api/productos/${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    console.log('✅ Producto eliminado correctamente');
+
+    // Mostrar mensaje de éxito
+    showSuccessMessage('Producto eliminado correctamente');
+
+    // Recargar la lista
+    loadProductos();
+
+  } catch (error) {
+    console.error('💥 Error eliminando producto:', error);
+    showErrorMessage('Error eliminando producto: ' + error.message);
+  }
+}
+
+// Funciones para mostrar mensajes (definidas globalmente)
+function showSuccessMessage(message) {
+  const messageDiv = document.createElement('div');
+  messageDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #10b981;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    font-weight: 500;
+  `;
+  messageDiv.textContent = message;
+
+  document.body.appendChild(messageDiv);
+
+  setTimeout(() => {
+    messageDiv.remove();
+  }, 3000);
+}
+
+function showErrorMessage(message) {
+  const messageDiv = document.createElement('div');
+  messageDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #ef4444;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    font-weight: 500;
+  `;
+  messageDiv.textContent = message;
+
+  document.body.appendChild(messageDiv);
+
+  setTimeout(() => {
+    messageDiv.remove();
+  }, 5000);
+}
+
+// Buscar productos
+async function searchProducts(searchTerm) {
+  console.log('🔍 Buscando productos:', searchTerm);
+  const token = localStorage.getItem('token');
+
+  try {
+    let url = '/api/productos';
+    if (searchTerm && searchTerm.trim()) {
+      url += `?search=${encodeURIComponent(searchTerm.trim())}`;
+    }
+
+    console.log('📡 URL de búsqueda:', url);
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    const productos = await response.json();
+    console.log('✅ Productos encontrados:', productos.length);
+
+    currentProducts = productos;
+    renderProductos(productos);
+  } catch (error) {
+    console.error('💥 Error buscando productos:', error);
+    // En caso de error, mostrar todos los productos
+    loadProductos();
+  }
+}
+
+// ========== FUNCIONES PARA CLIENTES ==========
+
+// Buscar clientes
+async function searchClients(searchTerm) {
+  console.log('🔍 Buscando clientes:', searchTerm);
+  const token = localStorage.getItem('token');
+
+  try {
+    let url = '/api/clientes';
+    if (searchTerm && searchTerm.trim()) {
+      url += `?search=${encodeURIComponent(searchTerm.trim())}`;
+    }
+
+    console.log('📡 URL de búsqueda:', url);
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    const clientes = await response.json();
+    console.log('✅ Clientes encontrados:', clientes.length);
+
+    currentClients = clientes;
+    renderClientes(clientes);
+  } catch (error) {
+    console.error('💥 Error buscando clientes:', error);
+    // En caso de error, mostrar todos los clientes
+    loadClientes();
+  }
+}
+
+// Función de debounce para la búsqueda de clientes
+function debounceSearchClients(searchTerm) {
+  // Limpiar el timeout anterior
+  if (clientSearchTimeout) {
+    clearTimeout(clientSearchTimeout);
+  }
+
+  // Establecer un nuevo timeout
+  clientSearchTimeout = setTimeout(() => {
+    searchClients(searchTerm);
+  }, 300); // Esperar 300ms después de que el usuario deje de escribir
+}
+
+// Limpiar búsqueda de clientes
+function clearClientSearch() {
+  const searchInput = document.getElementById('searchClients');
+  if (searchInput) {
+    searchInput.value = '';
+    searchClients(''); // Mostrar todos los clientes
+  }
+}
+
+// Función para editar cliente
+function editClient(clientId) {
+  console.log('✏️ Editando cliente ID:', clientId);
+  console.log('📋 Clientes disponibles:', currentClients.length);
+
+  const cliente = currentClients.find(c => {
+    const id = c.codigo || c.id;
+    console.log('🔍 Comparando:', id, 'con', clientId);
+    return id == clientId;
+  });
+
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    alert('Cliente no encontrado');
+    return;
+  }
+
+  console.log('✅ Cliente encontrado:', cliente);
+
+  // Usar el modal component
+  if (window.clientModal) {
+    window.clientModal.show(cliente);
+  } else {
+    console.error('❌ ClientModal no está disponible');
+    alert('Error: Modal no disponible');
+  }
+}
+
+// Mostrar cuenta corriente del cliente
+function showClientAccount(clientId) {
+  console.log('💰 Mostrando cuenta corriente del cliente ID:', clientId);
+
+  const cliente = currentClients.find(c => (c.codigo || c.id) == clientId);
+
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    alert('Cliente no encontrado');
+    return;
+  }
+
+  const nombreCompleto = cliente.nombreCompleto || `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'Cliente sin nombre';
+  const saldoDinero = parseFloat(cliente.saldoDinero || 0);
+  const saldoRetornables = parseInt(cliente.saldoRetornables || 0);
+
+  // TODO: Implementar modal de cuenta corriente detallada
+  alert(`Cuenta Corriente - ${nombreCompleto}\n\nSaldo en dinero: $${saldoDinero.toFixed(2)}\nRetornables pendientes: ${saldoRetornables} unidades\n\n(Funcionalidad detallada en desarrollo...)`);
+}
+
+// Eliminar cliente
+async function deleteClient(clientId) {
+  console.log('🗑️ Eliminando cliente ID:', clientId);
+
+  const cliente = currentClients.find(c => (c.codigo || c.id) == clientId);
+  const nombreCliente = cliente ? (cliente.nombreCompleto || `Cliente #${clientId}`) : `Cliente #${clientId}`;
+
+  if (!confirm(`¿Estás seguro de que quieres eliminar "${nombreCliente}"?\n\nEsta acción no se puede deshacer.`)) {
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+
+  try {
+    console.log('📡 Enviando petición DELETE...');
+    const response = await fetch(`/api/clientes/${clientId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    console.log('✅ Cliente eliminado correctamente');
+
+    // Mostrar mensaje de éxito
+    showSuccessMessage('Cliente eliminado correctamente');
+
+    // Recargar la lista
+    loadClientes();
+
+  } catch (error) {
+    console.error('💥 Error eliminando cliente:', error);
+    showErrorMessage('Error eliminando cliente: ' + error.message);
+  }
+}
+
+// Mostrar modal para crear cliente
+function showCreateClientModal() {
+  if (window.clientModal) {
+    window.clientModal.show();
+  } else {
+    console.error('❌ ClientModal no está disponible');
+    alert('Error: Modal no disponible');
+  }
+}
+
+// Función para establecer clientes actuales (usada por renderClientes)
+function setCurrentClients(clients) {
+  currentClients = clients;
+}
+
+// Asegurar que las funciones estén disponibles globalmente
+window.debounceSearch = debounceSearch;
+window.clearSearch = clearSearch;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.showSuccessMessage = showSuccessMessage;
+window.showErrorMessage = showErrorMessage;
+
+// Funciones de clientes
+window.searchClients = searchClients;
+window.debounceSearchClients = debounceSearchClients;
+window.clearClientSearch = clearClientSearch;
+window.editClient = editClient;
+window.showClientAccount = showClientAccount;
+window.deleteClient = deleteClient;
+window.showCreateClientModal = showCreateClientModal;
+window.setCurrentClients = setCurrentClients;
 </script>
+
+<!-- Cargar los componentes modales -->
+<script src="/js/ProductModal.js" is:inline></script>
+<script src="/js/ClientModal.js" is:inline></script>

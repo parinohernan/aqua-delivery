@@ -7,17 +7,36 @@ const router = express.Router();
 router.get('/', verifyToken, async (req, res) => {
     try {
         const { search } = req.query;
-        let sql = 'SELECT * FROM productos WHERE codigoEmpresa = ? AND activo = 1';
+        let sql = `
+            SELECT
+                codigo as id,
+                codigo,
+                descripcion,
+                precio,
+                stock,
+                esRetornable,
+                activo,
+                codigoEmpresa
+            FROM productos
+            WHERE codigoEmpresa = ? AND activo = 1
+        `;
         let params = [req.user.codigoEmpresa];
-        
+
         if (search) {
-            sql += ' AND (nombre LIKE ? OR descripcion LIKE ?)';
-            params.push(`%${search}%`, `%${search}%`);
+            sql += ' AND descripcion LIKE ?';
+            params.push(`%${search}%`);
         }
-        
-        sql += ' ORDER BY codigo';
+
+        sql += ' ORDER BY descripcion';
         
         const productos = await query(sql, params);
+
+        console.log('✅ Productos encontrados:', productos.length);
+        if (productos.length > 0) {
+            console.log('📋 Columnas disponibles:', Object.keys(productos[0]));
+            console.log('📋 Primer producto:', productos[0]);
+        }
+
         res.json(productos);
         
     } catch (error) {
@@ -28,11 +47,13 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear producto
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { nombre, descripcion, precio, stock } = req.body;
-        
+        const { descripcion, precio, stock, esRetornable } = req.body;
+
+        console.log('📝 Creando producto:', { descripcion, precio, stock, esRetornable });
+
         const result = await query(
-            'INSERT INTO productos (nombre, descripcion, precio, stock, codigoEmpresa) VALUES (?, ?, ?, ?, ?)',
-            [nombre, descripcion, precio, stock, req.user.codigoEmpresa]
+            'INSERT INTO productos (descripcion, precio, stock, esRetornable, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, 1)',
+            [descripcion, precio, stock, esRetornable, req.user.codigoEmpresa]
         );
         
         const producto = await query(
@@ -50,11 +71,13 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar producto
 router.put('/:id', verifyToken, async (req, res) => {
     try {
-        const { nombre, descripcion, precio, stock } = req.body;
-        
+        const { descripcion, precio, stock, esRetornable } = req.body;
+
+        console.log('📝 Actualizando producto:', req.params.id, { descripcion, precio, stock, esRetornable });
+
         await query(
-            'UPDATE productos SET nombre = ?, descripcion = ?, precio = ?, stock = ? WHERE codigo = ? AND codigoEmpresa = ?',
-            [nombre, descripcion, precio, stock, req.params.id, req.user.codigoEmpresa]
+            'UPDATE productos SET descripcion = ?, precio = ?, stock = ?, esRetornable = ? WHERE codigo = ? AND codigoEmpresa = ?',
+            [descripcion, precio, stock, esRetornable, req.params.id, req.user.codigoEmpresa]
         );
         
         const producto = await query(
