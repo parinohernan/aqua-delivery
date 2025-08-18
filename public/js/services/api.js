@@ -94,10 +94,17 @@ class ApiService {
         });
     }
 
-    async updatePedidoEstado(id, estado) {
+    async updatePedidoEstado(id, estado, tipoPago = null) {
         return this.request(`/pedidos/${id}/estado`, {
             method: 'PUT',
-            body: { estado }
+            body: { estado, tipoPago }
+        });
+    }
+
+    async updatePedidoZona(id, zona) {
+        return this.request(`/pedidos/${id}/zona`, {
+            method: 'PUT',
+            body: { zona }
         });
     }
 
@@ -138,6 +145,16 @@ class ApiService {
             method: 'PUT',
             body: pago
         });
+    }
+
+    // Zonas
+    async getZonas() {
+        return this.request('/zonas');
+    }
+
+    // Tipos de pago
+    async getTiposPago() {
+        return this.request('/tiposdepago');
     }
 }
 

@@ -9,7 +9,7 @@ router.get('/', verifyToken, async (req, res) => {
         console.log('📦 Obteniendo pedidos para usuario:', req.user.telegramId);
         console.log('🏢 Código empresa:', req.user.codigoEmpresa);
 
-        const { clienteId, fecha, zona, search, estado } = req.query;
+        const { clienteId, fecha, zona, search } = req.query;
 
         let sql = `
             SELECT p.codigo as id,
@@ -30,14 +30,9 @@ router.get('/', verifyToken, async (req, res) => {
             JOIN clientes c ON p.codigoCliente = c.codigo
             LEFT JOIN vendedores v1 ON p.codigoVendedorPedido = v1.codigo
             LEFT JOIN vendedores v2 ON p.codigoVendedorEntrega = v2.codigo
-            WHERE p.codigoEmpresa = ?
+            WHERE p.codigoEmpresa = ? AND p.FechaEntrega IS NULL
         `;
         let params = [req.user.codigoEmpresa];
-
-        if (estado) {
-            sql += ' AND p.estado = ?';
-            params.push(estado);
-        }
 
         if (clienteId) {
             sql += ' AND p.codigoCliente = ?';
@@ -293,7 +288,7 @@ router.get('/:id/items', verifyToken, async (req, res) => {
                 (pi.cantidad * p.precio) as subtotal
             FROM pedidositems pi
             JOIN productos p ON pi.codigoProducto = p.codigo
-            WHERE pi.codigoPedido = ? AND p.activo = 1
+            WHERE pi.codigoPedido = ?
             ORDER BY p.descripcion
         `, [pedidoId]);
 
@@ -333,12 +328,6 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
 
         const pedidoData = pedido[0];
         const clienteId = pedidoData.clienteId;
-        
-        console.log('🔍 DATOS DEL PEDIDO:');
-        console.log(`   📋 Pedido ID: ${pedidoId}`);
-        console.log(`   👤 Cliente ID: ${clienteId}`);
-        console.log(`   💰 Total: $${pedidoData.total}`);
-        console.log(`   🏢 Empresa: ${req.user.codigoEmpresa}`);
 
         // Verificar que el pedido esté pendiente
         if (pedidoData.estado !== 'pendient') {
@@ -347,9 +336,9 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
 
         console.log('✅ Pedido válido para entrega');
 
-        // Obtener información del tipo de pago
+        // Obtener información del tipo de pago ANTES de la transacción
         const tipoPagoInfo = await query(
-            'SELECT id, pago, aplicaSaldo FROM tiposdepago WHERE id = ? AND codigoEmpresa = ?',
+            'SELECT aplicaSaldo FROM tiposdepago WHERE id = ? AND codigoEmpresa = ?',
             [tipoPago, req.user.codigoEmpresa]
         );
 
@@ -357,186 +346,71 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             return res.status(400).json({ error: 'Tipo de pago no encontrado' });
         }
 
-        const tipoPagoData = tipoPagoInfo[0];
-        console.log('💳 TIPO DE PAGO CONSULTADO:');
-        console.log(`   📋 ID: ${tipoPagoData.id}`);
-        console.log(`   💳 Nombre: ${tipoPagoData.pago}`);
-        console.log(`   💰 aplicaSaldo raw:`, tipoPagoData.aplicaSaldo);
-        console.log(`   💰 aplicaSaldo tipo:`, typeof tipoPagoData.aplicaSaldo);
-        
-        // Función helper para convertir aplicaSaldo
-        function convertirAplicaSaldo(valor) {
-            console.log('🔄 CONVIRTIENDO aplicaSaldo:');
-            console.log(`   📝 Valor recibido:`, valor);
-            console.log(`   📝 Tipo:`, typeof valor);
-            
-            if (valor === null || valor === undefined) {
-                console.log(`   ❌ Valor es null/undefined, retornando false`);
-                return false;
-            }
-            
-            if (typeof valor === 'object' && valor.type === 'Buffer') {
-                // Es un Buffer de MySQL BIT
-                const resultado = valor.data[0] === 1;
-                console.log(`   🔄 Es Buffer, data[0]: ${valor.data[0]}, resultado: ${resultado}`);
-                return resultado;
-            } else if (typeof valor === 'number') {
-                // Es un número
-                const resultado = valor === 1;
-                console.log(`   🔄 Es número, valor: ${valor}, resultado: ${resultado}`);
-                return resultado;
-            } else if (typeof valor === 'string') {
-                // Es un string
-                const resultado = parseInt(valor) === 1;
-                console.log(`   🔄 Es string, valor: "${valor}", resultado: ${resultado}`);
-                return resultado;
-            } else if (typeof valor === 'boolean') {
-                // Es un boolean
-                console.log(`   🔄 Es boolean, valor: ${valor}`);
-                return valor;
-            }
-            
-            console.log(`   ❌ Tipo no reconocido, retornando false`);
-            return false;
-        }
-        
-        // Verificación adicional
-        if (tipoPagoData.aplicaSaldo && typeof tipoPagoData.aplicaSaldo === 'object' && tipoPagoData.aplicaSaldo.type === 'Buffer') {
-            console.log(`   🔍 VERIFICACIÓN ADICIONAL: Buffer data[0] = ${tipoPagoData.aplicaSaldo.data[0]}`);
-            if (tipoPagoData.aplicaSaldo.data[0] === 1) {
-                console.log(`   ✅ Confirmado: aplicaSaldo debería ser true`);
-            } else {
-                console.log(`   ❌ Confirmado: aplicaSaldo debería ser false`);
-            }
-        }
-        
-        // Forzar conversión directa para Buffer de MySQL
-        let aplicaSaldo = false;
-        if (tipoPagoData.aplicaSaldo && typeof tipoPagoData.aplicaSaldo === 'object') {
-            // Es un Buffer de MySQL
-            aplicaSaldo = tipoPagoData.aplicaSaldo[0] === 1;
-            console.log(`   🔄 Conversión directa: Buffer[0] = ${tipoPagoData.aplicaSaldo[0]}, resultado = ${aplicaSaldo}`);
-        } else {
-            console.log(`   ❌ No es Buffer, usando conversión por función`);
-            aplicaSaldo = convertirAplicaSaldo(tipoPagoData.aplicaSaldo);
-        }
-        
-        console.log(`   💰 aplicaSaldo final: ${aplicaSaldo}`);
-        
-        console.log('🚚 DATOS DE ENTREGA:');
-        console.log(`   📋 Pedido: ${pedidoId}`);
-        console.log(`   💳 Tipo de pago: ${tipoPagoData.pago} (ID: ${tipoPago})`);
-        console.log(`   💰 Aplica saldo: ${aplicaSaldo}`);
-        console.log(`   💵 Total pedido: $${totalPedido}`);
-        console.log(`   🔄 Retornables: ${totalRetornables} total, ${retornablesDevueltos} devueltos`);
+        const aplicaSaldo = tipoPagoInfo[0].aplicaSaldo === 1 || tipoPagoInfo[0].aplicaSaldo === true;
+        console.log(`💳 Tipo de pago ${tipoPago} - Aplica saldo: ${aplicaSaldo}`);
 
         // Ejecutar transacción
         const result = await transaction(async (transactionQuery) => {
-            console.log('🔄 INICIANDO TRANSACCIÓN...');
-            console.log(`   📋 Pedido: ${pedidoId}`);
-            console.log(`   👤 Cliente: ${clienteId}`);
-            console.log(`   💰 Aplica saldo: ${aplicaSaldo}`);
-            console.log(`   💵 Total pedido: ${totalPedido}`);
-            console.log(`   🔄 Retornables: ${totalRetornables} total, ${retornablesDevueltos} devueltos`);
-            
-            // Verificar estado inicial del cliente
-            const clienteInicial = await transactionQuery(
-                'SELECT saldo, COALESCE(retornables, 0) as retornables FROM clientes WHERE codigo = ?',
-                [clienteId]
-            );
-            console.log(`💳 ESTADO INICIAL cliente ${clienteId}:`, {
-                saldo: clienteInicial[0]?.saldo || 0,
-                retornables: clienteInicial[0]?.retornables || 0
-            });
-            
-            // 1. Marcar pedido como entregado
+            // 1. Actualizar estado del pedido a "entregad"
             await transactionQuery(
                 'UPDATE pedidos SET estado = "entregad", fechaEntrega = NOW() WHERE codigo = ?',
                 [pedidoId]
             );
-            console.log('✅ Pedido marcado como entregado');
+            console.log('✅ Estado del pedido actualizado a "entregad"');
 
             // 2. Procesar pago
-            if (aplicaSaldo) {
-                console.log(`💳 PROCESANDO CUENTA CORRIENTE...`);
-                console.log(`   💰 Sumando $${totalPedido} al saldo del cliente ${clienteId}`);
-                
-                // Cuenta corriente: sumar al saldo del cliente
-                const resultadoSaldo = await transactionQuery(
+            if (tipoPago === 'cuenta_corriente') {
+                // Sumar al saldo del cliente
+                await transactionQuery(
                     'UPDATE clientes SET saldo = saldo + ? WHERE codigo = ?',
                     [totalPedido, clienteId]
                 );
-                console.log(`   ✅ Resultado UPDATE saldo:`, resultadoSaldo);
-                
-                // Verificar saldo después de la actualización
-                const clienteDespuesSaldo = await transactionQuery(
-                    'SELECT saldo, COALESCE(retornables, 0) as retornables FROM clientes WHERE codigo = ?',
-                    [clienteId]
-                );
-                console.log(`   💳 Saldo después de actualización: $${clienteDespuesSaldo[0]?.saldo || 0}`);
-                
+                console.log(`💳 Saldo del cliente actualizado: +$${totalPedido}`);
             } else {
-                console.log(`💰 PROCESANDO PAGO INMEDIATO...`);
-                // Pago inmediato: registrar cobro
-                const codigoCobro = Date.now().toString().slice(-6) + clienteId.toString().padStart(3, '0');
+                // Registrar cobro en la tabla cobros
+                // Generar un código único pequeño (últimos 4 dígitos del timestamp + clienteId, máximo 6 dígitos)
+                const timestamp = Date.now();
+                const timestampPart = parseInt(timestamp.toString().slice(-4));
+                const codigoCobro = (timestampPart * 100) + parseInt(clienteId);
+
                 await transactionQuery(
                     'INSERT INTO cobros (codigo, codigoCliente, codigoVendedor, codigoEmpresa, total, pagoTipo, fechaCobro) VALUES (?, ?, ?, ?, ?, ?, NOW())',
                     [codigoCobro, clienteId, req.user.vendedorId, req.user.codigoEmpresa, montoCobrado, tipoPago]
                 );
-                console.log(`💰 Cobro registrado: $${montoCobrado} (código: ${codigoCobro})`);
+                console.log(`💰 Cobro registrado: $${montoCobrado} (${tipoPago}) - Código: ${codigoCobro} - Vendedor: ${req.user.vendedorId} - Empresa: ${req.user.codigoEmpresa}`);
             }
 
-            // 3. Procesar retornables
+            // 3. Procesar retornables si hay
             if (totalRetornables > 0) {
                 const retornablesNoDevueltos = totalRetornables - (retornablesDevueltos || 0);
-                console.log(`🔄 PROCESANDO RETORNABLES...`);
-                console.log(`   📦 Total: ${totalRetornables}, Devueltos: ${retornablesDevueltos}, No devueltos: ${retornablesNoDevueltos}`);
-                
+
                 if (retornablesNoDevueltos > 0) {
-                    console.log(`   🔄 Sumando ${retornablesNoDevueltos} retornables al cliente ${clienteId}`);
-                    
-                    const resultadoRetornables = await transactionQuery(
-                        'UPDATE clientes SET retornables = COALESCE(retornables, 0) + ? WHERE codigo = ?',
+                    // Sumar retornables no devueltos al cliente
+                    await transactionQuery(
+                        'UPDATE clientes SET retornables = retornables + ? WHERE codigo = ?',
                         [retornablesNoDevueltos, clienteId]
                     );
-                    console.log(`   ✅ Resultado UPDATE retornables:`, resultadoRetornables);
-                    
-                    // Verificar retornables después de la actualización
-                    const clienteDespuesRetornables = await transactionQuery(
-                        'SELECT saldo, COALESCE(retornables, 0) as retornables FROM clientes WHERE codigo = ?',
-                        [clienteId]
-                    );
-                    console.log(`   🔄 Retornables después de actualización: ${clienteDespuesRetornables[0]?.retornables || 0}`);
-                } else {
-                    console.log(`   ✅ No hay retornables pendientes para agregar`);
+                    console.log(`🔄 Retornables agregados al cliente: +${retornablesNoDevueltos}`);
                 }
-            } else {
-                console.log(`🔄 No hay retornables en este pedido`);
+
+                console.log(`🔄 Retornables procesados: ${retornablesDevueltos} devueltos, ${retornablesNoDevueltos} pendientes`);
             }
 
-            console.log('✅ TRANSACCIÓN COMPLETADA');
-            
             return {
                 success: true,
                 message: 'Pedido entregado correctamente',
                 pedidoId: pedidoId,
                 tipoPago: tipoPago,
-                montoCobrado: aplicaSaldo ? 0 : montoCobrado,
+                montoCobrado: montoCobrado,
                 retornablesDevueltos: retornablesDevueltos,
-                retornablesNoDevueltos: totalRetornables - (retornablesDevueltos || 0),
-                aplicaSaldo: aplicaSaldo
+                retornablesNoDevueltos: totalRetornables - (retornablesDevueltos || 0)
             };
         });
 
-        // Verificar resultado final
-        const clienteFinal = await query(
-            'SELECT saldo, COALESCE(retornables, 0) as retornables FROM clientes WHERE codigo = ?',
-            [clienteId]
-        );
-        
-        console.log('🎉 ENTREGA COMPLETADA:');
-        console.log(`   📋 Pedido #${pedidoId} entregado`);
-        console.log(`   💳 Cliente ${clienteId}: saldo $${clienteFinal[0]?.saldo || 0}, retornables ${clienteFinal[0]?.retornables || 0}`);
+        console.log('✅ ENTREGA PROCESADA EXITOSAMENTE:');
+        console.log(`   📋 Pedido: ${pedidoId} → estado "entregad"`);
+        console.log(`   💰 Pago: ${tipoPago} - $${montoCobrado}`);
+        console.log(`   🔄 Retornables: ${retornablesDevueltos}/${totalRetornables} devueltos`);
 
         res.json(result);
 

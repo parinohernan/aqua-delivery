@@ -18,7 +18,7 @@ router.get('/', verifyToken, async (req, res) => {
                 activo,
                 codigoEmpresa
             FROM productos
-            WHERE codigoEmpresa = ? AND activo = 1
+            WHERE codigoEmpresa = ?
         `;
         let params = [req.user.codigoEmpresa];
 
@@ -27,7 +27,7 @@ router.get('/', verifyToken, async (req, res) => {
             params.push(`%${search}%`);
         }
 
-        sql += ' ORDER BY descripcion';
+        sql += ' ORDER BY activo DESC, descripcion';
         
         const productos = await query(sql, params);
 
@@ -47,13 +47,13 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear producto
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { descripcion, precio, stock, esRetornable } = req.body;
+        const { descripcion, precio, stock, esRetornable, activo } = req.body;
 
-        console.log('📝 Creando producto:', { descripcion, precio, stock, esRetornable });
+        console.log('📝 Creando producto:', { descripcion, precio, stock, esRetornable, activo });
 
         const result = await query(
-            'INSERT INTO productos (descripcion, precio, stock, esRetornable, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, 1)',
-            [descripcion, precio, stock, esRetornable, req.user.codigoEmpresa]
+            'INSERT INTO productos (descripcion, precio, stock, esRetornable, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?)',
+            [descripcion, precio, stock, esRetornable, req.user.codigoEmpresa, activo || 1]
         );
         
         const producto = await query(
@@ -71,13 +71,13 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar producto
 router.put('/:id', verifyToken, async (req, res) => {
     try {
-        const { descripcion, precio, stock, esRetornable } = req.body;
+        const { descripcion, precio, stock, esRetornable, activo } = req.body;
 
-        console.log('📝 Actualizando producto:', req.params.id, { descripcion, precio, stock, esRetornable });
+        console.log('📝 Actualizando producto:', req.params.id, { descripcion, precio, stock, esRetornable, activo });
 
         await query(
-            'UPDATE productos SET descripcion = ?, precio = ?, stock = ?, esRetornable = ? WHERE codigo = ? AND codigoEmpresa = ?',
-            [descripcion, precio, stock, esRetornable, req.params.id, req.user.codigoEmpresa]
+            'UPDATE productos SET descripcion = ?, precio = ?, stock = ?, esRetornable = ?, activo = ? WHERE codigo = ? AND codigoEmpresa = ?',
+            [descripcion, precio, stock, esRetornable, activo, req.params.id, req.user.codigoEmpresa]
         );
         
         const producto = await query(
@@ -92,7 +92,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     }
 });
 
-// Eliminar producto (soft delete)
+// Desactivar producto (eliminación lógica)
 router.delete('/:id', verifyToken, async (req, res) => {
     try {
         await query(
@@ -100,7 +100,22 @@ router.delete('/:id', verifyToken, async (req, res) => {
             [req.params.id, req.user.codigoEmpresa]
         );
 
-        res.json({ message: 'Producto eliminado correctamente' });
+        res.json({ message: 'Producto desactivado correctamente' });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Activar producto
+router.put('/:id/activate', verifyToken, async (req, res) => {
+    try {
+        await query(
+            'UPDATE productos SET activo = 1 WHERE codigo = ? AND codigoEmpresa = ?',
+            [req.params.id, req.user.codigoEmpresa]
+        );
+
+        res.json({ message: 'Producto activado correctamente' });
 
     } catch (error) {
         res.status(500).json({ error: error.message });

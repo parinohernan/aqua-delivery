@@ -16,6 +16,7 @@ router.get('/', verifyToken, async (req, res) => {
                 apellido,
                 telefono,
                 direccion,
+                zona,
                 saldo,
                 retornables,
                 latitud,
@@ -58,18 +59,18 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear cliente
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables, latitud, longitud } = req.body;
+        const { nombre, apellido, direccion, zona, telefono, saldoDinero, saldoRetornables, latitud, longitud } = req.body;
 
-        console.log('👤 Creando cliente:', { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables, latitud, longitud });
+        console.log('👤 Creando cliente:', { nombre, apellido, telefono, direccion, zona, saldoDinero, saldoRetornables, latitud, longitud });
 
         // Incluir coordenadas si están disponibles
         let sql, params;
         if (latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
-            sql = 'INSERT INTO clientes (nombre, apellido, direccion, telefono, saldo, retornables, latitud, longitud, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)';
-            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.user.codigoEmpresa];
+            sql = 'INSERT INTO clientes (nombre, apellido, direccion, zona, telefono, saldo, retornables, latitud, longitud, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)';
+            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.user.codigoEmpresa];
         } else {
-            sql = 'INSERT INTO clientes (nombre, apellido, direccion, telefono, saldo, retornables, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)';
-            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.user.codigoEmpresa];
+            sql = 'INSERT INTO clientes (nombre, apellido, direccion, zona, telefono, saldo, retornables, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)';
+            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, req.user.codigoEmpresa];
         }
 
         const result = await query(sql, params);
@@ -89,18 +90,18 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar cliente
 router.put('/:id', verifyToken, async (req, res) => {
     try {
-        const { nombre, apellido, direccion, telefono, saldoDinero, saldoRetornables, latitud, longitud } = req.body;
+        const { nombre, apellido, direccion, zona, telefono, saldoDinero, saldoRetornables, latitud, longitud } = req.body;
 
-        console.log('👤 Actualizando cliente:', req.params.id, { nombre, apellido, telefono, direccion, saldoDinero, saldoRetornables, latitud, longitud });
+        console.log('👤 Actualizando cliente:', req.params.id, { nombre, apellido, telefono, direccion, zona, saldoDinero, saldoRetornables, latitud, longitud });
 
         // Incluir coordenadas si están disponibles
         let sql, params;
         if (latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
-            sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, telefono = ?, saldo = ?, retornables = ?, latitud = ?, longitud = ? WHERE codigo = ? AND codigoEmpresa = ?';
-            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.params.id, req.user.codigoEmpresa];
+            sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, zona = ?, telefono = ?, saldo = ?, retornables = ?, latitud = ?, longitud = ? WHERE codigo = ? AND codigoEmpresa = ?';
+            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.params.id, req.user.codigoEmpresa];
         } else {
-            sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, telefono = ?, saldo = ?, retornables = ? WHERE codigo = ? AND codigoEmpresa = ?';
-            params = [nombre, apellido, direccion, telefono, saldoDinero || 0, saldoRetornables || 0, req.params.id, req.user.codigoEmpresa];
+            sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, zona = ?, telefono = ?, saldo = ?, retornables = ? WHERE codigo = ? AND codigoEmpresa = ?';
+            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, req.params.id, req.user.codigoEmpresa];
         }
 
         await query(sql, params);
@@ -113,6 +114,95 @@ router.put('/:id', verifyToken, async (req, res) => {
         res.json(cliente[0]);
         
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Devolver retornables de un cliente
+router.post('/retornables/devolver', verifyToken, async (req, res) => {
+    try {
+        const { clienteId, productoId, cantidad, observaciones } = req.body;
+
+        console.log('🔄 Procesando devolución de retornables:', { clienteId, productoId, cantidad, observaciones });
+
+        // Validar datos
+        if (!clienteId || !productoId || !cantidad || cantidad <= 0) {
+            return res.status(400).json({ error: 'Datos inválidos para la devolución' });
+        }
+
+        // Verificar que el cliente existe y pertenece a la empresa
+        const cliente = await query(
+            'SELECT codigo, nombre, apellido, retornables FROM clientes WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1',
+            [clienteId, req.user.codigoEmpresa]
+        );
+
+        if (cliente.length === 0) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
+        }
+
+        // Verificar que el producto existe y es retornable
+        const producto = await query(
+            'SELECT codigo, descripcion, esRetornable FROM productos WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1',
+            [productoId, req.user.codigoEmpresa]
+        );
+
+        if (producto.length === 0) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        if (!producto[0].esRetornable) {
+            return res.status(400).json({ error: 'El producto no es retornable' });
+        }
+
+        // Verificar que el cliente tiene suficientes retornables
+        const retornablesActuales = parseInt(cliente[0].retornables || 0);
+        if (retornablesActuales < cantidad) {
+            return res.status(400).json({ 
+                error: `El cliente solo tiene ${retornablesActuales} retornables, no puede devolver ${cantidad}` 
+            });
+        }
+
+        // Usar transacción para garantizar consistencia
+        const { transaction } = require('../config/database');
+
+        await transaction(async (transactionQuery) => {
+            // Actualizar retornables del cliente
+            const nuevosRetornables = retornablesActuales - cantidad;
+            await transactionQuery(
+                'UPDATE clientes SET retornables = ? WHERE codigo = ?',
+                [nuevosRetornables, clienteId]
+            );
+
+            // Registrar la devolución en la tabla de pagos (sin pedido asociado)
+            await transactionQuery(
+                'INSERT INTO pagos (clienteId, monto, metodoPago, observaciones, fechaPago) VALUES (?, ?, ?, ?, NOW())',
+                [clienteId, 0, 'Devolución Retornables', `Devolución: ${cantidad} ${producto[0].descripcion} - ${observaciones || 'Sin observaciones'}`]
+            );
+        });
+
+        // Obtener datos actualizados del cliente
+        const clienteActualizado = await query(
+            'SELECT retornables FROM clientes WHERE codigo = ?',
+            [clienteId]
+        );
+
+        const nombreCompleto = `${cliente[0].nombre} ${cliente[0].apellido || ''}`.trim();
+
+        console.log('✅ Devolución procesada exitosamente');
+
+        res.json({
+            success: true,
+            message: 'Devolución registrada exitosamente',
+            clienteNombre: nombreCompleto,
+            productoNombre: producto[0].descripcion,
+            cantidad: cantidad,
+            retornablesAnteriores: retornablesActuales,
+            nuevosRetornables: clienteActualizado[0].retornables,
+            fechaDevolucion: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('❌ Error procesando devolución de retornables:', error);
         res.status(500).json({ error: error.message });
     }
 });

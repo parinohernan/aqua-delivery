@@ -6,6 +6,7 @@ class OrderModal {
     this.orderItems = [];
     this.availableProducts = [];
     this.availableClients = [];
+    this.availableZonas = [];
     this.init();
   }
 
@@ -17,10 +18,11 @@ class OrderModal {
 
   async loadInitialData() {
     try {
-      // Cargar productos y clientes disponibles
+      // Cargar productos, clientes y zonas disponibles
       await Promise.all([
         this.loadProducts(),
-        this.loadClients()
+        this.loadClients(),
+        this.loadZonas()
       ]);
     } catch (error) {
       console.error('Error cargando datos iniciales:', error);
@@ -57,6 +59,21 @@ class OrderModal {
     }
   }
 
+  async loadZonas() {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch('/api/zonas', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        this.availableZonas = await response.json();
+        console.log('🗺️ Zonas cargadas:', this.availableZonas.length);
+      }
+    } catch (error) {
+      console.error('Error cargando zonas:', error);
+    }
+  }
+
   createModal() {
     const modalHTML = `
       <div id="orderModal" class="hidden modal-overlay">
@@ -78,11 +95,17 @@ class OrderModal {
                 <div id="clientDropdown" class="hidden" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 0.375rem; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);"></div>
               </div>
               <div id="selectedClient" class="hidden" style="margin-top: 0.5rem; padding: 0.75rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 0.375rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <div style="flex: 1;">
                     <strong id="selectedClientName"></strong>
-                    <div style="font-size: 0.875rem; color: #6b7280;">
+                    <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">
                       <span id="selectedClientPhone"></span> • <span id="selectedClientAddress"></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <label style="font-size: 0.875rem; font-weight: 500; color: #374151;">Zona:</label>
+                      <select id="selectedClientZona" onchange="orderModal.updateClientZona()" style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.875rem;">
+                        <option value="">Sin zona</option>
+                      </select>
                     </div>
                   </div>
                   <button type="button" onclick="orderModal.clearClient()" style="background: #ef4444; color: white; border: none; border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
@@ -189,39 +212,136 @@ class OrderModal {
         this.close();
       }
     });
+
+    // Event listeners para actualización de productos
+    if (window.eventBus && window.EVENTS) {
+      // Escuchar cuando se crea un producto
+      window.eventBus.on(window.EVENTS.PRODUCTO_CREATED, (data) => {
+        console.log('📦 Nuevo producto creado, actualizando lista de productos en OrderModal...', data);
+        this.loadProducts().then(() => {
+          this.populateProductSelect();
+        });
+      });
+
+      // Escuchar cuando se actualiza un producto
+      window.eventBus.on(window.EVENTS.PRODUCTO_UPDATED, (data) => {
+        console.log('📦 Producto actualizado, actualizando lista de productos en OrderModal...', data);
+        this.loadProducts().then(() => {
+          this.populateProductSelect();
+        });
+      });
+
+      // Escuchar cuando se activa un producto
+      window.eventBus.on(window.EVENTS.PRODUCTO_ACTIVATED, (data) => {
+        console.log('📦 Producto activado, actualizando lista de productos en OrderModal...', data);
+        this.loadProducts().then(() => {
+          this.populateProductSelect();
+        });
+      });
+
+      console.log('✅ Event listeners de productos configurados en OrderModal');
+    }
   }
 
   show(orderData = null) {
     const modal = document.getElementById('orderModal');
     const title = document.getElementById('orderModalTitle');
     
+    console.log('📦 Abriendo modal de pedido:', orderData ? 'edición' : 'nuevo');
+    
     if (orderData) {
       // Modo edición (por implementar)
       this.editingOrderId = orderData.id;
       title.textContent = 'Editar Pedido';
+      console.log('📝 Modo edición para pedido:', orderData.id);
     } else {
-      // Modo creación
+      // Modo creación - limpiar completamente
       this.editingOrderId = null;
       title.textContent = 'Nuevo Pedido';
+      console.log('🆕 Modo creación - limpiando formulario');
+      
+      // Limpiar inmediatamente antes de mostrar el modal
       this.resetForm();
     }
     
+    // Mostrar el modal
     modal.classList.remove('hidden');
+    
+    // Poblar select de productos después de mostrar el modal
     this.populateProductSelect();
     
     // Enfocar el primer campo
     setTimeout(() => {
-      document.getElementById('clientSearch').focus();
+      const clientSearch = document.getElementById('clientSearch');
+      if (clientSearch) {
+        clientSearch.focus();
+      }
     }, 100);
+    
+    console.log('📦 Modal de pedido abierto correctamente');
+    
+    // Debug del estado final
+    this.debugState();
+  }
+
+  // Función para verificar el estado del modal
+  debugState() {
+    console.log('🔍 DEBUG - Estado actual del modal:');
+    console.log('   📦 orderItems:', this.orderItems);
+    console.log('   📦 orderItems.length:', this.orderItems.length);
+    console.log('   👤 selectedClient:', this.selectedClient);
+    console.log('   📝 editingOrderId:', this.editingOrderId);
+    
+    const container = document.getElementById('orderItemsList');
+    if (container) {
+      console.log('   🎨 Contenedor HTML:', container.innerHTML.substring(0, 100) + '...');
+    } else {
+      console.log('   ❌ Contenedor no encontrado');
+    }
   }
 
   resetForm() {
-    document.getElementById('orderForm').reset();
+    console.log('🔄 Iniciando reset del formulario de pedido...');
+    
+    // Limpiar formulario
+    const form = document.getElementById('orderForm');
+    if (form) {
+      form.reset();
+    }
+    
+    // Limpiar estado interno
     this.selectedClient = null;
     this.orderItems = [];
+    this.editingOrderId = null;
+    
+    console.log('🔄 Estado interno limpiado, orderItems:', this.orderItems.length);
+    
+    // Limpiar UI
     this.hideSelectedClient();
-    this.updateOrderItemsList();
+    this.hideClientDropdown();
+    
+    // Limpiar campo de búsqueda de cliente
+    const clientSearch = document.getElementById('clientSearch');
+    if (clientSearch) {
+      clientSearch.value = '';
+    }
+    
+    // Forzar limpieza visual inmediata del contenedor de items
+    const container = document.getElementById('orderItemsList');
+    if (container) {
+      console.log('🔄 Limpiando contenedor de items visualmente...');
+      container.innerHTML = `
+        <div id="emptyOrderItems" style="padding: 2rem; text-align: center; color: #6b7280;">
+          <p>No hay productos agregados al pedido</p>
+          <p style="font-size: 0.875rem;">Selecciona productos arriba para agregarlos</p>
+        </div>
+      `;
+    }
+    
+    // Actualizar total
     this.updateTotal();
+    
+    console.log('🔄 Formulario de pedido reseteado completamente');
   }
 
   close() {
@@ -301,8 +421,59 @@ class OrderModal {
     document.getElementById('selectedClientPhone').textContent = this.selectedClient.telefono || 'Sin teléfono';
     document.getElementById('selectedClientAddress').textContent = this.selectedClient.direccion || 'Sin dirección';
 
+    // Configurar selector de zona
+    this.updateZonaSelector();
+    document.getElementById('selectedClientZona').value = this.selectedClient.zona || '';
+
     document.getElementById('selectedClient').classList.remove('hidden');
     document.getElementById('clientSearch').style.display = 'none';
+  }
+
+  updateZonaSelector() {
+    const zonaSelect = document.getElementById('selectedClientZona');
+    if (zonaSelect && this.availableZonas.length > 0) {
+      zonaSelect.innerHTML = '<option value="">Sin zona</option>' +
+        this.availableZonas.map(zona => `<option value="${zona.zona}">${zona.zona}</option>`).join('');
+    }
+  }
+
+  async updateClientZona() {
+    if (!this.selectedClient) return;
+
+    const newZona = document.getElementById('selectedClientZona').value;
+    const oldZona = this.selectedClient.zona;
+
+    if (newZona === oldZona) return;
+
+    try {
+      // Actualizar la zona del cliente en el backend
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/clientes/${this.selectedClient.codigo}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...this.selectedClient,
+          zona: newZona || null
+        })
+      });
+
+      if (response.ok) {
+        // Actualizar el cliente local
+        this.selectedClient.zona = newZona;
+        console.log('✅ Zona del cliente actualizada:', newZona);
+        this.showTempMessage(`Zona actualizada: ${newZona || 'Sin zona'}`, 'success');
+      } else {
+        throw new Error('Error actualizando zona del cliente');
+      }
+    } catch (error) {
+      console.error('❌ Error actualizando zona:', error);
+      // Revertir el cambio en el selector
+      document.getElementById('selectedClientZona').value = oldZona || '';
+      this.showTempMessage('Error actualizando zona del cliente', 'error');
+    }
   }
 
   hideSelectedClient() {
@@ -331,7 +502,10 @@ class OrderModal {
     const select = document.getElementById('productSelect');
     select.innerHTML = '<option value="">Seleccionar producto...</option>';
 
-    this.availableProducts.forEach(product => {
+    // Filtrar solo productos activos
+    const activeProducts = this.availableProducts.filter(product => product.activo === 1);
+
+    activeProducts.forEach(product => {
       const name = product.descripcion || `Producto #${product.codigo}`;
       const price = parseFloat(product.precio || 0);
       const stock = parseInt(product.stock || 0);
@@ -342,6 +516,8 @@ class OrderModal {
         </option>
       `;
     });
+
+    console.log('📦 Productos activos disponibles para pedidos:', activeProducts.length);
   }
 
   addProduct() {
@@ -429,12 +605,31 @@ class OrderModal {
     const container = document.getElementById('orderItemsList');
     const emptyState = document.getElementById('emptyOrderItems');
 
-    if (this.orderItems.length === 0) {
-      emptyState.style.display = 'block';
+    if (!container) {
+      console.error('❌ Contenedor orderItemsList no encontrado');
       return;
     }
 
-    emptyState.style.display = 'none';
+    if (this.orderItems.length === 0) {
+      // Si no hay items, mostrar estado vacío
+      if (emptyState) {
+        emptyState.style.display = 'block';
+      } else {
+        // Si no existe el elemento emptyState, crearlo
+        container.innerHTML = `
+          <div id="emptyOrderItems" style="padding: 2rem; text-align: center; color: #6b7280;">
+            <p>No hay productos agregados al pedido</p>
+            <p style="font-size: 0.875rem;">Selecciona productos arriba para agregarlos</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    // Si hay items, ocultar estado vacío y mostrar items
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
 
     const itemsHTML = this.orderItems.map(item => `
       <div style="padding: 1rem; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;">
@@ -469,7 +664,16 @@ class OrderModal {
       </div>
     `).join('');
 
-    container.innerHTML = `${itemsHTML}${emptyState.outerHTML}`;
+    // Agregar el estado vacío al final para que esté disponible cuando se necesite
+    const finalHTML = `
+      ${itemsHTML}
+      <div id="emptyOrderItems" style="padding: 2rem; text-align: center; color: #6b7280; display: none;">
+        <p>No hay productos agregados al pedido</p>
+        <p style="font-size: 0.875rem;">Selecciona productos arriba para agregarlos</p>
+      </div>
+    `;
+
+    container.innerHTML = finalHTML;
   }
 
   updateTotal() {
@@ -531,17 +735,30 @@ class OrderModal {
       const result = await response.json();
       console.log('✅ Pedido creado:', result);
 
+      // Guardar datos antes de cerrar el modal (porque close() los limpia)
+      const clienteInfo = this.selectedClient ? { ...this.selectedClient } : null;
+      const productosInfo = [...this.orderItems];
+      const clientName = clienteInfo ? clienteInfo.nombre || 'Cliente' : 'Cliente';
+      const productCount = productosInfo.length;
+
       // Éxito
       this.close();
 
-      // Recargar la lista de pedidos
+      // Emitir evento de pedido creado para actualización reactiva
+      if (window.eventBus && window.EVENTS) {
+        window.eventBus.emit(window.EVENTS.PEDIDO_CREATED, {
+          pedido: result,
+          cliente: clienteInfo,
+          productos: productosInfo
+        });
+      }
+
+      // Recargar la lista de pedidos (compatibilidad con index.astro)
       if (typeof loadPedidos === 'function') {
         await loadPedidos();
       }
 
       // Mostrar mensaje de éxito
-      const clientName = this.selectedClient.nombre || 'Cliente';
-      const productCount = this.orderItems.length;
       this.showSuccessMessage(`Pedido creado para ${clientName} con ${productCount} producto${productCount > 1 ? 's' : ''}`);
 
     } catch (error) {
@@ -598,6 +815,32 @@ class OrderModal {
     setTimeout(() => {
       messageDiv.remove();
     }, 5000);
+  }
+
+  showTempMessage(message, type = 'info') {
+    const messageDiv = document.createElement('div');
+    const bgColor = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6';
+
+    messageDiv.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: ${bgColor};
+      color: white;
+      padding: 0.75rem 1rem;
+      border-radius: 0.375rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 10001;
+      font-size: 0.875rem;
+      max-width: 300px;
+    `;
+    messageDiv.textContent = message;
+
+    document.body.appendChild(messageDiv);
+
+    setTimeout(() => {
+      messageDiv.remove();
+    }, 3000);
   }
 }
 

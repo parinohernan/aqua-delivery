@@ -7,12 +7,12 @@ const router = express.Router();
 router.get('/', verifyToken, async (req, res) => {
     try {
         const zonas = await query(
-            'SELECT * FROM zonas WHERE codigoEmpresa = ? AND activo = 1 ORDER BY nombre',
+            'SELECT id, zona, codigoEmpresa, fechaCreacion FROM zonas WHERE codigoEmpresa = ? ORDER BY zona',
             [req.user.codigoEmpresa]
         );
-        
+
         res.json(zonas);
-        
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -21,20 +21,20 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear zona
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { nombre, descripcion, costoEnvio } = req.body;
-        
+        const { zona } = req.body;
+
         const result = await query(
-            'INSERT INTO zonas (nombre, descripcion, costoEnvio, codigoEmpresa) VALUES (?, ?, ?, ?)',
-            [nombre, descripcion, costoEnvio, req.user.codigoEmpresa]
+            'INSERT INTO zonas (zona, codigoEmpresa) VALUES (?, ?)',
+            [zona, req.user.codigoEmpresa]
         );
-        
-        const zona = await query(
-            'SELECT * FROM zonas WHERE codigo = ? AND codigoEmpresa = ?',
+
+        const nuevaZona = await query(
+            'SELECT id, zona, codigoEmpresa, fechaCreacion FROM zonas WHERE id = ? AND codigoEmpresa = ?',
             [result.insertId, req.user.codigoEmpresa]
         );
-        
-        res.json(zona[0]);
-        
+
+        res.json(nuevaZona[0]);
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -43,35 +43,35 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar zona
 router.put('/:id', verifyToken, async (req, res) => {
     try {
-        const { nombre, descripcion, costoEnvio } = req.body;
-        
+        const { zona } = req.body;
+
         await query(
-            'UPDATE zonas SET nombre = ?, descripcion = ?, costoEnvio = ? WHERE codigo = ? AND codigoEmpresa = ?',
-            [nombre, descripcion, costoEnvio, req.params.id, req.user.codigoEmpresa]
+            'UPDATE zonas SET zona = ? WHERE id = ? AND codigoEmpresa = ?',
+            [zona, req.params.id, req.user.codigoEmpresa]
         );
-        
-        const zona = await query(
-            'SELECT * FROM zonas WHERE codigo = ? AND codigoEmpresa = ?',
+
+        const zonaActualizada = await query(
+            'SELECT id, zona, codigoEmpresa, fechaCreacion FROM zonas WHERE id = ? AND codigoEmpresa = ?',
             [req.params.id, req.user.codigoEmpresa]
         );
-        
-        res.json(zona[0]);
-        
+
+        res.json(zonaActualizada[0]);
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Eliminar zona (soft delete)
+// Eliminar zona
 router.delete('/:id', verifyToken, async (req, res) => {
     try {
         await query(
-            'UPDATE zonas SET activo = 0 WHERE codigo = ? AND codigoEmpresa = ?',
+            'DELETE FROM zonas WHERE id = ? AND codigoEmpresa = ?',
             [req.params.id, req.user.codigoEmpresa]
         );
-        
+
         res.json({ message: 'Zona eliminada correctamente' });
-        
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

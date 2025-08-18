@@ -91,6 +91,12 @@ const ClientesComponent = {
                                     <i data-lucide="map-pin" class="text-gray-500"></i>
                                     <span class="text-sm">${cliente.direccion}</span>
                                 </div>
+                                ${cliente.zona ? `
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="map" class="text-gray-500"></i>
+                                    <span class="text-sm">Zona: ${cliente.zona}</span>
+                                </div>
+                                ` : ''}
                             </div>
                         </div>
                     </div>

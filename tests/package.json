@@ -1,0 +1,19 @@
+{
+  "name": "delivery-manager-tests",
+  "version": "1.0.0",
+  "description": "Tests para el sistema de entrega de pedidos",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test-aplica-saldo.js",
+    "test-entrega": "node test-entrega-simple.js",
+    "test-completo": "node entrega-pedidos.test.js",
+    "cleanup": "node -e \"require('./entrega-pedidos.test.js').cleanupTestData()\""
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {},
+  "keywords": ["test", "delivery", "pedidos"],
+  "author": "Delivery Manager",
+  "license": "MIT"
+}

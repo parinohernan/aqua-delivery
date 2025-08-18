@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Login - AquaDelivery">
+<Layout title="Delivery Manager - Login">
   <div class="login-container">
     <div class="login-card">
       <div class="text-center">
@@ -67,20 +67,20 @@ import Layout from '../layouts/Layout.astro';
     console.log('✅ Formulario encontrado, agregando event listener');
 
     loginForm.addEventListener('submit', async function(e) {
-      try {
-        console.log('🔥 Evento submit capturado');
-        e.preventDefault();
-        console.log('✅ preventDefault ejecutado');
+      e.preventDefault();
+      console.log('🔥 Evento submit capturado');
+      console.log('✅ preventDefault ejecutado');
 
-        const formData = new FormData(e.target);
-        const telegramId = formData.get('telegramId');
-        const codigoEmpresa = formData.get('codigoEmpresa');
+      const target = e.target as HTMLFormElement;
+      const formData = new FormData(target);
+      const telegramId = formData.get('telegramId');
+      const codigoEmpresa = formData.get('codigoEmpresa');
 
-        console.log('📝 Datos del formulario:', { telegramId, codigoEmpresa });
+      console.log('📝 Datos del formulario:', { telegramId, codigoEmpresa });
 
-        const errorDiv = document.getElementById('errorMessage');
-        const submitButton = e.target.querySelector('button[type="submit"]');
-    
+      const errorDiv = document.getElementById('errorMessage');
+      const submitButton = target.querySelector('button[type="submit"]') as HTMLButtonElement;
+
       // Mostrar loading
       if (submitButton) {
         submitButton.disabled = true;
@@ -89,71 +89,59 @@ import Layout from '../layouts/Layout.astro';
       if (errorDiv) {
         errorDiv.classList.add('hidden');
       }
-    
-    try {
-      console.log('Enviando petición de login...');
-      const response = await fetch('/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          telegramId,
-          codigoEmpresa
-        })
-      });
 
-      console.log('Respuesta recibida:', response.status, response.statusText);
+      try {
+        console.log('Enviando petición de login...');
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            telegramId,
+            codigoEmpresa
+          })
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error del servidor:', errorText);
-        throw new Error(`Error ${response.status}: ${errorText || 'Error del servidor'}`);
-      }
+        console.log('Respuesta recibida:', response.status, response.statusText);
 
-      const data = await response.json();
-      
-      console.log('📦 Datos recibidos del servidor:', data);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Error del servidor:', errorText);
+          throw new Error(`Error ${response.status}: ${errorText || 'Error del servidor'}`);
+        }
 
-      if (response.ok && data.token) {
-        console.log('✅ Login exitoso! Token recibido');
+        const data = await response.json();
+        
+        console.log('📦 Datos recibidos del servidor:', data);
 
-        // Guardar token y datos del usuario
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user || data.vendedor || {}));
+        if (response.ok && data.token) {
+          console.log('✅ Login exitoso! Token recibido');
 
-        console.log('💾 Datos guardados en localStorage');
-        console.log('🔄 Redirigiendo al dashboard...');
+          // Guardar token y datos del usuario
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user || data.vendedor || {}));
 
-        // Redirigir inmediatamente
-        window.location.href = '/';
-      } else {
-        console.log('❌ Login falló:', data);
-        throw new Error(data.message || data.error || 'Error al iniciar sesión');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      if (errorDiv) {
-        errorDiv.textContent = error instanceof Error ? error.message : 'Error al iniciar sesión';
-        errorDiv.classList.remove('hidden');
-      }
-    } finally {
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Iniciar Sesión';
-      }
-    }
-      } catch (globalError) {
-        console.error('💥 Error global en el evento submit:', globalError);
-        console.error('🔍 Stack trace:', globalError.stack);
-        // Asegurar que no se recargue la página
-        e.preventDefault();
+          console.log('💾 Datos guardados en localStorage');
+          console.log('🔄 Redirigiendo al dashboard...');
 
-        // Mostrar error en la UI
-        const errorDiv = document.getElementById('errorMessage');
+          // Redirigir inmediatamente
+          window.location.href = '/';
+        } else {
+          console.log('❌ Login falló:', data);
+          throw new Error(data.message || data.error || 'Error al iniciar sesión');
+        }
+      } catch (error) {
+        console.error('Error:', error);
         if (errorDiv) {
-          errorDiv.textContent = 'Error inesperado: ' + globalError.message;
+          const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
+          errorDiv.textContent = errorMessage;
           errorDiv.classList.remove('hidden');
+        }
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Iniciar Sesión';
         }
       }
     });

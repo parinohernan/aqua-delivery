@@ -12,9 +12,17 @@
     "frontend:start": "cd frontend && npm run preview"
   },
   "dependencies": {
-    "concurrently": "^9.2.0"
+    "concurrently": "^9.2.0",
+    "dotenv": "^17.2.1",
+    "mysql2": "^3.14.3"
   },
-  "keywords": ["delivery", "agua", "astro", "express", "mysql"],
+  "keywords": [
+    "delivery",
+    "agua",
+    "astro",
+    "express",
+    "mysql"
+  ],
   "author": "Hernan",
   "license": "MIT"
 }

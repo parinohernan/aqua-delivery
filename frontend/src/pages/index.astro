@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Dashboard - AquaDelivery">
+<Layout title="Aqua Delivery Manager">
   <!-- Pantalla de carga -->
   <div id="loading" class="loading-screen">
     <div class="spinner"></div>
@@ -17,7 +17,7 @@ import Layout from '../layouts/Layout.astro';
         <div class="header-content">
           <div class="header-left">
             <div class="app-icon">💧</div>
-            <h1 class="app-title">AquaDelivery</h1>
+            <h1 class="app-title">Aqua Delivery Manager</h1>
           </div>
           <div class="header-right">
             <span id="userInfo" class="user-info"></span>
@@ -84,12 +84,24 @@ import Layout from '../layouts/Layout.astro';
 
 <script>
 // Estado global de la aplicación
-let currentUser = null;
-let currentRoute = 'pedidos';
+let currentUser: any = null;
+let currentRoute: string = 'pedidos';
 
-// Verificar autenticación al cargar la página
+// Inicialización principal de la aplicación
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🚀 Inicializando aplicación...');
+  
+  // Verificar autenticación
   await checkAuth();
+  
+  // Configurar listeners de eventos con un pequeño delay
+  setTimeout(() => {
+    if (typeof trySetupEventListeners === 'function') {
+      trySetupEventListeners();
+    } else {
+      console.warn('⚠️ trySetupEventListeners no está disponible aún');
+    }
+  }, 100);
 });
 
 // Verificar si el usuario está autenticado
@@ -107,15 +119,31 @@ async function checkAuth() {
     return;
   }
 
+  // Modo desarrollo: permitir saltarse la verificación del servidor
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (isDevelopment && localStorage.getItem('skipServerCheck') === 'true') {
+    console.log('🔧 Modo desarrollo: saltando verificación del servidor');
+    currentUser = JSON.parse(userStr);
+    showMainApp();
+    loadRoute(currentRoute);
+    return;
+  }
+
   try {
     console.log('📡 Verificando token con el servidor...');
-    // Verificar que el token sea válido haciendo una petición simple
+    
+    // Agregar timeout a la petición
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+    
     const response = await fetch('/api/pedidos', {
       headers: {
         'Authorization': `Bearer ${token}`
-      }
+      },
+      signal: controller.signal
     });
-
+    
+    clearTimeout(timeoutId);
     console.log('📥 Respuesta del servidor:', response.status, response.statusText);
 
     if (!response.ok) {
@@ -128,8 +156,19 @@ async function checkAuth() {
     currentUser = JSON.parse(userStr);
     showMainApp();
     loadRoute(currentRoute);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 Error de autenticación:', error);
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        console.error('⏰ Timeout: El servidor no responde');
+        alert('Error: No se puede conectar con el servidor. Asegúrate de que el backend esté corriendo en el puerto 8001.');
+      } else if (error.message.includes('fetch')) {
+        console.error('🌐 Error de conexión');
+        alert('Error de conexión: No se puede conectar con el servidor. Verifica que el backend esté corriendo.');
+      }
+    }
+    
     console.log('🧹 Limpiando localStorage y redirigiendo al login');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -146,8 +185,11 @@ function redirectToLogin() {
 
 // Mostrar la aplicación principal
 function showMainApp() {
-  document.getElementById('loading').classList.add('hidden');
-  document.getElementById('mainApp').classList.remove('hidden');
+  const loadingElement = document.getElementById('loading');
+  const mainAppElement = document.getElementById('mainApp');
+  
+  if (loadingElement) loadingElement.classList.add('hidden');
+  if (mainAppElement) mainAppElement.classList.remove('hidden');
 
   // Mostrar información del usuario
   const userInfo = document.getElementById('userInfo');
@@ -167,14 +209,17 @@ function logout() {
 
 // Navegación
 document.addEventListener('click', (e) => {
-  if (e.target.matches('[data-route]') || e.target.closest('[data-route]')) {
-    const button = e.target.matches('[data-route]') ? e.target : e.target.closest('[data-route]');
+  const target = e.target as HTMLElement;
+  if (target.matches('[data-route]') || target.closest('[data-route]')) {
+    const button = target.matches('[data-route]') ? target : target.closest('[data-route]') as HTMLElement;
     const route = button.getAttribute('data-route');
-    navigateTo(route);
+    if (route) {
+      navigateTo(route);
+    }
   }
 });
 
-function navigateTo(route) {
+function navigateTo(route: string) {
   currentRoute = route;
   
   // Actualizar botones activos
@@ -190,20 +235,26 @@ function navigateTo(route) {
 }
 
 // Cargar contenido de la ruta
-async function loadRoute(route) {
+async function loadRoute(route: string) {
+  // Guardar la ruta actual para los event listeners
+  window.currentRoute = route;
+
   const contentArea = document.getElementById('contentArea');
-  contentArea.innerHTML = '<div style="display: flex; justify-content: center; padding: 2rem;"><div class="spinner"></div></div>';
+  if (contentArea) {
+    contentArea.innerHTML = '<div style="display: flex; justify-content: center; padding: 2rem;"><div class="spinner"></div></div>';
+  }
 
   try {
     switch (route) {
       case 'pedidos':
+        await loadZonas();
         await loadPedidos();
         break;
       case 'clientes':
         await loadClientes();
         break;
       case 'productos':
-        await loadProductos();
+        await loadProductosSection();
         break;
       case 'pagos':
         await loadPagos();
@@ -211,19 +262,81 @@ async function loadRoute(route) {
       default:
         contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">Página no encontrada</div>';
     }
-  } catch (error) {
-    console.error('Error cargando ruta:', error);
-    contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando contenido</div>';
-  }
+      } catch (error) {
+      console.error('Error cargando ruta:', error);
+      if (contentArea) {
+        contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando contenido</div>';
+      }
+    }
 }
 
-// Cargar pedidos
-async function loadPedidos() {
-  console.log('📦 Cargando pedidos...');
+// Variables globales para filtros
+let currentFilters: { estado: string; fecha: string; zona: string; search: string } = { estado: '', fecha: '', zona: '', search: '' };
+let availableZonas: any[] = [];
+
+// Cargar zonas disponibles
+async function loadZonas() {
+  console.log('🗺️ Cargando zonas...');
   const token = localStorage.getItem('token');
 
   try {
-    const response = await fetch('/api/pedidos', {
+    const response = await fetch('/api/zonas', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      availableZonas = await response.json();
+      console.log('✅ Zonas cargadas:', availableZonas.length, 'zonas');
+      updateZonaFilter();
+    } else {
+      console.warn('⚠️ No se pudieron cargar las zonas');
+      availableZonas = [];
+    }
+  } catch (error) {
+    console.error('💥 Error cargando zonas:', error);
+    availableZonas = [];
+  }
+}
+
+// Actualizar el filtro de zonas en el HTML
+function updateZonaFilter() {
+  const zonaFilter = document.getElementById('filterZona');
+  if (zonaFilter && availableZonas.length > 0) {
+    zonaFilter.innerHTML = '<option value="">Todas las zonas</option>' +
+      availableZonas.map(zona => `<option value="${zona.zona}">${zona.zona}</option>`).join('');
+  }
+}
+
+// Cargar pedidos con filtros desde el backend
+async function loadPedidos() {
+  console.log('📦 Cargando pedidos con filtros:', currentFilters);
+  const token = localStorage.getItem('token');
+
+  try {
+    // Si es la primera carga, aplicar filtro por defecto (pendientes)
+    if (!currentFilters.estado && allPedidos.length === 0) {
+      currentFilters.estado = 'pendient';
+      // Configurar el select por defecto
+      const estadoSelect = document.getElementById('filterEstado');
+      if (estadoSelect) {
+        estadoSelect.value = 'pendient';
+      }
+    }
+
+    // Construir parámetros de consulta solo con filtros que tienen valor
+    const params = new URLSearchParams();
+    Object.keys(currentFilters).forEach(key => {
+      if (currentFilters[key] && currentFilters[key].trim() !== '') {
+        params.append(key, currentFilters[key]);
+      }
+    });
+
+    const url = `/api/pedidos${params.toString() ? '?' + params.toString() : ''}`;
+    console.log('📡 URL de consulta:', url);
+
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -239,19 +352,17 @@ async function loadPedidos() {
     console.log('✅ Pedidos cargados:', pedidos.length, 'pedidos');
     console.log('📋 Datos de pedidos:', pedidos);
 
-    // Guardar en variables globales para filtros
+    // Guardar en variables globales
     allPedidos = pedidos;
     currentPedidos = pedidos;
+    window.allPedidos = pedidos;
+    window.currentPedidos = pedidos;
 
-    // Configurar filtro por defecto a "pendient"
-    const filterEstado = document.getElementById('filterEstado');
-    if (filterEstado && filterEstado.value === '') {
-      filterEstado.value = 'pendient';
-      console.log('🔍 Filtro configurado por defecto: pendient');
-    }
+    // Actualizar información de resultados
+    updatePedidosInfo(pedidos);
 
-    // Aplicar filtros (por defecto mostrará solo pendientes)
-    filterPedidos();
+    // Renderizar pedidos directamente (ya vienen filtrados del backend)
+    renderPedidos(pedidos);
   } catch (error) {
     console.error('💥 Error cargando pedidos:', error);
     const contentArea = document.getElementById('contentArea');
@@ -266,6 +377,46 @@ async function loadPedidos() {
         </div>
       `;
     }
+  }
+}
+
+// Actualizar información de resultados
+function updatePedidosInfo(pedidos) {
+  const pedidosCount = document.getElementById('pedidosCount');
+  const pedidosFilters = document.getElementById('pedidosFilters');
+  
+  if (pedidosCount) {
+    pedidosCount.textContent = `${pedidos.length} pedido(s)`;
+  }
+  
+  if (pedidosFilters) {
+    const filters = [];
+    if (currentFilters.estado) {
+      const estadoText = getStatusText(currentFilters.estado);
+      filters.push(`Estado: ${estadoText}`);
+    }
+    if (currentFilters.fecha) filters.push(`Fecha: ${currentFilters.fecha}`);
+    if (currentFilters.zona) filters.push(`Zona: ${currentFilters.zona}`);
+    if (currentFilters.search) filters.push(`Cliente: "${currentFilters.search}"`);
+    
+    const filterText = filters.length > 0 ? filters.join(', ') : 'Todos los pedidos';
+    pedidosFilters.textContent = `Filtros: ${filterText}`;
+  }
+}
+
+// Función para obtener texto del estado
+function getStatusText(estado) {
+  switch (estado) {
+    case 'pendient':
+      return 'Pendientes';
+    case 'proceso':
+      return 'En Proceso';
+    case 'entregad':
+      return 'Entregados';
+    case 'anulado':
+      return 'Anulados';
+    default:
+      return estado;
   }
 }
 
@@ -333,25 +484,62 @@ function renderPedidos(pedidos) {
       </div>
     </div>
 
-    <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-      <select id="filterEstado" onchange="filterPedidos()" class="form-input" style="width: auto;">
-        <option value="">Todos los estados</option>
-        <option value="pendient" selected>Pendient</option>
-        <option value="anulado">Anulado</option>
-        <option value="entregad">Entregado</option>
-      </select>
+    <div style="margin-bottom: 1rem; background: white; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h4 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600; color: #374151;">Filtros de Búsqueda - Pedidos Pendientes</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Estado</label>
+          <select id="filterEstado" onchange="filterPedidos()" class="form-input" style="width: 100%;">
+            <option value="">Todos los estados</option>
+            <option value="pendient" selected>📦 Pendientes</option>
+            <option value="proceso">🔄 En Proceso</option>
+            <option value="entregad">✅ Entregados</option>
+            <option value="anulado">❌ Anulados</option>
+          </select>
+        </div>
 
-      <input
-        type="date"
-        id="filterFecha"
-        onchange="filterPedidos()"
-        class="form-input"
-        style="width: auto;"
-      />
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Fecha</label>
+          <input
+            type="date"
+            id="filterFecha"
+            onchange="filterPedidos()"
+            class="form-input"
+            style="width: 100%;"
+          />
+        </div>
 
-      <button onclick="clearPedidosFilters()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
-        Limpiar Filtros
-      </button>
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Zona/Ruta</label>
+          <select id="filterZona" onchange="filterPedidos()" class="form-input" style="width: 100%;">
+            <option value="">Todas las zonas</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Buscar Cliente</label>
+          <input
+            type="text"
+            id="filterSearch"
+            placeholder="Nombre o apellido..."
+            onchange="filterPedidos()"
+            oninput="debouncePedidosSearch()"
+            class="form-input"
+            style="width: 100%;"
+          />
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; justify-content: space-between; align-items: center;">
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="clearPedidosFilters()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+            🗑️ Limpiar Filtros
+          </button>
+        </div>
+        <div id="pedidosInfo" style="font-size: 0.875rem; color: #6b7280;">
+          <span id="pedidosCount">Cargando...</span> | <span id="pedidosFilters">Filtros: Pendientes por defecto</span>
+        </div>
+      </div>
     </div>
 
     <div style="display: grid; gap: 1rem;">
@@ -395,10 +583,15 @@ function renderPedidos(pedidos) {
                 <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; ${getStatusColor(estado)}">
                   ${estado}
                 </span>
-                <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end;">
+                <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end; flex-wrap: wrap;">
                   <button onclick="viewPedido(${id})" style="padding: 0.25rem 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
                     Ver
                   </button>
+                  ${estado === 'pendient' ? `
+                    <button onclick="entregarPedido(${id})" style="padding: 0.25rem 0.5rem; background: #059669; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
+                      🚚 Entregar
+                    </button>
+                  ` : ''}
                   <button onclick="editPedido(${id})" style="padding: 0.25rem 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
                     Editar
                   </button>
@@ -430,60 +623,66 @@ function getStatusColor(estado) {
 }
 
 // Variables globales para pedidos
-let currentPedidos = [];
-let allPedidos = [];
+let currentPedidos: any[] = [];
+let allPedidos: any[] = [];
 
-// Filtrar pedidos
-function filterPedidos() {
-  const estadoFilter = document.getElementById('filterEstado')?.value || '';
-  const fechaFilter = document.getElementById('filterFecha')?.value || '';
+// Timeout para búsqueda con debounce de pedidos
+let pedidosSearchTimeout: any;
 
-  console.log('🔍 Aplicando filtros:', { estadoFilter, fechaFilter });
-  console.log('📋 Total pedidos antes del filtro:', allPedidos.length);
+// Filtrar pedidos (ahora desde el backend)
+async function filterPedidos() {
+  const estadoFilter = (document.getElementById('filterEstado') as HTMLSelectElement)?.value || '';
+  const fechaFilter = (document.getElementById('filterFecha') as HTMLInputElement)?.value || '';
+  const zonaFilter = (document.getElementById('filterZona') as HTMLSelectElement)?.value || '';
+  const searchFilter = (document.getElementById('filterSearch') as HTMLInputElement)?.value || '';
 
-  let filteredPedidos = allPedidos;
+  console.log('🔍 Aplicando filtros:', { estadoFilter, fechaFilter, zonaFilter, searchFilter });
 
-  if (estadoFilter) {
-    const beforeFilter = filteredPedidos.length;
-    filteredPedidos = filteredPedidos.filter(pedido => {
-      const match = pedido.estado === estadoFilter;
-      if (!match) {
-        console.log(`❌ Pedido ${pedido.codigo} estado "${pedido.estado}" no coincide con filtro "${estadoFilter}"`);
-      }
-      return match;
-    });
-    console.log(`🔍 Filtro por estado "${estadoFilter}": ${beforeFilter} → ${filteredPedidos.length} pedidos`);
-  }
+  // Actualizar filtros globales
+  currentFilters = {
+    estado: estadoFilter,
+    fecha: fechaFilter,
+    zona: zonaFilter,
+    search: searchFilter
+  };
 
-  if (fechaFilter) {
-    const beforeFilter = filteredPedidos.length;
-    filteredPedidos = filteredPedidos.filter(pedido => {
-      const pedidoFecha = new Date(pedido.FechaPedido || pedido.fecha_pedido || pedido.fechaPedido);
-      const filterFecha = new Date(fechaFilter);
-      return pedidoFecha.toDateString() === filterFecha.toDateString();
-    });
-    console.log(`📅 Filtro por fecha "${fechaFilter}": ${beforeFilter} → ${filteredPedidos.length} pedidos`);
-  }
+  // Recargar pedidos con los nuevos filtros desde el backend
+  await loadPedidos();
+}
 
-  console.log('✅ Pedidos después del filtro:', filteredPedidos.length);
-
-  currentPedidos = filteredPedidos;
-  renderPedidos(filteredPedidos);
+// Búsqueda con debounce para el campo de búsqueda de pedidos
+function debouncePedidosSearch() {
+  clearTimeout(pedidosSearchTimeout);
+  pedidosSearchTimeout = setTimeout(() => {
+    filterPedidos();
+  }, 500); // Esperar 500ms después de que el usuario deje de escribir
 }
 
 // Limpiar filtros de pedidos
-function clearPedidosFilters() {
+async function clearPedidosFilters() {
   console.log('🧹 Limpiando filtros de pedidos');
 
   // Limpiar campos de filtro
   const filterEstado = document.getElementById('filterEstado');
   const filterFecha = document.getElementById('filterFecha');
+  const filterZona = document.getElementById('filterZona');
+  const filterSearch = document.getElementById('filterSearch');
 
-  if (filterEstado) filterEstado.value = 'pendient'; // Volver al filtro por defecto
+  if (filterEstado) filterEstado.value = 'pendient'; // Volver a pendientes por defecto
   if (filterFecha) filterFecha.value = '';
+  if (filterZona) filterZona.value = '';
+  if (filterSearch) filterSearch.value = '';
 
-  // Aplicar filtros (mostrará solo pendientes por defecto)
-  filterPedidos();
+  // Resetear filtros globales
+  currentFilters = {
+    estado: 'pendient', // Mantener pendientes por defecto
+    fecha: '',
+    zona: '',
+    search: ''
+  };
+
+  // Aplicar filtros (mostrará solo pedidos pendientes)
+  await filterPedidos();
 }
 
 // Ver detalles del pedido
@@ -635,7 +834,7 @@ function renderClientes(clientes) {
           oninput="debounceSearchClients(this.value)"
         />
         <svg style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: #6b7280;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0 114 0z"></path>
         </svg>
       </div>
       <button onclick="clearClientSearch()" style="padding: 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
@@ -683,14 +882,13 @@ function renderClientes(clientes) {
                 <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                   <div style="display: flex; align-items: center; gap: 0.25rem;">
                     <span style="color: #6b7280; font-size: 0.875rem;">Saldo $:</span>
-                    <span style="color: ${saldoDinero >= 0 ? '#059669' : '#dc2626'}; font-weight: 600; font-size: 0.875rem;">
+                    <span style="color: ${saldoDinero <= 0 ? '#059669' : '#dc2626'}; font-weight: 600; font-size: 0.875rem;">
                       $${saldoDinero.toFixed(2)}
                     </span>
                   </div>
-
-                  <div style="display: flex; align-items: center; gap: 0.25rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                     <span style="color: #6b7280; font-size: 0.875rem;">Retornables:</span>
-                    <span style="color: ${saldoRetornables > 0 ? '#dc2626' : '#059669'}; font-weight: 600; font-size: 0.875rem;">
+                    <span style="color: ${saldoRetornables <= 0 ? '#059669' : '#dc2626'}; font-weight: 600; font-size: 0.875rem;">
                       ${saldoRetornables} ${saldoRetornables === 1 ? 'unidad' : 'unidades'}
                     </span>
                   </div>
@@ -722,16 +920,44 @@ function renderClientes(clientes) {
                   </button>
                 ` : ''}
 
+                <!-- Botón Cta Cte comentado temporalmente
                 <button
                   onclick="showClientAccount(${id})"
                   style="padding: 0.5rem; background: #059669; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
                   title="Ver cuenta corriente"
                 >
                   <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1H1zM7 5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5zM9 13V6h5v7H9z"/>
-                    <path d="M2 6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6zm5 0H3v6h4V6z"/>
+                    <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1H2zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/>
+                    <path d="M2 10a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1zm0 2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1zm4-2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm0 2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm4-2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1zm0 2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1z"/>
                   </svg>
                   Cta Cte
+                </button>
+                -->
+
+                <button
+                  onclick="showClientPayment(${id})"
+                  style="padding: 0.5rem; background: #f59e0b; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Ingresar pago"
+                >
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1H2zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/>
+                    <path d="M2 10a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1zm0 2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1zm4-2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm0 2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm4-2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1zm0 2a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1z"/>
+                  </svg>
+                  Pagar
+                </button>
+
+                <button
+                  onclick="showReturnablesModal(${id})"
+                  style="padding: 0.5rem; background: #10b981; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Devolver retornables"
+                >
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 3a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H6a.5.5 0 0 1 0-1h1.5V3.5A.5.5 0 0 1 8 3zm3.5 1a.5.5 0 0 1 .5.5v1.5H12a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M8 1a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h2zM6 3a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H6z"/>
+                    <path d="M8 9a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H6a.5.5 0 0 1 0-1h1.5v-1.5A.5.5 0 0 1 8 9zm3.5 1a.5.5 0 0 1 .5.5v1.5H12a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M8 7a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2zM6 9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H6z"/>
+                  </svg>
+                  Devolver
                 </button>
 
                 <button
@@ -761,8 +987,127 @@ function renderClientes(clientes) {
   }
 }
 
-// Cargar productos
-async function loadProductos() {
+// Cargar sección de productos usando el componente
+async function loadProductosSection() {
+  console.log('🛍️ Cargando sección de productos...');
+  const contentArea = document.getElementById('contentArea');
+  
+  // Cargar el HTML del componente ProductosSection
+  const productosHTML = `
+    <div id="productosSection">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 class="content-title" style="margin-bottom: 0;">Gestión de Productos</h3>
+        <button onclick="showCreateProductModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+          + Nuevo Producto
+        </button>
+      </div>
+      
+      <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <input 
+          type="text" 
+          id="searchProducts" 
+          placeholder="Buscar productos..." 
+          class="form-input" 
+          style="max-width: 300px;"
+          onkeyup="searchProducts(this.value)"
+        />
+        
+        <select 
+          id="filterProductosEstado" 
+          class="form-input" 
+          style="max-width: 200px;"
+          onchange="filterProductosByEstado()"
+        >
+          <option value="all">Todos los productos</option>
+          <option value="active">Solo activos</option>
+          <option value="inactive">Solo inactivos</option>
+        </select>
+        
+        <button 
+          onclick="clearProductosFilters()" 
+          class="btn-secondary" 
+          style="padding: 0.5rem 1rem; font-size: 0.875rem;"
+        >
+          Limpiar filtros
+        </button>
+      </div>
+      
+      <div id="productsList" style="display: grid; gap: 1rem;">
+        <!-- Los productos se cargarán aquí dinámicamente -->
+      </div>
+      
+      <!-- Modal para crear/editar producto -->
+      <div id="productModal" class="hidden modal-overlay">
+        <div class="modal-content">
+          <h4 id="modalTitle" class="modal-title">Nuevo Producto</h4>
+          
+          <form id="productForm">
+            <div class="form-group">
+              <label class="form-label">Descripción del Producto</label>
+              <input type="text" id="productName" name="nombre" required class="form-input" placeholder="Ej: Botella 2L, Bidón 20L, etc." />
+            </div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Precio</label>
+                <input type="number" id="productPrice" name="precio" step="0.01" required class="form-input" />
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Stock</label>
+                <input type="number" id="productStock" name="stock" required class="form-input" />
+              </div>
+            </div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                  <input type="checkbox" id="productRetornable" name="esRetornable" style="width: auto;" />
+                  <span>Es Retornable</span>
+                </label>
+                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Marcar si el producto debe ser devuelto (ej: bidones, botellas de vidrio)</p>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                  <input type="checkbox" id="productActivo" name="activo" style="width: auto;" />
+                  <span>Producto Activo</span>
+                </label>
+                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Desmarcar para ocultar el producto sin eliminarlo</p>
+              </div>
+            </div>
+            
+            <div class="modal-buttons">
+              <button type="button" onclick="closeProductModal()" class="btn-secondary">
+                Cancelar
+              </button>
+              <button type="submit" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+                Guardar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  contentArea.innerHTML = productosHTML;
+  
+  // Configurar el formulario
+  const productForm = document.getElementById('productForm');
+  if (productForm) {
+    productForm.addEventListener('submit', handleProductSubmit);
+  }
+  
+  // Configurar listeners de eventos
+  setupProductEventListeners();
+  
+  // Cargar los productos
+  await loadProductosData();
+}
+
+// Cargar productos (función original renombrada)
+async function loadProductosData() {
   console.log('🛍️ Cargando productos...');
   const token = localStorage.getItem('token');
 
@@ -786,7 +1131,12 @@ async function loadProductos() {
     // Guardar en variable global para búsquedas y edición
     currentProducts = productos;
 
-    renderProductos(productos);
+    // Aplicar filtros si existen
+    if (currentProductFilters.search || currentProductFilters.estado !== 'all') {
+      await applyProductFilters();
+    } else {
+      renderProductsList(productos);
+    }
   } catch (error) {
     console.error('💥 Error cargando productos:', error);
     const contentArea = document.getElementById('contentArea');
@@ -795,7 +1145,7 @@ async function loadProductos() {
         <h3 class="content-title">Gestión de Productos</h3>
         <div style="text-align: center; padding: 2rem; color: #dc2626;">
           <p>Error cargando productos: ${error.message}</p>
-          <button onclick="loadProductos()" class="btn-primary" style="margin-top: 1rem;">
+          <button onclick="loadProductosData()" class="btn-primary" style="margin-top: 1rem;">
             Reintentar
           </button>
         </div>
@@ -841,7 +1191,7 @@ function renderProductos(productos) {
           oninput="debounceSearch(this.value)"
         />
         <svg style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: #6b7280;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0 114 0z"></path>
         </svg>
       </div>
       <button onclick="clearSearch()" style="padding: 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
@@ -945,6 +1295,7 @@ async function loadPagos() {
 let currentProducts = [];
 let editingProductId = null;
 let searchTimeout = null;
+let currentProductFilters = { search: '', estado: 'all' };
 
 // Variables globales para clientes
 let currentClients = [];
@@ -1010,7 +1361,7 @@ async function deleteProduct(productId) {
   const producto = currentProducts.find(p => (p.codigo || p.id) == productId);
   const nombreProducto = producto ? (producto.descripcion || `Producto #${productId}`) : `Producto #${productId}`;
 
-  if (!confirm(`¿Estás seguro de que quieres eliminar "${nombreProducto}"?\n\nEsta acción no se puede deshacer.`)) {
+  if (!confirm(`¿Estás seguro de que quieres desactivar "${nombreProducto}"?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.`)) {
     return;
   }
 
@@ -1031,13 +1382,13 @@ async function deleteProduct(productId) {
       throw new Error(`Error ${response.status}: ${errorText}`);
     }
 
-    console.log('✅ Producto eliminado correctamente');
+    console.log('✅ Producto desactivado correctamente');
 
     // Mostrar mensaje de éxito
-    showSuccessMessage('Producto eliminado correctamente');
+    showSuccessMessage('Producto desactivado correctamente');
 
     // Recargar la lista
-    loadProductos();
+    loadProductosData();
 
   } catch (error) {
     console.error('💥 Error eliminando producto:', error);
@@ -1095,17 +1446,26 @@ function showErrorMessage(message) {
 // Buscar productos
 async function searchProducts(searchTerm) {
   console.log('🔍 Buscando productos:', searchTerm);
+  currentProductFilters.search = searchTerm;
+  await applyProductFilters();
+}
+
+// Filtrar productos por estado (activo/inactivo)
+async function filterProductosByEstado() {
+  const estadoFilter = (document.getElementById('filterProductosEstado') as HTMLSelectElement)?.value || 'all';
+  console.log('🔍 Filtrando productos por estado:', estadoFilter);
+  currentProductFilters.estado = estadoFilter;
+  await applyProductFilters();
+}
+
+// Aplicar filtros de productos
+async function applyProductFilters() {
+  console.log('🔍 Aplicando filtros de productos:', currentProductFilters);
   const token = localStorage.getItem('token');
 
   try {
-    let url = '/api/productos';
-    if (searchTerm && searchTerm.trim()) {
-      url += `?search=${encodeURIComponent(searchTerm.trim())}`;
-    }
-
-    console.log('📡 URL de búsqueda:', url);
-
-    const response = await fetch(url, {
+    // Primero cargar todos los productos
+    const response = await fetch('/api/productos', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -1117,15 +1477,355 @@ async function searchProducts(searchTerm) {
       throw new Error(`Error ${response.status}: ${errorText}`);
     }
 
-    const productos = await response.json();
-    console.log('✅ Productos encontrados:', productos.length);
+    let productos = await response.json();
+    console.log('✅ Productos cargados:', productos.length);
+
+    // Aplicar filtro de búsqueda (si hay)
+    if (currentProductFilters.search && currentProductFilters.search.trim()) {
+      const searchTerm = currentProductFilters.search.toLowerCase();
+      productos = productos.filter(producto => 
+        (producto.descripcion || producto.nombre || '').toLowerCase().includes(searchTerm)
+      );
+      console.log('🔍 Productos después de búsqueda:', productos.length);
+    }
+
+    // Aplicar filtro de estado
+    if (currentProductFilters.estado !== 'all') {
+      const isActive = currentProductFilters.estado === 'active';
+      productos = productos.filter(producto => producto.activo === (isActive ? 1 : 0));
+      console.log('🔍 Productos después de filtro de estado:', productos.length);
+    }
 
     currentProducts = productos;
-    renderProductos(productos);
+    renderProductsList(productos);
   } catch (error) {
-    console.error('💥 Error buscando productos:', error);
+    console.error('💥 Error aplicando filtros:', error);
     // En caso de error, mostrar todos los productos
-    loadProductos();
+    loadProductosData();
+  }
+}
+
+// Limpiar filtros de productos
+function clearProductosFilters() {
+  console.log('🧹 Limpiando filtros de productos');
+  
+  // Limpiar campos de filtro
+  const searchInput = document.getElementById('searchProducts') as HTMLInputElement;
+  const estadoFilter = document.getElementById('filterProductosEstado') as HTMLSelectElement;
+  
+  if (searchInput) searchInput.value = '';
+  if (estadoFilter) estadoFilter.value = 'all';
+  
+  // Resetear filtros
+  currentProductFilters = { search: '', estado: 'all' };
+  
+  // Recargar productos sin filtros
+  loadProductosData();
+}
+
+// Renderizar lista de productos
+function renderProductsList(productos) {
+  const productsList = document.getElementById('productsList');
+  if (!productsList) return;
+  
+  if (productos.length === 0) {
+    productsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">No hay productos registrados</div>';
+    return;
+  }
+  
+  // Los productos ahora se muestran correctamente
+  
+  productsList.innerHTML = productos.map(producto => `
+    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.5rem;">
+            ${producto.descripcion || producto.nombre || producto.name || 'Sin nombre'}
+            ${!producto.activo ? '<span style="background: #ef4444; color: white; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; margin-left: 0.5rem;">INACTIVO</span>' : ''}
+          </h4>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">
+            Código: ${producto.codigo} | 
+            ${producto.esRetornable ? '🔄 Retornable' : '📦 No retornable'}
+          </p>
+          <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
+            <span style="color: #059669; font-weight: 600;">$${parseFloat(producto.precio || producto.price || 0).toFixed(2)}</span>
+            <span style="color: #4b5563;">Stock: ${producto.stock || producto.quantity || 0}</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="editProductInline(${producto.codigo || producto.id})" class="btn-small btn-edit">
+            Editar
+          </button>
+          ${producto.activo ? 
+            `<button onclick="deleteProductInline(${producto.codigo || producto.id})" class="btn-small btn-delete">
+              Eliminar
+            </button>` : 
+            `<button onclick="activateProductInline(${producto.codigo || producto.id})" class="btn-small btn-activate">
+              Activar
+            </button>`
+          }
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Mostrar modal para crear producto
+function showCreateProductModal() {
+  editingProductId = null;
+  document.getElementById('modalTitle').textContent = 'Nuevo Producto';
+  document.getElementById('productForm').reset();
+  
+  // Configurar valores por defecto para nuevo producto
+  document.getElementById('productRetornable').checked = false; // Por defecto no retornable
+  document.getElementById('productActivo').checked = true; // Por defecto activo
+  
+  document.getElementById('productModal').classList.remove('hidden');
+}
+
+// Mostrar modal para editar producto
+function editProductInline(productId: any) {
+  const producto = currentProducts.find(p => (p.codigo || p.id) == productId);
+  if (!producto) return;
+  
+  editingProductId = productId;
+  
+  const modalTitle = document.getElementById('modalTitle');
+  const productName = document.getElementById('productName') as HTMLInputElement;
+  const productPrice = document.getElementById('productPrice') as HTMLInputElement;
+  const productStock = document.getElementById('productStock') as HTMLInputElement;
+  const productRetornable = document.getElementById('productRetornable') as HTMLInputElement;
+  const productActivo = document.getElementById('productActivo') as HTMLInputElement;
+  const productModal = document.getElementById('productModal');
+  
+  if (modalTitle) modalTitle.textContent = 'Editar Producto';
+  if (productName) productName.value = producto.descripcion || producto.nombre || producto.name || '';
+  if (productPrice) productPrice.value = producto.precio || producto.price || '';
+  if (productStock) productStock.value = producto.stock || producto.quantity || '';
+  if (productRetornable) productRetornable.checked = !!(producto.esRetornable);
+  if (productActivo) productActivo.checked = !!(producto.activo);
+  if (productModal) productModal.classList.remove('hidden');
+}
+
+// Hacer la función disponible globalmente
+window.editProductInline = editProductInline;
+
+// Cerrar modal
+function closeProductModal() {
+  document.getElementById('productModal').classList.add('hidden');
+  editingProductId = null;
+}
+
+// Manejar envío del formulario
+async function handleProductSubmit(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const productData = {
+    descripcion: formData.get('nombre'), // El campo "nombre" del form se mapea a "descripcion" en la BD
+    precio: parseFloat(formData.get('precio')),
+    stock: parseInt(formData.get('stock')),
+    esRetornable: formData.get('esRetornable') ? 1 : 0, // Convertir checkbox a 1/0
+    activo: formData.get('activo') ? 1 : 0 // Convertir checkbox a 1/0
+  };
+  
+  const token = localStorage.getItem('token');
+  
+  try {
+    let response;
+    const isEditing = !!editingProductId;
+    
+    if (isEditing) {
+      response = await fetch(`/api/productos/${editingProductId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productData)
+      });
+    } else {
+      response = await fetch('/api/productos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productData)
+      });
+    }
+    
+    if (!response.ok) {
+      throw new Error('Error guardando producto');
+    }
+    
+    const result = await response.json();
+    
+    closeProductModal();
+    
+    // Emitir evento para actualización reactiva
+    if (window.eventBus && window.EVENTS) {
+      if (isEditing) {
+        window.eventBus.emit(window.EVENTS.PRODUCTO_UPDATED, {
+          id: editingProductId,
+          producto: { ...productData, codigo: editingProductId }
+        });
+      } else {
+        window.eventBus.emit(window.EVENTS.PRODUCTO_CREATED, {
+          producto: result
+        });
+      }
+    }
+    
+    // Mostrar mensaje de éxito
+    showSuccessMessage(isEditing ? 'Producto actualizado correctamente' : 'Producto creado correctamente');
+    
+  } catch (error) {
+    console.error('Error:', error);
+    showErrorMessage('Error guardando producto: ' + error.message);
+  }
+}
+
+// Eliminar producto (versión inline)
+async function deleteProductInline(productId) {
+  if (!confirm('¿Estás seguro de que quieres desactivar este producto?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.')) {
+    return;
+  }
+  
+  const token = localStorage.getItem('token');
+  
+  try {
+    const response = await fetch(`/api/productos/${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error eliminando producto');
+    }
+    
+    // Emitir evento para actualización reactiva
+    if (window.eventBus && window.EVENTS) {
+      window.eventBus.emit(window.EVENTS.PRODUCTO_DELETED, {
+        id: productId
+      });
+    }
+    
+    showSuccessMessage('Producto desactivado correctamente');
+    
+  } catch (error) {
+    console.error('Error:', error);
+    showErrorMessage('Error eliminando producto: ' + error.message);
+  }
+}
+
+// Activar producto (versión inline)
+async function activateProductInline(productId) {
+  if (!confirm('¿Estás seguro de que quieres activar este producto?\n\nEl producto volverá a estar disponible para nuevos pedidos.')) {
+    return;
+  }
+  
+  const token = localStorage.getItem('token');
+  
+  try {
+    const response = await fetch(`/api/productos/${productId}/activate`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error activando producto');
+    }
+    
+    // Emitir evento para actualización reactiva
+    if (window.eventBus && window.EVENTS) {
+      window.eventBus.emit(window.EVENTS.PRODUCTO_ACTIVATED, {
+        id: productId
+      });
+    }
+    
+    showSuccessMessage('Producto activado correctamente');
+    
+    // Recargar la lista para actualizar los botones
+    loadProductosData();
+    
+  } catch (error) {
+    console.error('Error:', error);
+    showErrorMessage('Error activando producto: ' + error.message);
+  }
+}
+
+// Función searchProducts ya definida arriba
+
+// Hacer las funciones de productos disponibles globalmente
+window.showCreateProductModal = showCreateProductModal;
+window.deleteProductInline = deleteProductInline;
+window.activateProductInline = activateProductInline;
+window.closeProductModal = closeProductModal;
+window.handleProductSubmit = handleProductSubmit;
+window.searchProducts = searchProducts;
+window.renderProductsList = renderProductsList;
+window.filterProductosByEstado = filterProductosByEstado;
+window.applyProductFilters = applyProductFilters;
+window.clearProductosFilters = clearProductosFilters;
+
+// Configurar listeners de eventos para actualización reactiva
+function setupProductEventListeners() {
+  if (window.eventBus && window.EVENTS) {
+    // Escuchar cuando se crea un producto
+    window.eventBus.on(window.EVENTS.PRODUCTO_CREATED, (data) => {
+      console.log('📦 Nuevo producto creado, actualizando lista...', data);
+      loadProductosData();
+    });
+
+    // Escuchar cuando se actualiza un producto
+    window.eventBus.on(window.EVENTS.PRODUCTO_UPDATED, (data) => {
+      console.log('📦 Producto actualizado, actualizando lista...', data);
+      
+      // Actualización reactiva: actualizar solo el producto específico
+      const producto = data.producto;
+      const productIndex = currentProducts.findIndex(p => (p.codigo || p.id) == data.id);
+      
+      if (productIndex !== -1) {
+        // Actualizar el producto en el array
+        currentProducts[productIndex] = { ...currentProducts[productIndex], ...producto };
+        // Re-renderizar la lista
+        renderProductsList(currentProducts);
+      } else {
+        // Si no se encuentra, recargar toda la lista
+        loadProductosData();
+      }
+    });
+
+    // Escuchar cuando se elimina un producto
+    window.eventBus.on(window.EVENTS.PRODUCTO_DELETED, (data) => {
+      console.log('📦 Producto eliminado, actualizando lista...', data);
+      
+      // Actualización reactiva: remover el producto del array
+      currentProducts = currentProducts.filter(p => (p.codigo || p.id) != data.id);
+      renderProductsList(currentProducts);
+    });
+
+    // Escuchar cuando se activa un producto
+    window.eventBus.on(window.EVENTS.PRODUCTO_ACTIVATED, (data) => {
+      console.log('📦 Producto activado, actualizando lista...', data);
+      
+      // Actualización reactiva: actualizar el estado del producto
+      const productIndex = currentProducts.findIndex(p => (p.codigo || p.id) == data.id);
+      if (productIndex !== -1) {
+        currentProducts[productIndex].activo = 1;
+        renderProductsList(currentProducts);
+      } else {
+        // Si no se encuentra, recargar toda la lista
+        loadProductosData();
+      }
+    });
+
+    console.log('✅ Event listeners de productos configurados');
   }
 }
 
@@ -1334,6 +2034,24 @@ window.deleteProduct = deleteProduct;
 window.showSuccessMessage = showSuccessMessage;
 window.showErrorMessage = showErrorMessage;
 
+// Funciones de pedidos
+window.loadPedidos = loadPedidos;
+window.clearPedidosFilters = clearPedidosFilters;
+window.viewPedido = viewPedido;
+window.editPedido = editPedido;
+window.entregarPedido = entregarPedido;
+
+// Funciones de clientes
+window.loadClientes = loadClientes;
+window.clearClientSearch = clearClientSearch;
+window.editClient = editClient;
+window.showClientLocation = showClientLocation;
+window.showClientAccount = showClientAccount;
+window.deleteClient = deleteClient;
+
+// Funciones de productos (ya definidas arriba)
+window.loadProductosData = loadProductosData;
+
 // ========== FUNCIONES PARA PEDIDOS ==========
 
 // Mostrar modal para crear pedido
@@ -1358,6 +2076,22 @@ function showMapModal() {
   }
 }
 
+// Entregar pedido
+function entregarPedido(pedidoId) {
+  console.log('🚚 Iniciando entrega del pedido:', pedidoId);
+  console.log('📋 currentPedidos disponible:', !!window.currentPedidos);
+  console.log('📋 allPedidos disponible:', !!window.allPedidos);
+  console.log('📋 Cantidad currentPedidos:', window.currentPedidos?.length || 0);
+  console.log('📋 Cantidad allPedidos:', window.allPedidos?.length || 0);
+
+  if (window.deliveryModal) {
+    window.deliveryModal.show(pedidoId);
+  } else {
+    console.error('❌ DeliveryModal no está disponible');
+    alert('Error: Modal de entrega no disponible');
+  }
+}
+
 // Funciones de clientes
 window.searchClients = searchClients;
 window.debounceSearchClients = debounceSearchClients;
@@ -1368,6 +2102,16 @@ window.showClientAccount = showClientAccount;
 window.deleteClient = deleteClient;
 window.showCreateClientModal = showCreateClientModal;
 window.setCurrentClients = setCurrentClients;
+
+// Funciones de pagos
+window.showClientPayment = showClientPayment;
+window.closePaymentModal = closePaymentModal;
+window.processClientPayment = processClientPayment;
+
+// Funciones de retornables
+window.showReturnablesModal = showReturnablesModal;
+window.closeReturnablesModal = closeReturnablesModal;
+window.processReturnablesReturn = processReturnablesReturn;
 
 // Funciones de productos
 window.debounceSearch = debounceSearch;
@@ -1380,14 +2124,505 @@ window.showErrorMessage = showErrorMessage;
 // Funciones de pedidos
 window.showCreateOrderModal = showCreateOrderModal;
 window.showMapModal = showMapModal;
+window.entregarPedido = entregarPedido;
 window.getPedidoItems = getPedidoItems;
 window.viewPedido = viewPedido;
 window.filterPedidos = filterPedidos;
 window.clearPedidosFilters = clearPedidosFilters;
+
+// Funciones de autenticación
+window.logout = logout;
+
+// Función para debuggear tipos de pago
+window.debugTipoPago = async function(tipoPagoId) {
+  const token = localStorage.getItem('token');
+  try {
+    const response = await fetch(`/api/tiposdepago/debug/${tipoPagoId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    console.log('🔍 DEBUG TIPO DE PAGO:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error debuggeando tipo de pago:', error);
+  }
+};
+
+// Mostrar modal de pago para cliente
+async function showClientPayment(clientId) {
+  console.log('💰 Mostrando modal de pago para cliente ID:', clientId);
+
+  const cliente = currentClients.find(c => (c.codigo || c.id) == clientId);
+
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    alert('Cliente no encontrado');
+    return;
+  }
+
+  const nombreCompleto = cliente.nombreCompleto || `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'Cliente sin nombre';
+  const saldoActual = parseFloat(cliente.saldo || 0);
+
+  // Cargar tipos de pago que NO aplican saldo (aplicaSaldo = 0)
+  let tiposPagoDisponibles = [];
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/tiposdepago', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.ok) {
+      const todosLosTipos = await response.json();
+      // Filtrar solo los que NO aplican saldo
+      tiposPagoDisponibles = todosLosTipos.filter(tipo => {
+        // Convertir aplicaSaldo de Buffer a boolean
+        const aplicaSaldo = tipo.aplicaSaldo && typeof tipo.aplicaSaldo === 'object' && tipo.aplicaSaldo.type === 'Buffer' 
+          ? tipo.aplicaSaldo.data[0] === 1 
+          : tipo.aplicaSaldo === 1 || tipo.aplicaSaldo === true;
+        
+        return !aplicaSaldo; // Solo los que NO aplican saldo
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error cargando tipos de pago:', error);
+  }
+
+  // Crear opciones de tipos de pago
+  const opcionesTipoPago = tiposPagoDisponibles.map(tipo => 
+    `<option value="${tipo.id}">${tipo.pago}</option>`
+  ).join('');
+
+  const modalContent = `
+    <div id="paymentModal" class="modal-overlay" style="display: flex;">
+      <div class="modal-content" style="max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h4 class="modal-title">💰 Ingresar Pago</h4>
+          <button onclick="closePaymentModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">
+            ×
+          </button>
+        </div>
+        
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 0.375rem;">
+          <div style="margin-bottom: 0.5rem;">
+            <strong>👤 Cliente:</strong> ${nombreCompleto}
+          </div>
+          <div style="margin-bottom: 0.5rem;">
+            <strong>💰 Saldo Actual:</strong> $${saldoActual.toFixed(2)}
+          </div>
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            ${saldoActual > 0 ? 'El cliente tiene deuda pendiente' : saldoActual < 0 ? 'El cliente tiene crédito disponible' : 'El cliente no tiene saldo pendiente'}
+          </div>
+        </div>
+
+        <form id="paymentForm" onsubmit="processClientPayment(event, ${clientId})">
+          <div class="form-group">
+            <label class="form-label">Tipo de Pago *</label>
+            <select id="paymentTipoPago" name="tipoPago" required class="form-input">
+              <option value="">Seleccionar tipo de pago...</option>
+              ${opcionesTipoPago}
+            </select>
+            <small style="color: #6b7280; font-size: 0.875rem;">
+              Solo se muestran métodos de pago que no aplican saldo
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Monto a Pagar *</label>
+            <div style="position: relative;">
+              <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280;">$</span>
+              <input type="number" id="paymentMonto" name="monto" step="0.01" min="0.01" required 
+                     class="form-input" style="padding-left: 2rem;" placeholder="0.00" />
+            </div>
+            <small style="color: #6b7280; font-size: 0.875rem;">
+              Este monto se restará del saldo del cliente
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Observaciones</label>
+            <textarea id="paymentObservaciones" name="observaciones" class="form-input" rows="2"
+                      placeholder="Observaciones opcionales sobre el pago"></textarea>
+          </div>
+
+          <div class="modal-buttons">
+            <button type="button" onclick="closePaymentModal()" class="btn-secondary">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+              💰 Confirmar Pago
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  // Agregar el modal al body
+  document.body.insertAdjacentHTML('beforeend', modalContent);
+}
+
+// Cerrar modal de pago
+function closePaymentModal() {
+  const modal = document.getElementById('paymentModal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+// Procesar el pago del cliente
+async function processClientPayment(event, clientId) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  const tipoPago = formData.get('tipoPago');
+  const monto = parseFloat(formData.get('monto'));
+  const observaciones = formData.get('observaciones');
+
+  if (!tipoPago || !monto || monto <= 0) {
+    alert('Por favor complete todos los campos correctamente');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/pagos/cliente', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        clienteId: clientId,
+        tipoPagoId: tipoPago,
+        monto: monto,
+        observaciones: observaciones || null
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    const resultado = await response.json();
+    console.log('✅ Pago procesado:', resultado);
+
+    // Cerrar modal
+    closePaymentModal();
+
+    // Mostrar mensaje de éxito
+    alert(`✅ Pago registrado exitosamente\n\nCliente: ${resultado.clienteNombre}\nMonto: $${monto.toFixed(2)}\nNuevo saldo: $${resultado.nuevoSaldo.toFixed(2)}`);
+
+    // Recargar la lista de clientes para mostrar el saldo actualizado
+    await loadClientes();
+
+  } catch (error) {
+    console.error('❌ Error procesando pago:', error);
+    alert(`Error procesando pago: ${error.message}`);
+  }
+}
+
+// Función ya integrada en el listener principal de DOMContentLoaded
+
+// Mostrar modal de devolución de retornables
+async function showReturnablesModal(clientId) {
+  console.log('🔄 Mostrando modal de devolución de retornables para cliente ID:', clientId);
+
+  const cliente = currentClients.find(c => (c.codigo || c.id) == clientId);
+
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    alert('Cliente no encontrado');
+    return;
+  }
+
+  const nombreCompleto = cliente.nombreCompleto || `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'Cliente sin nombre';
+  const retornablesActuales = parseInt(cliente.retornables || 0);
+
+  // Cargar productos retornables
+  let productosRetornables = [];
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/productos', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.ok) {
+      const todosLosProductos = await response.json();
+      // Filtrar solo productos retornables
+      productosRetornables = todosLosProductos.filter(producto => {
+        const esRetornable = producto.esRetornable === 1 || producto.esRetornable === true;
+        return esRetornable;
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error cargando productos retornables:', error);
+  }
+
+  // Crear opciones de productos retornables
+  const opcionesProductos = productosRetornables.map(producto => 
+    `<option value="${producto.id}">${producto.descripcion}</option>`
+  ).join('');
+
+  const modalContent = `
+    <div id="returnablesModal" class="modal-overlay" style="display: flex;">
+      <div class="modal-content" style="max-width: 600px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h4 class="modal-title">🔄 Devolver Retornables</h4>
+          <button onclick="closeReturnablesModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">
+            ×
+          </button>
+        </div>
+        
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f0fdf4; border: 1px solid #22c55e; border-radius: 0.375rem;">
+          <div style="margin-bottom: 0.5rem;">
+            <strong>👤 Cliente:</strong> ${nombreCompleto}
+          </div>
+          <div style="margin-bottom: 0.5rem;">
+            <strong>🔄 Retornables Actuales:</strong> ${retornablesActuales} unidades
+          </div>
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            ${retornablesActuales > 0 ? 'El cliente tiene retornables para devolver' : 'El cliente no tiene retornables pendientes'}
+          </div>
+        </div>
+
+        <form id="returnablesForm" onsubmit="processReturnablesReturn(event, ${clientId})">
+          <div class="form-group">
+            <label class="form-label">Producto Retornable *</label>
+            <select id="returnablesProducto" name="productoId" required class="form-input">
+              <option value="">Seleccionar producto...</option>
+              ${opcionesProductos}
+            </select>
+            <small style="color: #6b7280; font-size: 0.875rem;">
+              Solo se muestran productos marcados como retornables
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Cantidad a Devolver *</label>
+            <input type="number" id="returnablesCantidad" name="cantidad" min="1" max="${retornablesActuales}" required 
+                   class="form-input" placeholder="0" />
+            <small style="color: #6b7280; font-size: 0.875rem;">
+              Máximo: ${retornablesActuales} unidades (retornables actuales del cliente)
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Observaciones</label>
+            <textarea id="returnablesObservaciones" name="observaciones" class="form-input" rows="2"
+                      placeholder="Observaciones opcionales sobre la devolución"></textarea>
+          </div>
+
+          <div class="modal-buttons">
+            <button type="button" onclick="closeReturnablesModal()" class="btn-secondary">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary" style="width: auto; padding: 0.5rem 1rem; background: #10b981;">
+              🔄 Confirmar Devolución
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  // Agregar el modal al body
+  document.body.insertAdjacentHTML('beforeend', modalContent);
+}
+
+// Cerrar modal de retornables
+function closeReturnablesModal() {
+  const modal = document.getElementById('returnablesModal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+// Procesar la devolución de retornables
+async function processReturnablesReturn(event, clientId) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  const productoId = formData.get('productoId');
+  const cantidad = parseInt(formData.get('cantidad'));
+  const observaciones = formData.get('observaciones');
+
+  if (!productoId || !cantidad || cantidad <= 0) {
+    alert('Por favor complete todos los campos correctamente');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/clientes/retornables/devolver', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        clienteId: clientId,
+        productoId: productoId,
+        cantidad: cantidad,
+        observaciones: observaciones || null
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    const resultado = await response.json();
+    console.log('✅ Devolución procesada:', resultado);
+
+    // Cerrar modal
+    closeReturnablesModal();
+
+    // Mostrar mensaje de éxito
+    alert(`✅ Devolución registrada exitosamente\n\nCliente: ${resultado.clienteNombre}\nProducto: ${resultado.productoNombre}\nCantidad: ${cantidad} unidades\nNuevos retornables: ${resultado.nuevosRetornables} unidades`);
+
+    // Recargar la lista de clientes para mostrar los retornables actualizados
+    await loadClientes();
+
+  } catch (error) {
+    console.error('❌ Error procesando devolución:', error);
+    alert(`Error procesando devolución: ${error.message}`);
+  }
+}
 </script>
+
+<!-- Sistema de eventos global -->
+<script src="/js/utils/events.js" is:inline></script>
 
 <!-- Cargar los componentes modales -->
 <script src="/js/ProductModal.js" is:inline></script>
 <script src="/js/ClientModal.js" is:inline></script>
 <script src="/js/OrderModal.js" is:inline></script>
 <script src="/js/MapModal.js" is:inline></script>
+<script src="/js/DeliveryModal.js" is:inline></script>
+
+<!-- Configurar event listeners después de cargar todo -->
+<script is:inline>
+// Configurar listeners de eventos para actualización reactiva
+function setupEventListeners() {
+  if (window.eventBus && window.EVENTS) {
+    // Escuchar cuando se crea un nuevo pedido
+    window.eventBus.on(window.EVENTS.PEDIDO_CREATED, async (data) => {
+      console.log('📦 Nuevo pedido creado en index.astro, actualizando lista...', data);
+
+      // Solo actualizar si estamos en la vista de pedidos
+      if (window.currentRoute === 'pedidos') {
+        try {
+          await loadPedidos();
+          console.log('✅ Lista de pedidos actualizada reactivamente');
+        } catch (error) {
+          console.error('❌ Error actualizando pedidos:', error);
+        }
+      }
+    });
+
+    // Escuchar cuando se actualiza un pedido
+    window.eventBus.on(window.EVENTS.PEDIDO_UPDATED, async (data) => {
+      console.log('📦 Pedido actualizado en index.astro, actualizando lista...', data);
+
+      // Solo actualizar si estamos en la vista de pedidos
+      if (window.currentRoute === 'pedidos') {
+        try {
+          await loadPedidos();
+          console.log('✅ Lista de pedidos actualizada reactivamente');
+        } catch (error) {
+          console.error('❌ Error actualizando pedidos:', error);
+        }
+      }
+    });
+
+    console.log('📡 Event listeners configurados para index.astro');
+    return true; // Indicar que se configuró exitosamente
+  } else {
+    return false; // Indicar que no se pudo configurar
+  }
+}
+
+// Configurar listeners con límite de reintentos
+let setupAttempts = 0;
+const maxAttempts = 10;
+
+function trySetupEventListeners() {
+  setupAttempts++;
+
+  if (setupEventListeners()) {
+    console.log('✅ Event listeners configurados exitosamente');
+    return;
+  }
+
+  if (setupAttempts < maxAttempts) {
+    console.warn(`⚠️ Sistema de eventos no disponible, reintento ${setupAttempts}/${maxAttempts} en 500ms...`);
+    setTimeout(trySetupEventListeners, 500);
+  } else {
+    console.error('❌ No se pudo configurar el sistema de eventos después de', maxAttempts, 'intentos');
+  }
+}
+
+// Función de desarrollo para saltarse la verificación del servidor
+window.enableDevMode = function() {
+  localStorage.setItem('skipServerCheck', 'true');
+  console.log('🔧 Modo desarrollo activado. Recarga la página para aplicar.');
+  console.log('Para desactivar: localStorage.removeItem("skipServerCheck")');
+};
+
+window.disableDevMode = function() {
+  localStorage.removeItem('skipServerCheck');
+  console.log('🔧 Modo desarrollo desactivado. Recarga la página para aplicar.');
+};
+
+// Función de diagnóstico
+window.diagnosticar = function() {
+  console.log('🔍 DIAGNÓSTICO DE LA APLICACIÓN');
+  console.log('================================');
+  console.log('✅ Sistema de eventos:', window.eventBus ? 'OK' : '❌ NO DISPONIBLE');
+  console.log('✅ Eventos definidos:', window.EVENTS ? 'OK' : '❌ NO DISPONIBLE');
+  console.log('✅ Usuario actual:', currentUser ? 'OK' : '❌ NO DEFINIDO');
+  console.log('✅ Token:', localStorage.getItem('token') ? 'OK' : '❌ NO ENCONTRADO');
+  console.log('✅ Ruta actual:', currentRoute || '❌ NO DEFINIDA');
+  console.log('✅ Modo desarrollo:', localStorage.getItem('skipServerCheck') === 'true' ? 'ACTIVADO' : 'DESACTIVADO');
+  console.log('================================');
+  
+  // Verificar funciones críticas
+  const funciones = [
+    'checkAuth', 'showMainApp', 'loadRoute', 
+    'editProductInline', 'deleteProductInline', 'showCreateProductModal',
+    'editClient', 'deleteClient', 'showCreateClientModal',
+    'viewPedido', 'editPedido', 'entregarPedido'
+  ];
+  funciones.forEach(func => {
+    console.log(`✅ ${func}:`, typeof window[func] === 'function' ? 'OK' : '❌ NO DEFINIDA');
+  });
+};
+
+// Función para debuggear tipos de pago
+window.debugTipoPago = async function(tipoPagoId) {
+  const token = localStorage.getItem('token');
+  try {
+    const response = await fetch(`/api/tiposdepago/debug/${tipoPagoId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    console.log('🔍 DEBUG TIPO DE PAGO:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error debuggeando tipo de pago:', error);
+  }
+};
+
+// Funciones de pagos
+window.showClientPayment = showClientPayment;
+window.closePaymentModal = closePaymentModal;
+window.processClientPayment = processClientPayment;
+
+// Función ya integrada en el listener principal de DOMContentLoaded
+</script>

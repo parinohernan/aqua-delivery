@@ -3,15 +3,47 @@ class ClientModal {
   constructor() {
     this.editingClientId = null;
     this.currentClients = [];
+    this.availableZonas = [];
     this.map = null;
     this.marker = null;
     this.defaultLocation = [-34.6037, -58.3816]; // Buenos Aires por defecto
     this.init();
   }
 
-  init() {
+  async init() {
     this.createModal();
     this.attachEventListeners();
+    await this.loadZonas();
+  }
+
+  async loadZonas() {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/zonas', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        this.availableZonas = await response.json();
+        this.updateZonaSelector();
+      } else {
+        console.warn('⚠️ No se pudieron cargar las zonas');
+        this.availableZonas = [];
+      }
+    } catch (error) {
+      console.error('💥 Error cargando zonas:', error);
+      this.availableZonas = [];
+    }
+  }
+
+  updateZonaSelector() {
+    const zonaSelect = document.getElementById('clientZona');
+    if (zonaSelect && this.availableZonas.length > 0) {
+      zonaSelect.innerHTML = '<option value="">Seleccionar zona...</option>' +
+        this.availableZonas.map(zona => `<option value="${zona.zona}">${zona.zona}</option>`).join('');
+    }
   }
 
   createModal() {
@@ -50,6 +82,13 @@ class ClientModal {
               <label class="form-label">Dirección *</label>
               <textarea id="clientAddress" name="direccion" required class="form-input" rows="2"
                         placeholder="Ej: Av. Corrientes 1234, CABA"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Zona/Ruta</label>
+              <select id="clientZona" name="zona" class="form-input">
+                <option value="">Seleccionar zona...</option>
+              </select>
             </div>
 
             <div class="form-group">
@@ -158,6 +197,7 @@ class ClientModal {
       document.getElementById('clientLastName').value = clientData.apellido || '';
       document.getElementById('clientPhone').value = clientData.telefono || '';
       document.getElementById('clientAddress').value = clientData.direccion || '';
+      document.getElementById('clientZona').value = clientData.zona || '';
       document.getElementById('clientBalance').value = clientData.saldo || 0;
       document.getElementById('clientReturnables').value = clientData.retornables || 0;
 
@@ -428,6 +468,7 @@ class ClientModal {
         apellido: formData.get('apellido').trim(),
         telefono: formData.get('telefono').trim(),
         direccion: formData.get('direccion').trim(),
+        zona: formData.get('zona') || null,
         saldoDinero: parseFloat(formData.get('saldoDinero') || 0),
         saldoRetornables: parseInt(formData.get('saldoRetornables') || 0),
         latitud: formData.get('latitud') ? parseFloat(formData.get('latitud')) : null,

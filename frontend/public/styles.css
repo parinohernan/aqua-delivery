@@ -346,6 +346,56 @@ body {
   }
 }
 
+/* Estilos para el modal de entrega */
+#deliveryModal .form-group {
+  margin-bottom: 1.5rem;
+}
+
+#deliveryModal .form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+#deliveryModal .form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+#deliveryModal .form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Estilos para el resumen de entrega */
+#resumenEntrega {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-left: 4px solid #3b82f6;
+}
+
+/* Responsive para modal de entrega */
+@media (max-width: 768px) {
+  #deliveryModal .modal-content {
+    width: 95vw;
+    padding: 1rem;
+    margin: 1rem;
+  }
+
+  #deliveryModal .modal-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  #deliveryModal .modal-buttons button {
+    width: 100%;
+  }
+}
+
 .btn-primary {
   width: 100%;
   background-color: #3b82f6;
@@ -825,6 +875,15 @@ body {
 
 .btn-delete:hover {
   background: #dc2626;
+}
+
+.btn-activate {
+  background: #10b981;
+  color: white;
+}
+
+.btn-activate:hover {
+  background: #059669;
 }
 
 /* Grid layouts */

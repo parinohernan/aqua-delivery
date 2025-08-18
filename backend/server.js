@@ -19,6 +19,7 @@ app.use('/api/productos', require('./routes/productos'));
 app.use('/api/pedidos', require('./routes/pedidos'));
 app.use('/api/pagos', require('./routes/pagos'));
 app.use('/api/zonas', require('./routes/zonas'));
+app.use('/api/tiposdepago', require('./routes/tiposdepago'));
 
 // Health check
 app.get('/health', (req, res) => {
