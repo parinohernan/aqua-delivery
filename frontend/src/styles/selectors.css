@@ -1,0 +1,323 @@
+/* ===== ESTILOS PARA SELECTORES MODERNOS ===== */
+
+/* Selector base */
+.modern-select {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Input del selector */
+.modern-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  padding-right: 2.5rem; /* Espacio para el icono */
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+}
+
+/* Placeholder */
+.modern-select select:invalid,
+.modern-select select option[value=""][disabled] {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Opciones del selector */
+.modern-select select option {
+  background: #2d3748;
+  color: white;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+/* Hover en las opciones */
+.modern-select select option:hover {
+  background: #4a5568;
+}
+
+/* Focus del selector */
+.modern-select select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+/* Icono del selector */
+.modern-select::after {
+  content: '▼';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+/* Rotación del icono al abrir */
+.modern-select select:focus + .modern-select::after,
+.modern-select:hover::after {
+  transform: translateY(-50%) rotate(180deg);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Hover del selector */
+.modern-select:hover select {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Selector deshabilitado */
+.modern-select.disabled select {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modern-select.disabled::after {
+  opacity: 0.4;
+}
+
+/* ===== VARIANTES DE SELECTOR ===== */
+
+/* Selector pequeño */
+.modern-select.small select {
+  padding: 0.5rem 0.75rem;
+  padding-right: 2rem;
+  font-size: 0.875rem;
+}
+
+.modern-select.small::after {
+  right: 0.75rem;
+  font-size: 0.7rem;
+}
+
+/* Selector grande */
+.modern-select.large select {
+  padding: 1rem 1.25rem;
+  padding-right: 3rem;
+  font-size: 1.125rem;
+}
+
+.modern-select.large::after {
+  right: 1.25rem;
+  font-size: 0.9rem;
+}
+
+/* ===== TEMAS DE COLOR ===== */
+
+/* Selector primario (azul) */
+.modern-select.primary select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Selector secundario (verde) */
+.modern-select.secondary select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Selector de advertencia (naranja) */
+.modern-select.warning select:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+/* Selector de error (rojo) */
+.modern-select.error select:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+/* ===== ESTADOS ESPECIALES ===== */
+
+/* Selector con valor seleccionado */
+.modern-select.has-value select {
+  color: white;
+  font-weight: 500;
+}
+
+/* Selector con error */
+.modern-select.error select {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.modern-select.error::after {
+  color: #ef4444;
+}
+
+/* Selector con éxito */
+.modern-select.success select {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.modern-select.success::after {
+  color: #10b981;
+}
+
+/* ===== ANIMACIONES ===== */
+
+/* Animación de entrada */
+@keyframes selectSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modern-select {
+  animation: selectSlideIn 0.3s ease;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 768px) {
+  .modern-select select {
+    font-size: 16px; /* Evita zoom en iOS */
+  }
+  
+  .modern-select.small select {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modern-select select {
+    padding: 0.875rem 1rem;
+    padding-right: 2.5rem;
+  }
+  
+  .modern-select::after {
+    right: 1rem;
+  }
+}
+
+/* ===== UTILIDADES ===== */
+
+/* Selector con icono personalizado */
+.modern-select.with-icon {
+  display: flex;
+  align-items: center;
+}
+
+.modern-select.with-icon::before {
+  content: attr(data-icon);
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  opacity: 0.7;
+  z-index: 1;
+}
+
+.modern-select.with-icon select {
+  padding-left: 2.5rem;
+}
+
+/* Selector con label flotante */
+.modern-select.floating-label {
+  position: relative;
+}
+
+.modern-select.floating-label label {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.modern-select.floating-label select:focus + label,
+.modern-select.floating-label select:not([value=""]) + label {
+  top: 0;
+  left: 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(102, 126, 234, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* ===== ESTILOS PARA SELECTORES ESPECÍFICOS ===== */
+
+/* Selector de estado (para productos) */
+.estado-select {
+  min-width: 150px;
+}
+
+.estado-select select option[value="activos"] {
+  color: #10b981;
+}
+
+.estado-select select option[value="inactivos"] {
+  color: #ef4444;
+}
+
+.estado-select select option[value="todos"] {
+  color: #6b7280;
+}
+
+/* Selector de tipo de informe */
+.tipo-informe-select {
+  min-width: 180px;
+}
+
+.tipo-informe-select select option[value="resumen"] {
+  color: #3b82f6;
+}
+
+.tipo-informe-select select option[value="detallado"] {
+  color: #8b5cf6;
+}
+
+/* ===== COMPATIBILIDAD CON NAVEGADORES ===== */
+
+/* Firefox */
+@-moz-document url-prefix() {
+  .modern-select select {
+    background-image: none;
+  }
+  
+  .modern-select select option {
+    background: #2d3748;
+    color: white;
+  }
+}
+
+/* Safari */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .modern-select select {
+    background-image: none;
+  }
+}
+
+/* Edge */
+@supports (-ms-ime-align: auto) {
+  .modern-select select {
+    background-image: none;
+  }
+}

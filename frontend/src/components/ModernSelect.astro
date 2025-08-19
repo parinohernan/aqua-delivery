@@ -1,0 +1,107 @@
+---
+// Componente de selector moderno reutilizable
+export interface Props {
+  id: string;
+  name?: string;
+  options: Array<{value: string; label: string; icon?: string}>;
+  placeholder?: string;
+  value?: string;
+  required?: boolean;
+  disabled?: boolean;
+  size?: 'small' | 'medium' | 'large';
+  theme?: 'primary' | 'secondary' | 'warning' | 'error';
+  className?: string;
+  onChange?: string;
+}
+
+const {
+  id,
+  name,
+  options,
+  placeholder = 'Seleccionar...',
+  value = '',
+  required = false,
+  disabled = false,
+  size = 'medium',
+  theme = 'primary',
+  className = '',
+  onChange
+} = Astro.props;
+
+const sizeClass = size === 'small' ? 'small' : size === 'large' ? 'large' : '';
+const themeClass = theme !== 'primary' ? theme : '';
+const disabledClass = disabled ? 'disabled' : '';
+const classes = `modern-select ${sizeClass} ${themeClass} ${disabledClass} ${className}`.trim();
+---
+
+<div class={classes}>
+  <select 
+    id={id}
+    name={name}
+    {required}
+    {disabled}
+    onchange={onChange}
+  >
+    {placeholder && (
+      <option value="" disabled selected={!value}>
+        {placeholder}
+      </option>
+    )}
+    
+    {options.map(option => (
+      <option 
+        value={option.value}
+        selected={option.value === value}
+      >
+        {option.icon ? `${option.icon} ${option.label}` : option.label}
+      </option>
+    ))}
+  </select>
+</div>
+
+<style>
+  /* Estilos específicos del componente */
+  .modern-select {
+    width: 100%;
+  }
+  
+  /* Animación de entrada */
+  .modern-select {
+    animation: selectSlideIn 0.3s ease;
+  }
+  
+  @keyframes selectSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<script>
+  // Funcionalidad adicional del selector
+  document.addEventListener('DOMContentLoaded', function() {
+    const selects = document.querySelectorAll('.modern-select select');
+    
+    selects.forEach(select => {
+      // Agregar clase cuando hay valor seleccionado
+      select.addEventListener('change', function() {
+        const container = this.closest('.modern-select');
+        if (this.value) {
+          container.classList.add('has-value');
+        } else {
+          container.classList.remove('has-value');
+        }
+      });
+      
+      // Verificar valor inicial
+      if (select.value) {
+        select.closest('.modern-select').classList.add('has-value');
+      }
+    });
+  });
+</script>

@@ -1,0 +1,534 @@
+---
+// Componente modular para la sección de productos
+---
+
+<div class="productos-section">
+  <div class="productos-header">
+    <div class="header-content">
+      <h2 class="section-title">
+        <span class="icon">📦</span>
+        Gestión de Productos
+      </h2>
+      <p class="section-subtitle">Administra tu catálogo de productos de manera eficiente</p>
+    </div>
+  </div>
+
+  <div class="productos-container">
+    <!-- Panel de acciones -->
+    <div class="actions-panel">
+      <div class="actions-header">
+        <h3>⚡ Acciones Rápidas</h3>
+      </div>
+      
+      <div class="actions-content">
+        <button onclick="window.showCreateProductModal()" class="btn-create">
+          <span class="btn-icon">➕</span>
+          Nuevo Producto
+        </button>
+        
+        <div class="search-group">
+          <div class="search-input-wrapper">
+            <span class="search-icon">🔍</span>
+            <input 
+              type="text" 
+              id="productosSearch" 
+              placeholder="Buscar productos..."
+              class="search-input"
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de filtros -->
+    <div class="filters-panel">
+      <div class="filters-header">
+        <h3>🔍 Filtros</h3>
+      </div>
+      
+      <div class="filters-content">
+        <div class="filter-group">
+          <label for="filterProductosEstado" class="filter-label">
+            <span class="label-icon">📊</span>
+            Estado
+          </label>
+          <select id="filterProductosEstado" class="filter-select">
+            <option value="todos">Todos los productos</option>
+            <option value="activos">Solo activos</option>
+            <option value="inactivos">Solo inactivos</option>
+          </select>
+        </div>
+        
+        <button onclick="window.clearProductosFilters()" class="btn-clear">
+          <span class="btn-icon">🔄</span>
+          Limpiar Filtros
+        </button>
+      </div>
+    </div>
+
+    <!-- Lista de productos -->
+    <div class="products-area">
+      <div id="productosList" class="products-container">
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <h4>Cargando productos...</h4>
+          <p>Preparando tu catálogo de productos</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Estilos para la sección de productos */
+  .productos-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: white;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .productos-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+  }
+
+  .section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    background: linear-gradient(45deg, #fff, #f0f0f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .section-title .icon {
+    font-size: 3rem;
+    -webkit-text-fill-color: #fff;
+    background: none;
+  }
+
+  .section-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+    font-weight: 300;
+  }
+
+  .productos-container {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+  }
+
+  /* Panel de acciones */
+  .actions-panel {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .actions-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  .actions-header h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .actions-content {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-create {
+    background: linear-gradient(45deg, #4ade80, #22c55e);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+  }
+
+  .btn-create:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+  }
+
+  .btn-create:active {
+    transform: translateY(0);
+  }
+
+  .search-group {
+    flex: 1;
+    min-width: 300px;
+  }
+
+  .search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    font-size: 1.1rem;
+    opacity: 0.7;
+    z-index: 1;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+  }
+
+  .search-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+  }
+
+  /* Panel de filtros */
+  .filters-panel {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  .filters-header h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .filters-content {
+    display: flex;
+    gap: 1.5rem;
+    align-items: end;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 200px;
+  }
+
+  .filter-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0.9;
+  }
+
+  .label-icon {
+    font-size: 1rem;
+  }
+
+  .filter-select {
+    padding: 0.75rem 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+  }
+
+  .filter-select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-clear {
+    background: linear-gradient(45deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    box-shadow: 0 4px 15px rgba(217, 119, 6, 0.3);
+  }
+
+  .btn-clear:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(217, 119, 6, 0.4);
+  }
+
+  .btn-clear:active {
+    transform: translateY(0);
+  }
+
+  /* Área de productos */
+  .products-area {
+    min-height: 400px;
+  }
+
+  .products-container {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    min-height: 400px;
+    transition: all 0.3s ease;
+  }
+
+  /* Estado vacío */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+  }
+
+  .empty-state h4 {
+    font-size: 1.5rem;
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+  }
+
+  .empty-state p {
+    font-size: 1rem;
+    margin: 0;
+    opacity: 0.8;
+  }
+
+  /* Estados de carga y error */
+  .loading-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .error-state {
+    text-align: center;
+    padding: 2rem;
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+  }
+
+  .error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .productos-section {
+      padding: 1rem;
+    }
+
+    .section-title {
+      font-size: 2rem;
+    }
+
+    .actions-content,
+    .filters-content {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .search-group {
+      min-width: auto;
+    }
+
+    .filter-group {
+      min-width: auto;
+    }
+
+    .actions-panel,
+    .filters-panel,
+    .products-container {
+      padding: 1.5rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .section-title {
+      font-size: 1.5rem;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .section-title .icon {
+      font-size: 2rem;
+    }
+  }
+</style>
+
+<script>
+  // Configurar búsqueda con debounce
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Configurando event listeners de productos...');
+    
+    const searchInput = document.getElementById('productosSearch');
+    if (searchInput) {
+      console.log('✅ Input de búsqueda encontrado');
+      let searchTimeout;
+      
+      searchInput.addEventListener('input', function() {
+        console.log('🔍 Input de búsqueda detectado:', this.value);
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          console.log('🔍 Ejecutando búsqueda:', this.value);
+          if (window.searchProducts) {
+            window.searchProducts(this.value);
+          } else {
+            console.error('❌ window.searchProducts no está disponible');
+          }
+        }, 300);
+      });
+      console.log('✅ Event listener de búsqueda configurado');
+    } else {
+      console.error('❌ No se encontró el input de búsqueda');
+    }
+
+    // Configurar filtro de estado
+    const estadoFilter = document.getElementById('filterProductosEstado');
+    if (estadoFilter) {
+      console.log('✅ Selector de estado encontrado');
+      estadoFilter.addEventListener('change', function() {
+        console.log('🔍 Cambio de estado detectado:', this.value);
+        if (window.filterProductosByEstado) {
+          window.filterProductosByEstado(this.value);
+        } else {
+          console.error('❌ window.filterProductosByEstado no está disponible');
+        }
+      });
+      console.log('✅ Event listener de filtro de estado configurado');
+    } else {
+      console.error('❌ No se encontró el selector de estado');
+    }
+  });
+
+  // Función para configurar event listeners cuando se carga la sección
+  function setupProductosEventListeners() {
+    console.log('🔧 Configurando event listeners de productos (setupProductosEventListeners)...');
+    
+    // Búsqueda con debounce
+    const searchInput = document.getElementById('productosSearch');
+    if (searchInput) {
+      console.log('✅ Input de búsqueda encontrado en setupProductosEventListeners');
+      let searchTimeout;
+      
+      searchInput.addEventListener('input', function() {
+        console.log('🔍 Input de búsqueda detectado:', this.value);
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          console.log('🔍 Ejecutando búsqueda:', this.value);
+          if (window.searchProducts) {
+            window.searchProducts(this.value);
+          } else {
+            console.error('❌ window.searchProducts no está disponible');
+          }
+        }, 300);
+      });
+      console.log('✅ Event listener de búsqueda configurado');
+    }
+
+    // Filtro de estado
+    const estadoFilter = document.getElementById('filterProductosEstado');
+    if (estadoFilter) {
+      console.log('✅ Selector de estado encontrado en setupProductosEventListeners');
+      estadoFilter.addEventListener('change', function() {
+        console.log('🔍 Cambio de estado detectado:', this.value);
+        if (window.filterProductosByEstado) {
+          window.filterProductosByEstado(this.value);
+        } else {
+          console.error('❌ window.filterProductosByEstado no está disponible');
+        }
+      });
+      console.log('✅ Event listener de filtro de estado configurado');
+    }
+  }
+
+  // Hacer la función disponible globalmente
+  window.setupProductosEventListeners = setupProductosEventListeners;
+</script>

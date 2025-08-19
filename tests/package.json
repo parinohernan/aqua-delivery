@@ -10,6 +10,11 @@
     "test-detallado": "node test-informes-detallado.js",
     "test-final": "node test-informes-final.js",
     "test-ui": "node test-informes-ui.js",
+    "test-productos-ui": "node test-productos-ui.js",
+    "test-selectors": "node test-selectors.js",
+    "test-funcionalidad": "node test-funcionalidad-productos.js",
+    "test-event-listeners": "node test-event-listeners.js",
+    "test-fix-event-listeners": "node test-fix-event-listeners.js",
     "test-completo": "node entrega-pedidos.test.js",
     "cleanup": "node -e \"require('./entrega-pedidos.test.js').cleanupTestData()\""
   },
