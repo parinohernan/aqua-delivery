@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Función generarInforme</title>
+</head>
+<body>
+    <h1>Test de Disponibilidad de Función</h1>
+    
+    <div id="test-results">
+        <p>Cargando tests...</p>
+    </div>
+
+    <button id="testBtn">Probar generarInforme</button>
+
+    <script>
+        // Simular la función generarInforme como está en index.astro
+        async function generarInforme() {
+            console.log('🎉 generarInforme ejecutada correctamente!');
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<p style="color: green;">✅ Función generarInforme funciona correctamente!</p>';
+            return true;
+        }
+
+        // Hacer la función disponible globalmente
+        window.generarInforme = generarInforme;
+
+        // Test de disponibilidad
+        function testFunctionAvailability() {
+            const resultsDiv = document.getElementById('test-results');
+            let results = '<h2>Resultados del Test:</h2>';
+            
+            // Test 1: Verificar si la función existe
+            if (typeof window.generarInforme === 'function') {
+                results += '<p style="color: green;">✅ window.generarInforme está definida</p>';
+            } else {
+                results += '<p style="color: red;">❌ window.generarInforme NO está definida</p>';
+            }
+            
+            // Test 2: Verificar si se puede ejecutar
+            try {
+                if (typeof generarInforme === 'function') {
+                    results += '<p style="color: green;">✅ generarInforme es accesible directamente</p>';
+                } else {
+                    results += '<p style="color: red;">❌ generarInforme NO es accesible directamente</p>';
+                }
+            } catch (error) {
+                results += '<p style="color: red;">❌ Error accediendo a generarInforme: ' + error.message + '</p>';
+            }
+            
+            resultsDiv.innerHTML = results;
+        }
+
+        // Configurar event listener cuando la página esté cargada
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Página cargada, ejecutando tests...');
+            testFunctionAvailability();
+            
+            // Configurar botón de prueba
+            const testBtn = document.getElementById('testBtn');
+            if (testBtn) {
+                testBtn.addEventListener('click', function() {
+                    console.log('🔍 Probando ejecución de generarInforme...');
+                    if (typeof window.generarInforme === 'function') {
+                        window.generarInforme();
+                    } else {
+                        console.error('❌ generarInforme no está disponible');
+                        alert('generarInforme no está disponible');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -46,9 +46,9 @@ import Layout from '../layouts/Layout.astro';
           <div class="nav-icon">🛍️</div>
           <span>Productos</span>
         </button>
-        <button data-route="pagos" class="nav-button">
-          <div class="nav-icon">💰</div>
-          <span>Pagos</span>
+        <button data-route="informes" class="nav-button">
+          <div class="nav-icon">📊</div>
+          <span>Informes</span>
         </button>
       </nav>
 
@@ -73,9 +73,9 @@ import Layout from '../layouts/Layout.astro';
           <div class="mobile-nav-icon">🛍️</div>
           <span>Productos</span>
         </button>
-        <button data-route="pagos" class="mobile-nav-button">
-          <div class="mobile-nav-icon">💰</div>
-          <span>Pagos</span>
+        <button data-route="informes" class="mobile-nav-button">
+          <div class="mobile-nav-icon">📊</div>
+          <span>Informes</span>
         </button>
       </nav>
     </div>
@@ -83,6 +83,211 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
+// Definir función de informes INMEDIATAMENTE para evitar errores de carga
+window.generarInforme = async function() {
+  console.log('🚀 window.generarInforme() llamada');
+  
+  // Verificar que los elementos existen
+  const fechaDesde = document.getElementById('fechaDesde')?.value;
+  const fechaHasta = document.getElementById('fechaHasta')?.value;
+  const tipoInforme = document.getElementById('tipoInforme')?.value;
+  const resultadosDiv = document.getElementById('informeResultados');
+
+  console.log('📋 Datos del formulario:', { fechaDesde, fechaHasta, tipoInforme });
+
+  if (!fechaDesde || !fechaHasta) {
+    alert('Por favor selecciona ambas fechas');
+    return;
+  }
+
+  if (new Date(fechaDesde) > new Date(fechaHasta)) {
+    alert('La fecha desde no puede ser mayor a la fecha hasta');
+    return;
+  }
+
+  try {
+    // Mostrar loading
+    if (resultadosDiv) {
+      resultadosDiv.innerHTML = `
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Generando informe...</p>
+        </div>
+      `;
+    }
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/informes/ventas?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}&tipo=${tipoInforme}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al generar el informe');
+    }
+
+    const datos = await response.json();
+    
+    // Mostrar resultados
+    if (tipoInforme === 'resumen') {
+      mostrarInformeResumen(datos, resultadosDiv);
+    } else {
+      mostrarInformeDetallado(datos, resultadosDiv);
+    }
+
+  } catch (error) {
+    console.error('❌ Error generando informe:', error);
+    if (resultadosDiv) {
+      resultadosDiv.innerHTML = `
+        <div class="error-state">
+          <div class="error-icon">⚠️</div>
+          <h4>Error al generar informe</h4>
+          <p>${error.message}</p>
+        </div>
+      `;
+    }
+  }
+};
+
+// Funciones auxiliares para informes (definidas antes de su uso)
+function mostrarInformeResumen(datos, container) {
+  const html = `
+    <div class="informe-card">
+      <h4>📈 Resumen de Ventas</h4>
+      <div class="resumen-stats">
+        <div class="stat-item">
+          <div class="stat-value">${datos.totalPedidos || 0}</div>
+          <div class="stat-label">Total Pedidos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">$${(datos.totalVentas || 0).toLocaleString('es-AR')}</div>
+          <div class="stat-label">Total Ventas</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">${datos.totalClientes || 0}</div>
+          <div class="stat-label">Clientes Únicos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">$${((datos.totalVentas || 0) / (datos.totalPedidos || 1)).toLocaleString('es-AR')}</div>
+          <div class="stat-label">Promedio por Pedido</div>
+        </div>
+      </div>
+      
+      ${datos.productos && datos.productos.length > 0 ? `
+        <div class="productos-vendidos">
+          <h5>Productos Más Vendidos</h5>
+          <div class="productos-list">
+            ${datos.productos.map(producto => `
+              <div class="producto-item">
+                <span class="producto-nombre">${producto.descripcion}</span>
+                <span class="producto-cantidad">${producto.cantidad} unidades</span>
+                <span class="producto-total">$${producto.total.toLocaleString('es-AR')}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
+function mostrarInformeDetallado(datos, container) {
+  const html = `
+    <div class="informe-card">
+      <h4>📋 Detalle por Cliente</h4>
+      
+      ${datos.clientes && datos.clientes.length > 0 ? `
+        <div class="clientes-detalle">
+          ${datos.clientes.map((cliente, index) => `
+            <div class="cliente-card">
+              <div class="cliente-header">
+                <div class="cliente-info">
+                  <h5>${cliente.nombre} ${cliente.apellido || ''}</h5>
+                  <p class="cliente-telefono">📞 ${cliente.telefono || 'Sin teléfono'}</p>
+                </div>
+                <div class="cliente-stats">
+                  <div class="stat-mini">
+                    <span class="stat-value">${cliente.totalPedidos}</span>
+                    <span class="stat-label">Pedidos</span>
+                  </div>
+                  <div class="stat-mini">
+                    <span class="stat-value">$${cliente.totalComprado.toLocaleString('es-AR')}</span>
+                    <span class="stat-label">Total</span>
+                  </div>
+                  <div class="stat-mini">
+                    <span class="stat-value">$${(cliente.totalComprado / cliente.totalPedidos).toLocaleString('es-AR')}</span>
+                    <span class="stat-label">Promedio</span>
+                  </div>
+                </div>
+              </div>
+              
+              ${cliente.productos && cliente.productos.length > 0 ? `
+                <div class="productos-cliente">
+                  <h6>🛍️ Productos Comprados:</h6>
+                  <div class="productos-table">
+                    <table class="mini-table">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Cantidad</th>
+                          <th>Precio Promedio</th>
+                          <th>Total Pagado</th>
+                          <th>Pedidos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${cliente.productos.map(producto => `
+                          <tr>
+                            <td><strong>${producto.descripcion}</strong></td>
+                            <td>${producto.cantidadTotal} unidades</td>
+                            <td>$${producto.precioPromedio.toLocaleString('es-AR')}</td>
+                            <td>$${producto.totalPagado.toLocaleString('es-AR')}</td>
+                            <td>${producto.pedidosConEsteProducto} pedidos</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ` : `
+                <div class="empty-state-mini">
+                  <p>No hay productos registrados para este cliente</p>
+                </div>
+              `}
+              
+              ${cliente.pedidos && cliente.pedidos.length > 0 ? `
+                <div class="pedidos-cliente">
+                  <h6>📦 Historial de Pedidos:</h6>
+                  <div class="pedidos-list">
+                    ${cliente.pedidos.map(pedido => `
+                      <div class="pedido-item">
+                        <span class="pedido-fecha">📅 ${new Date(pedido.fechaEntrega).toLocaleDateString('es-AR')}</span>
+                        <span class="pedido-total">💰 $${pedido.total.toLocaleString('es-AR')}</span>
+                        <span class="pedido-items">📦 ${pedido.cantidadItems} items</span>
+                        <span class="pedido-codigo">#${pedido.codigo}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : `
+        <div class="empty-state">
+          <p>No se encontraron ventas en el período seleccionado</p>
+        </div>
+      `}
+    </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
 // Estado global de la aplicación
 let currentUser: any = null;
 let currentRoute: string = 'pedidos';
@@ -160,12 +365,12 @@ async function checkAuth() {
     console.error('💥 Error de autenticación:', error);
     
     if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        console.error('⏰ Timeout: El servidor no responde');
-        alert('Error: No se puede conectar con el servidor. Asegúrate de que el backend esté corriendo en el puerto 8001.');
-      } else if (error.message.includes('fetch')) {
-        console.error('🌐 Error de conexión');
-        alert('Error de conexión: No se puede conectar con el servidor. Verifica que el backend esté corriendo.');
+    if (error.name === 'AbortError') {
+      console.error('⏰ Timeout: El servidor no responde');
+      alert('Error: No se puede conectar con el servidor. Asegúrate de que el backend esté corriendo en el puerto 8001.');
+    } else if (error.message.includes('fetch')) {
+      console.error('🌐 Error de conexión');
+      alert('Error de conexión: No se puede conectar con el servidor. Verifica que el backend esté corriendo.');
       }
     }
     
@@ -214,7 +419,7 @@ document.addEventListener('click', (e) => {
     const button = target.matches('[data-route]') ? target : target.closest('[data-route]') as HTMLElement;
     const route = button.getAttribute('data-route');
     if (route) {
-      navigateTo(route);
+    navigateTo(route);
     }
   }
 });
@@ -241,7 +446,7 @@ async function loadRoute(route: string) {
 
   const contentArea = document.getElementById('contentArea');
   if (contentArea) {
-    contentArea.innerHTML = '<div style="display: flex; justify-content: center; padding: 2rem;"><div class="spinner"></div></div>';
+  contentArea.innerHTML = '<div style="display: flex; justify-content: center; padding: 2rem;"><div class="spinner"></div></div>';
   }
 
   try {
@@ -256,18 +461,18 @@ async function loadRoute(route: string) {
       case 'productos':
         await loadProductosSection();
         break;
-      case 'pagos':
-        await loadPagos();
+      case 'informes':
+        await loadInformes();
         break;
       default:
         contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">Página no encontrada</div>';
     }
-      } catch (error) {
-      console.error('Error cargando ruta:', error);
+  } catch (error) {
+    console.error('Error cargando ruta:', error);
       if (contentArea) {
-        contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando contenido</div>';
+    contentArea.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando contenido</div>';
       }
-    }
+  }
 }
 
 // Variables globales para filtros
@@ -531,10 +736,10 @@ function renderPedidos(pedidos) {
       </div>
 
       <div style="display: flex; gap: 0.5rem; justify-content: space-between; align-items: center;">
-        <div style="display: flex; gap: 0.5rem;">
-          <button onclick="clearPedidosFilters()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+      <div style="display: flex; gap: 0.5rem;">
+        <button onclick="clearPedidosFilters()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
             🗑️ Limpiar Filtros
-          </button>
+        </button>
         </div>
         <div id="pedidosInfo" style="font-size: 0.875rem; color: #6b7280;">
           <span id="pedidosCount">Cargando...</span> | <span id="pedidosFilters">Filtros: Pendientes por defecto</span>
@@ -1135,7 +1340,7 @@ async function loadProductosData() {
     if (currentProductFilters.search || currentProductFilters.estado !== 'all') {
       await applyProductFilters();
     } else {
-      renderProductsList(productos);
+    renderProductsList(productos);
     }
   } catch (error) {
     console.error('💥 Error cargando productos:', error);
@@ -1279,17 +1484,183 @@ function renderProductos(productos) {
   }
 }
 
-// Cargar pagos
-async function loadPagos() {
+// Cargar informes con diseño moderno
+async function loadInformes() {
   const contentArea = document.getElementById('contentArea');
 
   const html = `
-    <h3 class="content-title">Gestión de Pagos</h3>
-    <p style="color: #4b5563;">Funcionalidad de pagos en desarrollo...</p>
+    <div class="informes-section">
+      <div class="informes-header">
+        <div class="header-content">
+          <h2 class="section-title">
+            <span class="icon">📊</span>
+            Informes de Ventas
+          </h2>
+          <p class="section-subtitle">Analiza el rendimiento de tu negocio con reportes detallados</p>
+        </div>
+      </div>
+
+      <div class="informes-container">
+        <!-- Panel de configuración -->
+        <div class="config-panel">
+          <div class="config-header">
+            <h3>⚙️ Configuración del Informe</h3>
+          </div>
+          
+          <div class="config-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="fechaDesde" class="form-label">
+                  <span class="label-icon">📅</span>
+                  Fecha Desde
+                </label>
+                <input 
+                  type="date" 
+                  id="fechaDesde" 
+                  class="form-input date-input"
+                  required
+                >
+              </div>
+              
+              <div class="form-group">
+                <label for="fechaHasta" class="form-label">
+                  <span class="label-icon">📅</span>
+                  Fecha Hasta
+                </label>
+                <input 
+                  type="date" 
+                  id="fechaHasta" 
+                  class="form-input date-input"
+                  required
+                >
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="tipoInforme" class="form-label">
+                  <span class="label-icon">📋</span>
+                  Tipo de Informe
+                </label>
+                <select id="tipoInforme" class="form-select">
+                  <option value="resumen">📈 Resumen General</option>
+                  <option value="detallado">👥 Detalle por Cliente</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <button 
+                  onclick="window.generarInforme()" 
+                  class="btn-generate"
+                  id="btnGenerarInforme"
+                >
+                  <span class="btn-icon">🚀</span>
+                  Generar Informe
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área de resultados -->
+        <div class="results-area">
+          <div id="informeResultados" class="results-container">
+            <div class="empty-state">
+              <div class="empty-icon">📊</div>
+              <h4>Selecciona las fechas y genera tu informe</h4>
+              <p>Configura el período de análisis y el tipo de informe que deseas generar</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 
   contentArea.innerHTML = html;
+  
+  // Establecer fechas por defecto (últimos 30 días)
+  const hoy = new Date();
+  const hace30Dias = new Date();
+  hace30Dias.setDate(hoy.getDate() - 30);
+  
+  const fechaDesde = document.getElementById('fechaDesde');
+  const fechaHasta = document.getElementById('fechaHasta');
+  
+  if (fechaDesde && fechaHasta) {
+    fechaDesde.value = hace30Dias.toISOString().split('T')[0];
+    fechaHasta.value = hoy.toISOString().split('T')[0];
+  }
 }
+
+// Función para generar informes
+async function generarInforme() {
+  console.log('🚀 generarInforme() ejecutada');
+  
+  const fechaDesde = document.getElementById('fechaDesde')?.value;
+  const fechaHasta = document.getElementById('fechaHasta')?.value;
+  const tipoInforme = document.getElementById('tipoInforme')?.value;
+  const resultadosDiv = document.getElementById('informeResultados');
+
+  console.log('📋 Datos del formulario:', { fechaDesde, fechaHasta, tipoInforme });
+
+  if (!fechaDesde || !fechaHasta) {
+    alert('Por favor selecciona ambas fechas');
+    return;
+  }
+
+  if (new Date(fechaDesde) > new Date(fechaHasta)) {
+    alert('La fecha desde no puede ser mayor a la fecha hasta');
+    return;
+  }
+
+  try {
+    // Mostrar loading
+    resultadosDiv.innerHTML = `
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Generando informe...</p>
+      </div>
+    `;
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/informes/ventas?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}&tipo=${tipoInforme}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al generar el informe');
+    }
+
+    const datos = await response.json();
+    mostrarResultadosInforme(datos, tipoInforme);
+
+  } catch (error) {
+    console.error('Error generando informe:', error);
+    resultadosDiv.innerHTML = `
+      <div class="error-state">
+        <div class="error-icon">⚠️</div>
+        <h4>Error al generar informe</h4>
+        <p>${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+// Función para mostrar los resultados del informe
+function mostrarResultadosInforme(datos, tipoInforme) {
+  const resultadosDiv = document.getElementById('informeResultados');
+  
+  if (tipoInforme === 'resumen') {
+    mostrarInformeResumen(datos, resultadosDiv);
+  } else {
+    mostrarInformeDetallado(datos, resultadosDiv);
+  }
+}
+
+
 
 // Variables globales para productos
 let currentProducts = [];
@@ -1558,7 +1929,7 @@ function renderProductsList(productos) {
           </button>
           ${producto.activo ? 
             `<button onclick="deleteProductInline(${producto.codigo || producto.id})" class="btn-small btn-delete">
-              Eliminar
+            Eliminar
             </button>` : 
             `<button onclick="activateProductInline(${producto.codigo || producto.id})" class="btn-small btn-activate">
               Activar
@@ -2624,5 +2995,389 @@ window.showClientPayment = showClientPayment;
 window.closePaymentModal = closePaymentModal;
 window.processClientPayment = processClientPayment;
 
+
+
 // Función ya integrada en el listener principal de DOMContentLoaded
 </script>
+
+<style>
+/* Estilos específicos para Informes */
+.informes-container {
+  padding: 0;
+}
+
+.filters-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.filters-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group label {
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.filter-input, .filter-select {
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+
+.filter-input:focus, .filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.informe-resultados {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  min-height: 200px;
+}
+
+.empty-state, .loading-state, .error-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.empty-icon, .error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.loading-state .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.informe-card {
+  padding: 0;
+}
+
+.informe-card h4 {
+  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Estilos para el informe detallado por cliente */
+.cliente-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.cliente-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.cliente-info h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.cliente-telefono {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.cliente-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.stat-mini {
+  text-align: center;
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  min-width: 80px;
+}
+
+.stat-mini .stat-value {
+  display: block;
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.875rem;
+}
+
+.stat-mini .stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.productos-cliente, .pedidos-cliente {
+  margin-top: 1rem;
+}
+
+.productos-cliente h6, .pedidos-cliente h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 1rem 0;
+}
+
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.mini-table th {
+  background: #f9fafb;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mini-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.mini-table tr:hover {
+  background: #f9fafb;
+}
+
+.pedidos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pedido-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.pedido-fecha {
+  color: #6b7280;
+}
+
+.pedido-total {
+  font-weight: 600;
+  color: #059669;
+}
+
+.pedido-items {
+  color: #6b7280;
+}
+
+.pedido-codigo {
+  font-family: monospace;
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.empty-state-mini {
+  text-align: center;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.resumen-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-item {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-value {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.productos-vendidos {
+  margin-top: 2rem;
+}
+
+.productos-vendidos h5 {
+  color: #374151;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.productos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.producto-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.producto-nombre {
+  font-weight: 500;
+  color: #374151;
+}
+
+.producto-cantidad {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.producto-total {
+  font-weight: 600;
+  color: #059669;
+}
+
+.table-container {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.informe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.informe-table th {
+  background: #f8fafc;
+  color: #374151;
+  font-weight: 600;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.informe-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
+}
+
+.informe-table tr:hover {
+  background: #f9fafb;
+}
+
+.cliente-info strong {
+  display: block;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.cliente-info small {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filters-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .resumen-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .producto-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .informe-table {
+    font-size: 0.75rem;
+  }
+  
+  .informe-table th,
+  .informe-table td {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .resumen-stats {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

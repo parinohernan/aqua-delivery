@@ -6,6 +6,10 @@
   "scripts": {
     "test": "node test-aplica-saldo.js",
     "test-entrega": "node test-entrega-simple.js",
+    "test-informes": "node test-informes-simple.js",
+    "test-detallado": "node test-informes-detallado.js",
+    "test-final": "node test-informes-final.js",
+    "test-ui": "node test-informes-ui.js",
     "test-completo": "node entrega-pedidos.test.js",
     "cleanup": "node -e \"require('./entrega-pedidos.test.js').cleanupTestData()\""
   },

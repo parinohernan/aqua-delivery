@@ -455,7 +455,7 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 [pedidoId]
             );
             console.log('✅ Pedido marcado como entregado');
-
+            
             // 2. Procesar pago
             if (aplicaSaldo) {
                 console.log(`💳 PROCESANDO CUENTA CORRIENTE...`);
@@ -491,7 +491,7 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 const retornablesNoDevueltos = totalRetornables - (retornablesDevueltos || 0);
                 console.log(`🔄 PROCESANDO RETORNABLES...`);
                 console.log(`   📦 Total: ${totalRetornables}, Devueltos: ${retornablesDevueltos}, No devueltos: ${retornablesNoDevueltos}`);
-                
+
                 if (retornablesNoDevueltos > 0) {
                     console.log(`   🔄 Sumando ${retornablesNoDevueltos} retornables al cliente ${clienteId}`);
                     
@@ -515,7 +515,7 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             }
 
             console.log('✅ TRANSACCIÓN COMPLETADA');
-            
+
             return {
                 success: true,
                 message: 'Pedido entregado correctamente',
