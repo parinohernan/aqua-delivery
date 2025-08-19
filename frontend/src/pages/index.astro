@@ -455,9 +455,9 @@ async function loadRoute(route: string) {
         await loadZonas();
         await loadPedidos();
         break;
-      case 'clientes':
-        await loadClientes();
-        break;
+              case 'clientes':
+          await loadClientesSection();
+          break;
       case 'productos':
         await loadProductosSection();
         break;
@@ -959,8 +959,200 @@ function editPedido(pedidoId) {
   alert('Funcionalidad de edición en desarrollo...');
 }
 
-// Cargar clientes
-async function loadClientes() {
+// Cargar sección de clientes con diseño moderno
+async function loadClientesSection() {
+  console.log('👥 Cargando sección de clientes...');
+  const contentArea = document.getElementById('contentArea');
+  
+  // Cargar el HTML del componente ClientesSection
+  const clientesHTML = `
+    <div class="clientes-section">
+      <div class="clientes-header">
+        <div class="header-content">
+          <h2 class="section-title">
+            <span class="icon">👥</span>
+            Gestión de Clientes
+          </h2>
+          <p class="section-subtitle">Administra tu base de datos de clientes de manera eficiente</p>
+        </div>
+      </div>
+
+      <div class="clientes-container">
+        <!-- Panel de acciones -->
+        <div class="actions-panel">
+          <div class="actions-header">
+            <h3>⚡ Acciones Rápidas</h3>
+          </div>
+          
+          <div class="actions-content">
+            <button onclick="window.showCreateClientModal()" class="btn-create">
+              <span class="btn-icon">➕</span>
+              Nuevo Cliente
+            </button>
+            
+            <div class="search-group">
+              <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                  type="text" 
+                  id="clientesSearch" 
+                  placeholder="Buscar clientes..."
+                  class="search-input"
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel de filtros -->
+        <div class="filters-panel">
+          <div class="filters-header">
+            <h3>🔍 Filtros</h3>
+          </div>
+          
+          <div class="filters-content">
+            <div class="filter-group">
+              <label for="filterClientesSaldo" class="filter-label">
+                <span class="label-icon">💰</span>
+                Saldo
+              </label>
+              <div class="modern-select saldo-select">
+                <select id="filterClientesSaldo">
+                  <option value="todos">Todos los clientes</option>
+                  <option value="positivo">Con saldo positivo</option>
+                  <option value="negativo">Con saldo negativo</option>
+                  <option value="cero">Sin saldo</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="filter-group">
+              <label for="filterClientesRetornables" class="filter-label">
+                <span class="label-icon">🔄</span>
+                Retornables
+              </label>
+              <div class="modern-select retornables-select">
+                <select id="filterClientesRetornables">
+                  <option value="todos">Todos los clientes</option>
+                  <option value="con">Con retornables</option>
+                  <option value="sin">Sin retornables</option>
+                </select>
+              </div>
+            </div>
+            
+            <button onclick="window.clearClientesFilters()" class="btn-clear">
+              <span class="btn-icon">🔄</span>
+              Limpiar Filtros
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista de clientes -->
+        <div class="clientes-area">
+          <div id="clientesList" class="clientes-container">
+            <div class="empty-state">
+              <div class="empty-icon">👥</div>
+              <h4>Cargando clientes...</h4>
+              <p>Preparando tu base de datos de clientes</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal para crear/editar cliente -->
+    <div id="clientModal" class="modal-overlay">
+      <div class="cliente-modal">
+        <div class="modal-header">
+          <h4 id="modalTitle" class="modal-title">Nuevo Cliente</h4>
+          <button onclick="closeClientModal()" class="btn-close">×</button>
+        </div>
+        
+        <form id="clientForm" class="modal-form">
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input type="text" id="clientName" name="nombre" required class="form-input" placeholder="Nombre del cliente" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Apellido</label>
+            <input type="text" id="clientApellido" name="apellido" class="form-input" placeholder="Apellido del cliente" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="tel" id="clientTelefono" name="telefono" required class="form-input" placeholder="Número de teléfono" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Dirección</label>
+            <input type="text" id="clientDireccion" name="direccion" required class="form-input" placeholder="Dirección completa" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Saldo Inicial</label>
+            <input type="number" id="clientSaldo" name="saldo" step="0.01" class="form-input" value="0" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Retornables Iniciales</label>
+            <input type="number" id="clientRetornables" name="retornables" class="form-input" value="0" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Ubicación GPS</label>
+            <div class="map-container">
+              <div id="clientMap" class="client-map"></div>
+              <div class="map-controls">
+                <button type="button" id="getLocationBtn" class="btn-location">
+                  📍 Obtener mi ubicación
+                </button>
+                <button type="button" id="clearLocationBtn" class="btn-clear-location">
+                  🗑️ Limpiar ubicación
+                </button>
+              </div>
+              <input type="hidden" id="clientLatitud" name="latitud" />
+              <input type="hidden" id="clientLongitud" name="longitud" />
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" onclick="closeClientModal()" class="btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-save">
+              <span class="btn-icon">💾</span>
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  contentArea.innerHTML = clientesHTML;
+  
+  // Configurar el formulario
+  const clientForm = document.getElementById('clientForm');
+  if (clientForm) {
+    clientForm.addEventListener('submit', handleClientSubmit);
+  }
+  
+  // Configurar listeners de eventos
+  setupClientEventListeners();
+  
+  // Cargar los clientes
+  await loadClientesData();
+  
+  // Configurar event listeners después de cargar el HTML y los clientes
+  setTimeout(() => {
+    console.log('🔧 Configurando event listeners después de cargar clientes...');
+    setupClientesEventListeners();
+  }, 500);
+}
+
+// Cargar clientes (función original renombrada)
+async function loadClientesData() {
   console.log('👥 Cargando clientes...');
   const token = localStorage.getItem('token');
 
@@ -984,7 +1176,12 @@ async function loadClientes() {
     // Guardar en variable global para búsquedas y edición
     currentClients = clientes;
 
-    renderClientes(clientes);
+    // Aplicar filtros si existen
+    if (currentClientFilters.search || currentClientFilters.saldo !== 'todos' || currentClientFilters.retornables !== 'todos') {
+      await applyClientFilters();
+    } else {
+      renderClientesList(clientes);
+    }
   } catch (error) {
     console.error('💥 Error cargando clientes:', error);
     const contentArea = document.getElementById('contentArea');
@@ -993,7 +1190,7 @@ async function loadClientes() {
         <h3 class="content-title">Gestión de Clientes</h3>
         <div style="text-align: center; padding: 2rem; color: #dc2626;">
           <p>Error cargando clientes: ${error.message}</p>
-          <button onclick="loadClientes()" class="btn-primary" style="margin-top: 1rem;">
+          <button onclick="loadClientesData()" class="btn-primary" style="margin-top: 1rem;">
             Reintentar
           </button>
         </div>
@@ -2228,6 +2425,9 @@ window.searchProducts = searchProducts;
 window.clearProductosFilters = clearProductosFilters;
 window.applyProductFilters = applyProductFilters;
 
+// Variables globales para filtros de clientes
+let currentClientFilters = { search: '', saldo: 'todos', retornables: 'todos' };
+
 // Función para configurar event listeners de productos
 function setupProductosEventListeners() {
   console.log('🔧 Configurando event listeners de productos (setupProductosEventListeners)...');
@@ -2275,6 +2475,567 @@ function setupProductosEventListeners() {
 
 // Hacer la función disponible globalmente
 window.setupProductosEventListeners = setupProductosEventListeners;
+
+// Hacer las funciones de clientes disponibles globalmente
+window.searchClientes = searchClientes;
+window.filterClientesBySaldo = filterClientesBySaldo;
+window.filterClientesByRetornables = filterClientesByRetornables;
+window.clearClientesFilters = clearClientesFilters;
+window.applyClientFilters = applyClientFilters;
+window.renderClientesList = renderClientesList;
+window.setupClientesEventListeners = setupClientesEventListeners;
+window.loadClientesSection = loadClientesSection;
+
+// Buscar clientes
+async function searchClientes(searchTerm: string) {
+  console.log('🔍 Buscando clientes:', searchTerm);
+  currentClientFilters.search = searchTerm;
+  await applyClientFilters();
+}
+
+// Filtrar clientes por saldo
+async function filterClientesBySaldo(saldo?: string) {
+  const saldoFilter = saldo || (document.getElementById('filterClientesSaldo') as HTMLSelectElement)?.value || 'todos';
+  console.log('🔍 Filtrando clientes por saldo:', saldoFilter);
+  currentClientFilters.saldo = saldoFilter;
+  await applyClientFilters();
+}
+
+// Filtrar clientes por retornables
+async function filterClientesByRetornables(retornables?: string) {
+  const retornablesFilter = retornables || (document.getElementById('filterClientesRetornables') as HTMLSelectElement)?.value || 'todos';
+  console.log('🔍 Filtrando clientes por retornables:', retornablesFilter);
+  currentClientFilters.retornables = retornablesFilter;
+  await applyClientFilters();
+}
+
+// Aplicar filtros de clientes
+async function applyClientFilters() {
+  console.log('🔍 Aplicando filtros de clientes:', currentClientFilters);
+  const token = localStorage.getItem('token');
+
+  try {
+    // Primero cargar todos los clientes
+    const response = await fetch('/api/clientes', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    let clientes = await response.json();
+    console.log('✅ Clientes cargados:', clientes.length);
+
+    // Aplicar filtro de búsqueda (si hay)
+    if (currentClientFilters.search && currentClientFilters.search.trim()) {
+      const searchTerm = currentClientFilters.search.toLowerCase();
+      clientes = clientes.filter(cliente => {
+        const nombre = (cliente.nombre || cliente.name || '').toLowerCase();
+        const apellido = (cliente.apellido || cliente.lastname || '').toLowerCase();
+        const telefono = (cliente.telefono || cliente.phone || '').toLowerCase();
+        const direccion = (cliente.direccion || cliente.address || '').toLowerCase();
+        
+        return nombre.includes(searchTerm) || 
+               apellido.includes(searchTerm) || 
+               telefono.includes(searchTerm) || 
+               direccion.includes(searchTerm);
+      });
+      console.log('🔍 Clientes después de búsqueda:', clientes.length);
+    }
+
+    // Aplicar filtro de saldo
+    if (currentClientFilters.saldo !== 'todos') {
+      if (currentClientFilters.saldo === 'positivo') {
+        clientes = clientes.filter(cliente => parseFloat(cliente.saldo || 0) > 0);
+      } else if (currentClientFilters.saldo === 'negativo') {
+        clientes = clientes.filter(cliente => parseFloat(cliente.saldo || 0) < 0);
+      } else if (currentClientFilters.saldo === 'cero') {
+        clientes = clientes.filter(cliente => parseFloat(cliente.saldo || 0) === 0);
+      }
+      console.log('🔍 Clientes después de filtro de saldo:', clientes.length);
+    }
+
+    // Aplicar filtro de retornables
+    if (currentClientFilters.retornables !== 'todos') {
+      if (currentClientFilters.retornables === 'con') {
+        clientes = clientes.filter(cliente => parseInt(cliente.retornables || 0) > 0);
+      } else if (currentClientFilters.retornables === 'sin') {
+        clientes = clientes.filter(cliente => parseInt(cliente.retornables || 0) === 0);
+      }
+      console.log('🔍 Clientes después de filtro de retornables:', clientes.length);
+    }
+
+    currentClients = clientes;
+    renderClientesList(clientes);
+  } catch (error) {
+    console.error('💥 Error aplicando filtros:', error);
+    // En caso de error, mostrar todos los clientes
+    loadClientesData();
+  }
+}
+
+// Limpiar filtros de clientes
+function clearClientesFilters() {
+  console.log('🧹 Limpiando filtros de clientes');
+  
+  // Limpiar campos de filtro
+  const searchInput = document.getElementById('clientesSearch') as HTMLInputElement;
+  const saldoFilter = document.getElementById('filterClientesSaldo') as HTMLSelectElement;
+  const retornablesFilter = document.getElementById('filterClientesRetornables') as HTMLSelectElement;
+  
+  if (searchInput) searchInput.value = '';
+  if (saldoFilter) saldoFilter.value = 'todos';
+  if (retornablesFilter) retornablesFilter.value = 'todos';
+  
+  // Resetear filtros
+  currentClientFilters = { search: '', saldo: 'todos', retornables: 'todos' };
+  
+  // Recargar clientes sin filtros
+loadClientesData();
+}
+
+// Función para editar cliente inline
+function editClienteInline(clientId) {
+  console.log('✏️ Editando cliente:', clientId);
+  editingClientId = clientId;
+  
+  // Usar window.currentClients para asegurar acceso global
+  const clients = window.currentClients || currentClients || [];
+  const cliente = clients.find(c => c.id == clientId || c.codigo == clientId);
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    return;
+  }
+  
+  const modal = document.getElementById('clientModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const form = document.getElementById('clientForm');
+  
+  if (modal && modalTitle && form) {
+    modalTitle.textContent = 'Editar Cliente';
+    
+    // Llenar formulario con datos del cliente
+    const nameInput = document.getElementById('clientName');
+    const apellidoInput = document.getElementById('clientApellido');
+    const telefonoInput = document.getElementById('clientTelefono');
+    const direccionInput = document.getElementById('clientDireccion');
+    const saldoInput = document.getElementById('clientSaldo');
+    const retornablesInput = document.getElementById('clientRetornables');
+    
+    if (nameInput) nameInput.value = cliente.nombre || cliente.name || '';
+    if (apellidoInput) apellidoInput.value = cliente.apellido || cliente.lastname || '';
+    if (telefonoInput) telefonoInput.value = cliente.telefono || cliente.phone || '';
+    if (direccionInput) direccionInput.value = cliente.direccion || cliente.address || '';
+    if (saldoInput) saldoInput.value = cliente.saldo || 0;
+    if (retornablesInput) retornablesInput.value = cliente.retornables || 0;
+    
+    // Llenar coordenadas GPS si existen
+    const latitudInput = document.getElementById('clientLatitud');
+    const longitudInput = document.getElementById('clientLongitud');
+    if (latitudInput) latitudInput.value = cliente.latitud || '';
+    if (longitudInput) longitudInput.value = cliente.longitud || '';
+    
+    modal.classList.add('show');
+    
+    // Inicializar mapa después de que el modal esté visible
+    setTimeout(() => {
+      initializeClientMap(cliente.latitud, cliente.longitud);
+    }, 100);
+  } else {
+    console.error('❌ Elementos del modal no encontrados');
+  }
+}
+
+// Función para ver cliente inline
+function viewClienteInline(clientId) {
+  console.log('👁️ Viendo cliente:', clientId);
+  
+  // Usar window.currentClients para asegurar acceso global
+  const clients = window.currentClients || currentClients || [];
+  const cliente = clients.find(c => c.id == clientId || c.codigo == clientId);
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    return;
+  }
+  
+  // Mostrar información del cliente en un alert temporal
+  const nombre = cliente.nombre || cliente.name || 'Sin nombre';
+  const apellido = cliente.apellido || cliente.lastname || '';
+  const telefono = cliente.telefono || cliente.phone || 'Sin teléfono';
+  const direccion = cliente.direccion || cliente.address || 'Sin dirección';
+  const saldo = parseFloat(cliente.saldo || 0);
+  const retornables = parseInt(cliente.retornables || 0);
+  
+  const info = `
+Cliente: ${nombre} ${apellido}
+Teléfono: ${telefono}
+Dirección: ${direccion}
+Saldo: $${saldo.toFixed(2)}
+Retornables: ${retornables} ${retornables === 1 ? 'unidad' : 'unidades'}
+  `.trim();
+  
+  alert(info);
+}
+
+// Función para cambiar estado del cliente (bloquear/desbloquear)
+async function toggleClienteStatus(clientId) {
+  console.log('🔄 Cambiando estado del cliente:', clientId);
+  
+  // Usar window.currentClients para asegurar acceso global
+  const clients = window.currentClients || currentClients || [];
+  const cliente = clients.find(c => c.id == clientId || c.codigo == clientId);
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clientId);
+    return;
+  }
+  
+  const isActive = cliente.activo !== 0;
+  const action = isActive ? 'bloquear' : 'desbloquear';
+  
+  if (!confirm(`¿Estás seguro de que quieres ${action} este cliente?`)) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    const newStatus = isActive ? 0 : 1;
+    
+    const response = await fetch(`/api/clientes/${clientId}/toggle-status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ activo: newStatus })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ Estado del cliente cambiado:', result);
+    
+    // Recargar clientes
+    await loadClientesData();
+    
+    // Mostrar mensaje de éxito
+    showMessage(`Cliente ${action}do correctamente`, 'success');
+    
+  } catch (error) {
+    console.error('💥 Error cambiando estado del cliente:', error);
+    showMessage(`Error: ${error.message}`, 'error');
+  }
+}
+
+// Función para inicializar el mapa de Leaflet para clientes
+let clientMap = null;
+let clientMarker = null;
+
+function initializeClientMap(lat = null, lng = null) {
+  console.log('🗺️ Inicializando mapa de cliente...');
+  
+  const mapContainer = document.getElementById('clientMap');
+  if (!mapContainer) {
+    console.error('❌ Contenedor del mapa no encontrado');
+    return;
+  }
+  
+  // Limpiar mapa existente
+  if (clientMap) {
+    clientMap.remove();
+    clientMap = null;
+    clientMarker = null;
+  }
+  
+  // Coordenadas por defecto (Argentina)
+  const defaultLat = -34.6037;
+  const defaultLng = -58.3816;
+  
+  // Usar coordenadas proporcionadas o coordenadas por defecto
+  const initialLat = lat ? parseFloat(lat) : defaultLat;
+  const initialLng = lng ? parseFloat(lng) : defaultLng;
+  
+  try {
+    // Crear mapa
+    clientMap = L.map('clientMap').setView([initialLat, initialLng], 13);
+    
+    // Agregar capa de OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(clientMap);
+    
+    // Si hay coordenadas del cliente, agregar marcador
+    if (lat && lng) {
+      clientMarker = L.marker([initialLat, initialLng]).addTo(clientMap);
+      clientMap.setView([initialLat, initialLng], 15);
+    }
+    
+    // Evento de clic en el mapa para agregar/actualizar marcador
+    clientMap.on('click', function(e) {
+      const clickedLat = e.latlng.lat;
+      const clickedLng = e.latlng.lng;
+      
+      // Actualizar campos ocultos
+      const latitudInput = document.getElementById('clientLatitud');
+      const longitudInput = document.getElementById('clientLongitud');
+      if (latitudInput) latitudInput.value = clickedLat;
+      if (longitudInput) longitudInput.value = clickedLng;
+      
+      // Actualizar o crear marcador
+      if (clientMarker) {
+        clientMarker.setLatLng([clickedLat, clickedLng]);
+      } else {
+        clientMarker = L.marker([clickedLat, clickedLng]).addTo(clientMap);
+      }
+      
+      console.log('📍 Ubicación seleccionada:', clickedLat, clickedLng);
+    });
+    
+    // Configurar botones del mapa
+    setupMapControls();
+    
+    console.log('✅ Mapa de cliente inicializado correctamente');
+    
+  } catch (error) {
+    console.error('❌ Error inicializando mapa:', error);
+  }
+}
+
+// Función para configurar controles del mapa
+function setupMapControls() {
+  const getLocationBtn = document.getElementById('getLocationBtn');
+  const clearLocationBtn = document.getElementById('clearLocationBtn');
+  
+  if (getLocationBtn) {
+    getLocationBtn.addEventListener('click', function() {
+      console.log('📍 Obteniendo ubicación actual...');
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Actualizar campos ocultos
+            const latitudInput = document.getElementById('clientLatitud');
+            const longitudInput = document.getElementById('clientLongitud');
+            if (latitudInput) latitudInput.value = lat;
+            if (longitudInput) longitudInput.value = lng;
+            
+            // Actualizar mapa
+            if (clientMap) {
+              clientMap.setView([lat, lng], 15);
+              
+              if (clientMarker) {
+                clientMarker.setLatLng([lat, lng]);
+              } else {
+                clientMarker = L.marker([lat, lng]).addTo(clientMap);
+              }
+            }
+            
+            console.log('✅ Ubicación obtenida:', lat, lng);
+          },
+          function(error) {
+            console.error('❌ Error obteniendo ubicación:', error);
+            alert('No se pudo obtener tu ubicación. Puedes hacer clic en el mapa para seleccionar una ubicación.');
+          }
+        );
+      } else {
+        alert('Tu navegador no soporta geolocalización. Puedes hacer clic en el mapa para seleccionar una ubicación.');
+      }
+    });
+  }
+  
+  if (clearLocationBtn) {
+    clearLocationBtn.addEventListener('click', function() {
+      console.log('🗑️ Limpiando ubicación...');
+      
+      // Limpiar campos ocultos
+      const latitudInput = document.getElementById('clientLatitud');
+      const longitudInput = document.getElementById('clientLongitud');
+      if (latitudInput) latitudInput.value = '';
+      if (longitudInput) longitudInput.value = '';
+      
+      // Remover marcador
+      if (clientMarker) {
+        clientMap.removeLayer(clientMarker);
+        clientMarker = null;
+      }
+      
+      console.log('✅ Ubicación limpiada');
+    });
+  }
+}
+
+// Exponer funciones globalmente para que estén disponibles cuando se genere el HTML
+window.editClienteInline = editClienteInline;
+window.toggleClienteStatus = toggleClienteStatus;
+window.viewClienteInline = viewClienteInline;
+window.initializeClientMap = initializeClientMap;
+
+// Renderizar lista de clientes con diseño moderno
+function renderClientesList(clientes) {
+  const clientesList = document.getElementById('clientesList');
+  if (!clientesList) return;
+  
+  if (clientes.length === 0) {
+    clientesList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <h4>No hay clientes registrados</h4>
+        <p>Crea tu primer cliente para comenzar</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Grid de clientes con tarjetas modernas
+  clientesList.innerHTML = `
+    <div class="clientes-grid">
+      ${clientes.map(cliente => {
+        // Asegurar que todos los campos tengan valores por defecto
+        const id = cliente.id || cliente.codigo || cliente.Code || 'N/A';
+        const codigo = cliente.codigo || cliente.Code || cliente.id || 'N/A';
+        const nombre = cliente.nombre || cliente.name || cliente.Name || 'Sin nombre';
+        const apellido = cliente.apellido || cliente.lastname || cliente.LastName || '';
+        const nombreCompleto = cliente.nombreCompleto || `${nombre} ${apellido}`.trim() || 'Cliente sin nombre';
+        const telefono = cliente.telefono || cliente.phone || cliente.Phone || 'Sin teléfono';
+        const direccion = cliente.direccion || cliente.address || cliente.Address || 'Sin dirección';
+        const saldoDinero = parseFloat(cliente.saldo || 0);
+        const saldoRetornables = parseInt(cliente.retornables || 0);
+
+        return `
+          <div class="cliente-card">
+            <div class="cliente-header">
+              <h4 class="cliente-title">${nombreCompleto}</h4>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <span class="cliente-codigo">#${codigo}</span>
+                ${cliente.activo === 0 ? `
+                  <span class="cliente-status blocked" title="Cliente bloqueado">
+                    🔒 Bloqueado
+                  </span>
+                ` : `
+                  <span class="cliente-status active" title="Cliente activo">
+                    ✅ Activo
+                  </span>
+                `}
+                ${(cliente.latitud && cliente.longitud) ? `
+                  <span class="cliente-gps" title="Cliente con ubicación GPS">
+                    📍 GPS
+                  </span>
+                ` : ''}
+              </div>
+            </div>
+            
+            <div class="cliente-info">
+              <div class="cliente-detail">
+                <span class="detail-icon">📞</span>
+                <span>${telefono}</span>
+              </div>
+              <div class="cliente-detail">
+                <span class="detail-icon">📍</span>
+                <span>${direccion}</span>
+              </div>
+            </div>
+            
+            <div class="cliente-saldos">
+              <div class="saldo-item">
+                <span class="saldo-label">Saldo $:</span>
+                <span class="saldo-value ${saldoDinero <= 0 ? 'saldo-positivo' : 'saldo-negativo'}">
+                  $${saldoDinero.toFixed(2)}
+                </span>
+              </div>
+              <div class="saldo-item">
+                <span class="saldo-label">Retornables:</span>
+                <span class="saldo-value ${saldoRetornables <= 0 ? 'saldo-positivo' : 'saldo-negativo'}">
+                  ${saldoRetornables} ${saldoRetornables === 1 ? 'unidad' : 'unidades'}
+                </span>
+              </div>
+            </div>
+            
+            <div class="cliente-actions">
+              <button onclick="editClienteInline(${id})" class="btn-edit">
+                ✏️ Editar
+              </button>
+              <button onclick="toggleClienteStatus(${id})" class="btn-toggle ${cliente.activo === 0 ? 'btn-blocked' : 'btn-active'}">
+                ${cliente.activo === 0 ? '🔓 Desbloquear' : '🔒 Bloquear'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// Función para configurar event listeners de clientes
+function setupClientesEventListeners() {
+  console.log('🔧 Configurando event listeners de clientes...');
+  
+  // Búsqueda con debounce
+  const searchInput = document.getElementById('clientesSearch');
+  if (searchInput) {
+    console.log('✅ Input de búsqueda de clientes encontrado');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+      console.log('🔍 Input de búsqueda de clientes detectado:', this.value);
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        console.log('🔍 Ejecutando búsqueda de clientes:', this.value);
+        if (window.searchClientes) {
+          window.searchClientes(this.value);
+        } else {
+          console.error('❌ window.searchClientes no está disponible');
+        }
+      }, 300);
+    });
+    console.log('✅ Event listener de búsqueda de clientes configurado');
+  } else {
+    console.error('❌ No se encontró el input de búsqueda de clientes');
+  }
+
+  // Filtro de saldo
+  const saldoFilter = document.getElementById('filterClientesSaldo');
+  if (saldoFilter) {
+    console.log('✅ Selector de saldo encontrado');
+    saldoFilter.addEventListener('change', function() {
+      console.log('🔍 Cambio de saldo detectado:', this.value);
+      if (window.filterClientesBySaldo) {
+        window.filterClientesBySaldo(this.value);
+      } else {
+        console.error('❌ window.filterClientesBySaldo no está disponible');
+      }
+    });
+    console.log('✅ Event listener de filtro de saldo configurado');
+  } else {
+    console.error('❌ No se encontró el selector de saldo');
+  }
+
+  // Filtro de retornables
+  const retornablesFilter = document.getElementById('filterClientesRetornables');
+  if (retornablesFilter) {
+    console.log('✅ Selector de retornables encontrado');
+    retornablesFilter.addEventListener('change', function() {
+      console.log('🔍 Cambio de retornables detectado:', this.value);
+      if (window.filterClientesByRetornables) {
+        window.filterClientesByRetornables(this.value);
+      } else {
+        console.error('❌ window.filterClientesByRetornables no está disponible');
+      }
+    });
+    console.log('✅ Event listener de filtro de retornables configurado');
+  } else {
+    console.error('❌ No se encontró el selector de retornables');
+  }
+}
 
 // Configurar listeners de eventos para actualización reactiva
 function setupProductEventListeners() {
@@ -3011,6 +3772,140 @@ async function processReturnablesReturn(event, clientId) {
 
 <!-- Configurar event listeners después de cargar todo -->
 <script is:inline>
+// Variables para el modal de clientes
+let editingClientId = null;
+
+// Función para manejar el envío del formulario de cliente
+async function handleClientSubmit(e) {
+  e.preventDefault();
+  console.log('📝 Enviando formulario de cliente...');
+  
+  const formData = new FormData(e.target);
+  const clientData = {
+    nombre: formData.get('nombre') || '',
+    apellido: formData.get('apellido') || '',
+    telefono: formData.get('telefono') || '',
+    direccion: formData.get('direccion') || '',
+    saldo: parseFloat(formData.get('saldo') || 0),
+    retornables: parseInt(formData.get('retornables') || 0),
+    latitud: formData.get('latitud') || null,
+    longitud: formData.get('longitud') || null
+  };
+  
+  console.log('📋 Datos del cliente:', clientData);
+  
+  try {
+    const token = localStorage.getItem('token');
+    const url = editingClientId ? `/api/clientes/${editingClientId}` : '/api/clientes';
+    const method = editingClientId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(clientData)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ Cliente guardado:', result);
+    
+    // Cerrar modal
+    closeClientModal();
+    
+    // Recargar clientes
+    await loadClientesData();
+    
+    // Mostrar mensaje de éxito
+    showMessage(editingClientId ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente', 'success');
+    
+  } catch (error) {
+    console.error('💥 Error guardando cliente:', error);
+    showMessage(`Error: ${error.message}`, 'error');
+  }
+}
+
+// Función para mostrar el modal de crear cliente
+function showCreateClientModal() {
+  console.log('➕ Abriendo modal para crear cliente...');
+  editingClientId = null;
+  
+  const modal = document.getElementById('clientModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const form = document.getElementById('clientForm');
+  
+  if (modal && modalTitle && form) {
+    modalTitle.textContent = 'Nuevo Cliente';
+    form.reset();
+    
+    // Limpiar campos específicos
+    const saldoInput = document.getElementById('clientSaldo');
+    const retornablesInput = document.getElementById('clientRetornables');
+    if (saldoInput) saldoInput.value = '0';
+    if (retornablesInput) retornablesInput.value = '0';
+    
+    // Limpiar coordenadas GPS
+    const latitudInput = document.getElementById('clientLatitud');
+    const longitudInput = document.getElementById('clientLongitud');
+    if (latitudInput) latitudInput.value = '';
+    if (longitudInput) longitudInput.value = '';
+    
+    modal.classList.add('show');
+    
+    // Inicializar mapa después de que el modal esté visible
+    setTimeout(() => {
+      initializeClientMap();
+    }, 100);
+  }
+}
+
+// Función para cerrar el modal de cliente
+function closeClientModal() {
+  console.log('❌ Cerrando modal de cliente...');
+  const modal = document.getElementById('clientModal');
+  if (modal) {
+    modal.classList.remove('show');
+  }
+  editingClientId = null;
+}
+
+// Función para configurar event listeners del modal
+function setupClientEventListeners() {
+  console.log('🔧 Configurando event listeners del modal de clientes...');
+  
+  // Cerrar modal al hacer clic fuera
+  const modal = document.getElementById('clientModal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeClientModal();
+      }
+    });
+  }
+  
+  // Cerrar modal con Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('clientModal');
+      if (modal && modal.classList.contains('show')) {
+        closeClientModal();
+      }
+    }
+  });
+}
+
+// Hacer las funciones y variables disponibles globalmente
+window.handleClientSubmit = handleClientSubmit;
+window.showCreateClientModal = showCreateClientModal;
+window.closeClientModal = closeClientModal;
+window.setupClientEventListeners = setupClientEventListeners;
+window.currentClients = currentClients;
 // Configurar listeners de eventos para actualización reactiva
 function setupEventListeners() {
   if (window.eventBus && window.EVENTS) {
