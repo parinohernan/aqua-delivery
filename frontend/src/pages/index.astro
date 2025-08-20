@@ -265,7 +265,7 @@ function mostrarInformeDetallado(datos, container) {
                   <div class="pedidos-list">
                     ${cliente.pedidos.map(pedido => `
                       <div class="pedido-item">
-                        <span class="pedido-fecha">📅 ${new Date(pedido.fechaEntrega).toLocaleDateString('es-AR')}</span>
+                        <span class="pedido-fecha">📅 ${new Date(pedido.fecha || pedido.fechaPedido).toLocaleDateString('es-AR')}</span>
                         <span class="pedido-total">💰 $${pedido.total.toLocaleString('es-AR')}</span>
                         <span class="pedido-items">📦 ${pedido.cantidadItems} items</span>
                         <span class="pedido-codigo">#${pedido.codigo}</span>
@@ -291,6 +291,110 @@ function mostrarInformeDetallado(datos, container) {
 // Estado global de la aplicación
 let currentUser: any = null;
 let currentRoute: string = 'pedidos';
+
+// Variables globales para pedidos
+let allPedidos = [];
+let currentPedidos = [];
+
+// Exponer variables globalmente para acceso desde otras funciones
+window.allPedidos = allPedidos;
+window.currentPedidos = currentPedidos;
+
+// Mostrar modal para crear pedido
+function showCreateOrderModal() {
+  console.log('🎯 Intentando abrir modal de crear pedido...');
+  console.log('📦 OrderModal disponible:', !!window.orderModal);
+  
+  if (window.orderModal) {
+    console.log('✅ Abriendo OrderModal...');
+    
+    // Verificar que el modal se cree correctamente
+    const modalElement = document.getElementById('orderModal');
+    console.log('🔍 Modal DOM element:', !!modalElement);
+    
+    if (modalElement) {
+      console.log('🔍 Clases actuales del modal:', modalElement.className);
+    }
+    
+    window.orderModal.show();
+    
+    // Verificar el estado después de show()
+    setTimeout(() => {
+      const modalAfter = document.getElementById('orderModal');
+      if (modalAfter) {
+        console.log('🔍 Clases después de show():', modalAfter.className);
+        console.log('🔍 Estilos computados:', {
+          display: window.getComputedStyle(modalAfter).display,
+          opacity: window.getComputedStyle(modalAfter).opacity,
+          visibility: window.getComputedStyle(modalAfter).visibility
+        });
+      }
+    }, 50);
+    
+  } else {
+    console.error('❌ OrderModal no está disponible');
+    
+    // Intentar cargar el modal después de un pequeño delay
+    setTimeout(() => {
+      if (window.orderModal) {
+        console.log('✅ OrderModal disponible después del delay, abriendo...');
+        window.orderModal.show();
+      } else {
+        console.error('❌ OrderModal sigue no disponible después del delay');
+        alert('Error: Modal no disponible. Por favor, recarga la página.');
+      }
+    }, 100);
+  }
+}
+
+// Exponer inmediatamente para evitar errores de timing
+window.showCreateOrderModal = showCreateOrderModal;
+
+// Configurar listeners con límite de reintentos
+let setupAttempts = 0;
+const maxAttempts = 10;
+
+function trySetupEventListeners() {
+  setupAttempts++;
+
+  // Intentar configurar los event listeners si están disponibles
+  try {
+    // Verificar si hay funciones de configuración disponibles
+    let configured = false;
+    
+    // Intentar configurar listeners de pedidos
+    if (typeof window.setupPedidosEventListeners === 'function') {
+      window.setupPedidosEventListeners();
+      configured = true;
+    }
+    
+    // Intentar configurar listeners de productos
+    if (typeof window.setupProductosEventListeners === 'function') {
+      window.setupProductosEventListeners();
+      configured = true;
+    }
+    
+    // Intentar configurar listeners de clientes
+    if (typeof window.setupClientesEventListeners === 'function') {
+      window.setupClientesEventListeners();
+      configured = true;
+    }
+    
+    if (configured) {
+      console.log('✅ Event listeners configurados exitosamente');
+      return;
+    }
+  } catch (error) {
+    console.warn('⚠️ Error configurando event listeners:', error);
+  }
+
+  if (setupAttempts < maxAttempts) {
+    console.warn(`⚠️ Sistema de eventos no disponible, reintento ${setupAttempts}/${maxAttempts} en 500ms...`);
+    setTimeout(trySetupEventListeners, 500);
+  } else {
+    console.error('❌ No se pudo configurar el sistema de eventos después de', maxAttempts, 'intentos');
+  }
+}
 
 // Inicialización principal de la aplicación
 document.addEventListener('DOMContentLoaded', async () => {
@@ -452,8 +556,7 @@ async function loadRoute(route: string) {
   try {
     switch (route) {
       case 'pedidos':
-        await loadZonas();
-        await loadPedidos();
+        await loadPedidosSection();
         break;
               case 'clientes':
           await loadClientesSection();
@@ -514,76 +617,693 @@ function updateZonaFilter() {
   }
 }
 
-// Cargar pedidos con filtros desde el backend
-async function loadPedidos() {
-  console.log('📦 Cargando pedidos con filtros:', currentFilters);
+// Cargar sección de pedidos moderna
+async function loadPedidosSection() {
+  console.log('🚀 Cargando sección de pedidos moderna...');
+  const contentArea = document.getElementById('contentArea');
+  
+  if (!contentArea) {
+    console.error('❌ Content area no encontrado');
+    return;
+  }
+
+  // Renderizar la nueva UI moderna
+  contentArea.innerHTML = `
+    <div class="pedidos-section">
+      <!-- Header de la sección -->
+      <div class="pedidos-header">
+        <div class="header-content">
+          <h1 class="section-title">
+            <span class="icon">📦</span>
+            Gestión de Pedidos
+          </h1>
+          <p class="section-subtitle">
+            Administra y gestiona todos los pedidos de tu negocio de manera eficiente
+          </p>
+        </div>
+      </div>
+
+      <!-- Contenedor principal -->
+      <div class="pedidos-container">
+        <!-- Panel de acciones -->
+        <div class="actions-panel">
+          <div class="actions-header">
+            <h3>🎯 Acciones Rápidas</h3>
+          </div>
+          <div class="actions-content">
+            <button onclick="window.showCreateOrderModal()" class="btn-create">
+              ➕ Nuevo Pedido
+            </button>
+            <button onclick="exportPedidos()" class="btn-export">
+              📊 Exportar Datos
+            </button>
+            <button onclick="window.showDeliveryMap()" class="btn-export">
+              🗺️ Mapa de Entregas
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel de filtros -->
+        <div class="filters-panel">
+          <div class="filters-header">
+            <h3>🔍 Filtros Avanzados</h3>
+          </div>
+          <div class="filters-content">
+            <div class="filter-group">
+              <label class="filter-label">Estado del Pedido</label>
+              <select id="pedidoEstadoFilter" class="filter-select">
+                <option value="">Todos los estados</option>
+                <option value="pendient" selected>📦 Pendientes</option>
+                <option value="proceso">🔄 En Proceso</option>
+                <option value="entregad">✅ Entregados</option>
+                <option value="anulado">❌ Anulados</option>
+              </select>
+            </div>
+            
+            <div class="filter-group">
+              <label class="filter-label">Fecha de Entrega</label>
+              <input 
+                type="date" 
+                id="pedidoFechaFilter" 
+                class="filter-input"
+                placeholder="Seleccionar fecha..."
+              />
+            </div>
+            
+            <div class="filter-group">
+              <label class="filter-label">Zona de Entrega</label>
+              <select id="pedidoZonaFilter" class="filter-select">
+                <option value="">Todas las zonas</option>
+              </select>
+            </div>
+            
+            <div class="filter-group">
+              <label class="filter-label">Buscar Cliente</label>
+              <input 
+                type="text" 
+                id="pedidoClienteFilter" 
+                class="filter-input"
+                placeholder="Nombre o teléfono del cliente..."
+              />
+            </div>
+          </div>
+          
+          <div class="filter-actions">
+            <button onclick="applyPedidoFilters()" class="btn-filter">
+              🔍 Aplicar Filtros
+            </button>
+            <button onclick="clearPedidoFilters()" class="btn-clear-filters">
+              🗑️ Limpiar Filtros
+            </button>
+          </div>
+        </div>
+
+        <!-- Contador de pedidos -->
+        <div class="pedidos-counter">
+          <div class="counter-content">
+            <span class="counter-label">📊 Pedidos Encontrados</span>
+            <span class="counter-value" id="pedidosCounter">Cargando...</span>
+          </div>
+        </div>
+
+        <!-- Lista de pedidos -->
+        <div class="pedidos-list">
+          <div class="list-header">
+            <h3>📋 Lista de Pedidos</h3>
+          </div>
+          <div class="pedidos-grid" id="pedidosGrid">
+            <div class="loading-state">
+              <div class="loading-spinner"></div>
+              <p>Cargando pedidos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Cargar datos después de renderizar la UI
+  await loadPedidosData();
+  setupPedidosEventListeners();
+}
+
+// Variables globales para pedidos modernos
+let currentPedidoFilters = {
+  estado: 'pendient',
+  fecha: '',
+  zona: '',
+  cliente: ''
+};
+
+// Cargar datos de pedidos
+async function loadPedidosData() {
+  console.log('📦 Cargando datos de pedidos...');
   const token = localStorage.getItem('token');
 
   try {
-    // Si es la primera carga, aplicar filtro por defecto (pendientes)
-    if (!currentFilters.estado && allPedidos.length === 0) {
-      currentFilters.estado = 'pendient';
-      // Configurar el select por defecto
-      const estadoSelect = document.getElementById('filterEstado');
-      if (estadoSelect) {
-        estadoSelect.value = 'pendient';
-      }
-    }
-
-    // Construir parámetros de consulta solo con filtros que tienen valor
+    // Cargar zonas primero
+    await loadZonas();
+    
+    // Cargar pedidos con filtro por defecto
     const params = new URLSearchParams();
-    Object.keys(currentFilters).forEach(key => {
-      if (currentFilters[key] && currentFilters[key].trim() !== '') {
-        params.append(key, currentFilters[key]);
-      }
-    });
-
-    const url = `/api/pedidos${params.toString() ? '?' + params.toString() : ''}`;
-    console.log('📡 URL de consulta:', url);
-
-    const response = await fetch(url, {
+    params.append('estado', currentPedidoFilters.estado);
+    
+    const response = await fetch(`/api/pedidos?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error del servidor:', errorText);
-      throw new Error(`Error ${response.status}: ${errorText}`);
+      throw new Error(`Error ${response.status}: ${await response.text()}`);
     }
 
     const pedidos = await response.json();
-    console.log('✅ Pedidos cargados:', pedidos.length, 'pedidos');
-    console.log('📋 Datos de pedidos:', pedidos);
-
-    // Guardar en variables globales
+    console.log('✅ Pedidos cargados:', pedidos.length);
+    
+    // Actualizar variables locales y globales
     allPedidos = pedidos;
     currentPedidos = pedidos;
     window.allPedidos = pedidos;
     window.currentPedidos = pedidos;
-
-    // Actualizar información de resultados
-    updatePedidosInfo(pedidos);
-
-    // Renderizar pedidos directamente (ya vienen filtrados del backend)
-    renderPedidos(pedidos);
+    
+    // Actualizar UI
+    updatePedidosCounter(pedidos.length);
+    renderPedidosGrid(pedidos);
+    
   } catch (error) {
-    console.error('💥 Error cargando pedidos:', error);
-    const contentArea = document.getElementById('contentArea');
-    if (contentArea) {
-      contentArea.innerHTML = `
-        <h3 class="content-title">Gestión de Pedidos</h3>
-        <div style="text-align: center; padding: 2rem; color: #dc2626;">
-          <p>Error cargando pedidos: ${error.message}</p>
-          <button onclick="loadPedidos()" class="btn-primary" style="margin-top: 1rem;">
-            Reintentar
-          </button>
-        </div>
-      `;
-    }
+    console.error('❌ Error cargando pedidos:', error);
+    showPedidosError(error);
   }
 }
+
+// Configurar event listeners para pedidos
+function setupPedidosEventListeners() {
+  console.log('🎧 Configurando event listeners para pedidos...');
+  
+  // Filtros con debounce
+  const clienteFilter = document.getElementById('pedidoClienteFilter');
+  if (clienteFilter) {
+    clienteFilter.addEventListener('input', debounce(() => {
+      currentPedidoFilters.cliente = clienteFilter.value;
+      applyPedidoFilters();
+    }, 300));
+  }
+  
+  const estadoFilter = document.getElementById('pedidoEstadoFilter');
+  if (estadoFilter) {
+    estadoFilter.addEventListener('change', () => {
+      currentPedidoFilters.estado = estadoFilter.value;
+      applyPedidoFilters();
+    });
+  }
+  
+  const fechaFilter = document.getElementById('pedidoFechaFilter');
+  if (fechaFilter) {
+    fechaFilter.addEventListener('change', () => {
+      currentPedidoFilters.fecha = fechaFilter.value;
+      applyPedidoFilters();
+    });
+  }
+  
+  const zonaFilter = document.getElementById('pedidoZonaFilter');
+  if (zonaFilter) {
+    zonaFilter.addEventListener('change', () => {
+      currentPedidoFilters.zona = zonaFilter.value;
+      applyPedidoFilters();
+    });
+  }
+}
+
+// Aplicar filtros de pedidos
+async function applyPedidoFilters() {
+  console.log('🔍 Aplicando filtros de pedidos:', currentPedidoFilters);
+  const token = localStorage.getItem('token');
+
+  try {
+    const params = new URLSearchParams();
+    Object.keys(currentPedidoFilters).forEach(key => {
+      if (currentPedidoFilters[key] && currentPedidoFilters[key].trim() !== '') {
+        params.append(key, currentPedidoFilters[key]);
+      }
+    });
+
+    const response = await fetch(`/api/pedidos?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${await response.text()}`);
+    }
+
+    const pedidos = await response.json();
+    currentPedidos = pedidos;
+    window.currentPedidos = pedidos;
+    
+    updatePedidosCounter(pedidos.length);
+    renderPedidosGrid(pedidos);
+    
+  } catch (error) {
+    console.error('❌ Error aplicando filtros:', error);
+    showPedidosError(error);
+  }
+}
+
+// Limpiar filtros de pedidos
+function clearPedidoFilters() {
+  console.log('🗑️ Limpiando filtros de pedidos...');
+  
+  currentPedidoFilters = {
+    estado: '',
+    fecha: '',
+    zona: '',
+    cliente: ''
+  };
+  
+  // Resetear inputs
+  const estadoFilter = document.getElementById('pedidoEstadoFilter');
+  const fechaFilter = document.getElementById('pedidoFechaFilter');
+  const zonaFilter = document.getElementById('pedidoZonaFilter');
+  const clienteFilter = document.getElementById('pedidoClienteFilter');
+  
+  if (estadoFilter) estadoFilter.value = '';
+  if (fechaFilter) fechaFilter.value = '';
+  if (zonaFilter) zonaFilter.value = '';
+  if (clienteFilter) clienteFilter.value = '';
+  
+  // Recargar todos los pedidos
+  loadPedidosData();
+}
+
+// Actualizar contador de pedidos
+function updatePedidosCounter(count) {
+  const counter = document.getElementById('pedidosCounter');
+  if (counter) {
+    counter.textContent = `${count} pedido${count !== 1 ? 's' : ''}`;
+  }
+}
+
+// Renderizar grid de pedidos
+function renderPedidosGrid(pedidos) {
+  const grid = document.getElementById('pedidosGrid');
+  if (!grid) return;
+
+  if (pedidos.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📦</div>
+        <h4>No se encontraron pedidos</h4>
+        <p>No hay pedidos que coincidan con los filtros aplicados.</p>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = pedidos.map(pedido => {
+    const id = pedido.codigo || pedido.id;
+    const nombreCompleto = (pedido.cliente_nombre || `${pedido.nombre || ''} ${pedido.apellido || ''}`).trim();
+    const direccion = pedido.direccion || '';
+    return `
+      <div class="pedido-card" style="padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+          <div style="flex:1;">
+            <h3 style="margin:0 0 0.25rem 0; font-weight:700; color:#111827;">#${id}</h3>
+            <div style="color:#111827; margin-bottom: 0.25rem;">${nombreCompleto || 'Cliente'}</div>
+            <div style="color:#4b5563;">${direccion}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:220px; align-items:flex-end;">
+            <button onclick="viewPedido(${id})" class="btn-action btn-view">Ver detalle</button>
+            ${pedido.estado === 'pendient' ? `<button onclick="startDelivery(${id})" class="btn-action btn-deliver">Entregar</button>` : ''}
+            ${pedido.estado === 'pendient' ? `<button onclick="cancelPedido(${id})" class="btn-action btn-cancel">Anular</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Renderizar items de un pedido
+function renderPedidoItems(items) {
+  if (items.length === 0) {
+    return '<div style="color: #6b7280; font-style: italic;">No hay productos especificados</div>';
+  }
+
+  return items.slice(0, 3).map(item => `
+    <div class="item">
+      <span class="item-name">${item.descripcion || 'Producto'}</span>
+      <span class="item-quantity">x${item.cantidad || 0}</span>
+    </div>
+  `).join('') + (items.length > 3 ? `
+    <div style="color: #6b7280; font-style: italic; text-align: center; padding: 0.5rem;">
+      ... y ${items.length - 3} producto${items.length - 3 !== 1 ? 's' : ''} más
+    </div>
+  ` : '');
+}
+
+// Obtener icono del estado
+function getStatusIcon(estado) {
+  switch (estado) {
+    case 'pendient': return '📦';
+    case 'proceso': return '🔄';
+    case 'entregad': return '✅';
+    case 'anulado': return '❌';
+    default: return '❓';
+  }
+}
+
+
+
+// Mostrar error en la UI
+function showPedidosError(error) {
+  const grid = document.getElementById('pedidosGrid');
+  if (grid) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">❌</div>
+        <h4>Error cargando pedidos</h4>
+        <p>${error.message || 'Ocurrió un error inesperado'}</p>
+        <button onclick="loadPedidosData()" class="btn-create" style="margin-top: 1rem;">
+          🔄 Reintentar
+        </button>
+      </div>
+    `;
+  }
+}
+
+
+
+function editPedido(pedidoId) {
+  console.log('✏️ Editando pedido:', pedidoId);
+  // Implementar edición del pedido
+  showEditPedidoModal(pedidoId);
+}
+
+function startDelivery(pedidoId) {
+  console.log('🚚 Iniciando entrega:', pedidoId);
+  if (window.deliveryModal && typeof window.deliveryModal.show === 'function') {
+    window.deliveryModal.show(pedidoId);
+  } else if (window.startDelivery && window.startDelivery !== startDelivery) {
+    // Compatibilidad si existe una función global externa
+    window.startDelivery(pedidoId);
+  } else {
+    alert('Modal de entrega no disponible. Recarga la página (Ctrl + F5).');
+  }
+}
+
+function completeDelivery(pedidoId) {
+  console.log('✅ Completando entrega:', pedidoId);
+  // Implementar completar entrega
+  updatePedidoStatus(pedidoId, 'entregad');
+}
+
+function cancelPedido(pedidoId) {
+  console.log('❌ Cancelando pedido:', pedidoId);
+  if (confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
+    updatePedidoStatus(pedidoId, 'anulado');
+  }
+}
+
+// Actualizar estado del pedido
+async function updatePedidoStatus(pedidoId, newStatus) {
+  const token = localStorage.getItem('token');
+  
+  try {
+    console.log('🔄 Actualizando estado del pedido:', pedidoId, 'a estado:', newStatus);
+    
+    const response = await fetch(`/api/pedidos/${pedidoId}/estado`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ estado: newStatus })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Estado actualizado correctamente:', result);
+    
+    // Mostrar mensaje de éxito
+    if (newStatus === 'anulado') {
+      alert('✅ Pedido cancelado correctamente');
+    }
+    
+    // Recargar pedidos
+    await loadPedidosData();
+    
+  } catch (error) {
+    console.error('❌ Error actualizando estado:', error);
+    alert('Error actualizando el estado del pedido: ' + error.message);
+  }
+}
+
+// Función de debounce
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Exportar pedidos
+function exportPedidos() {
+  console.log('📊 Exportando pedidos...');
+  // Implementar exportación
+  alert('Función de exportación en desarrollo');
+}
+
+// Mostrar mapa de entregas (alias para showMapModal)
+function showDeliveryMap() {
+  console.log('🗺️ Mostrando mapa de entregas...');
+  showMapModal();
+}
+
+// Funciones relacionadas con el mapa de entregas ya no necesarias
+// (se usa MapModal.js que tiene toda la funcionalidad de Leaflet)
+
+// Exponer inmediatamente para evitar errores de timing
+window.showDeliveryMap = showDeliveryMap;
+
+// Funciones placeholder para compatibilidad
+function showPedidoDetails(pedidoId) {
+  console.log('📋 Mostrando detalles del pedido:', pedidoId);
+  alert('Vista detallada en desarrollo');
+}
+
+function showEditPedidoModal(pedidoId) {
+  console.log('✏️ Abriendo modal de edición:', pedidoId);
+  alert('Modal de edición en desarrollo');
+}
+
+// Modal completo para registrar cobro y devolución de retornables
+async function showClientPaymentModal(clienteId) {
+  try {
+    const token = localStorage.getItem('token');
+
+    // Buscar cliente actual para mostrar datos (con fallback a fetch)
+    const wantedId = String(clienteId);
+    const listA = Array.isArray(window.currentClients) ? window.currentClients : [];
+    const listB = Array.isArray(window.currentClientes) ? window.currentClientes : [];
+    let cliente = [...listA, ...listB].find(c => String(c.id ?? c.codigo ?? c.Code) === wantedId);
+    if (!cliente) {
+      try {
+        const respCli = await fetch('/api/clientes', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (respCli.ok) {
+          const allCli = await respCli.json();
+          cliente = (allCli || []).find(c => String(c.id ?? c.codigo ?? c.Code) === wantedId);
+          window.currentClients = allCli;
+          window.currentClientes = allCli;
+        }
+      } catch (_) {}
+    }
+
+    // Cargar tipos de pago (excluir los que aplican saldo)
+    const tpResp = await fetch('/api/tiposdepago', { headers: { 'Authorization': `Bearer ${token}` } });
+    const tipos = tpResp.ok ? await tpResp.json() : [];
+    const tiposValidos = tipos.filter(tp => {
+      const v = tp.aplicaSaldo;
+      if (!v) return true;
+      if (typeof v === 'object' && v.type === 'Buffer') return v.data?.[0] !== 1;
+      if (typeof v === 'number') return v !== 1;
+      if (typeof v === 'string') return parseInt(v) !== 1;
+      if (typeof v === 'boolean') return v === false;
+      return true;
+    });
+
+    // Cargar productos retornables para seleccionar cuál devuelve (si existen)
+    let productosRet = [];
+    try {
+      const pr = await fetch('/api/productos', { headers: { 'Authorization': `Bearer ${token}` } });
+      const prods = pr.ok ? await pr.json() : [];
+      productosRet = (prods || []).filter(p => p.esRetornable === 1 || p.esRetornable === true);
+    } catch (_) {}
+
+    const opcionesPago = tiposValidos.map(tp => `<option value="${tp.id}">${tp.pago}</option>`).join('');
+    const opcionesRet = productosRet.map(p => `<option value="${p.codigo}">${p.descripcion}</option>`).join('');
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <div class="modal-overlay" id="clientPaymentOverlay">
+        <div class="modal-content" style="max-width:560px; max-height:90vh; overflow:auto;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h4 class="modal-title" style="margin:0;">💳 Cobro / Retornables</h4>
+            <button id="clientPaymentCloseBtn" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#6b7280;">×</button>
+          </div>
+
+          <div style="padding:0.75rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:0.375rem; margin-bottom:1rem;">
+            <div><strong>👤 Cliente:</strong> ${cliente ? `${(cliente.nombre || '').toString()} ${(cliente.apellido || '').toString()}`.trim() : `#${clienteId}`}</div>
+            <div><strong>💰 Saldo actual:</strong> $${cliente && cliente.saldo != null ? parseFloat(cliente.saldo).toFixed(2) : '0.00'}</div>
+            <div><strong>🔄 Retornables:</strong> ${cliente && cliente.retornables != null ? parseInt(cliente.retornables) : 0} unidades</div>
+          </div>
+
+          <form id="clientPaymentForm">
+            <div class="form-group">
+              <label class="form-label">Tipo de pago</label>
+              <select id="clientPaymentTipo" class="form-input">
+                <option value="">Seleccionar tipo de pago...</option>
+                ${opcionesPago}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Monto recibido ($)</label>
+              <input type="number" id="clientPaymentMonto" class="form-input" step="0.01" min="0" value="0" />
+              <small style="color:#6b7280;">Puede ser 0 si solo devuelve retornables</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Retornables</label>
+              <div style="display:grid; grid-template-columns: 1fr 120px; gap:0.5rem;">
+                <select id="clientReturnProducto" class="form-input">
+                  <option value="">Seleccionar producto retornable...</option>
+                  ${opcionesRet}
+                </select>
+                <input type="number" id="clientReturnCantidad" class="form-input" min="0" value="0" />
+              </div>
+              <small style="color:#6b7280;">Saldo de retornables del cliente: ${parseInt(cliente?.retornables || 0)} unidades</small>
+            </div>
+
+            <div id="clientPaymentResumen" class="form-group" style="padding:0.75rem; background:#f3f4f6; border-radius:0.375rem;">
+              <div style="font-weight:600; margin-bottom:0.25rem;">📋 Resumen</div>
+              <div id="clientPaymentResumenText" style="color:#374151; font-size:0.9rem;">Complete los campos para ver el resumen</div>
+            </div>
+
+            <div class="modal-buttons">
+              <button type="button" class="btn-secondary" id="clientPaymentCancel">Cancelar</button>
+              <button type="submit" class="btn-primary" id="clientPaymentSave">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+    document.body.appendChild(wrapper);
+
+    const overlay = document.getElementById('clientPaymentOverlay');
+    overlay.classList.add('show');
+
+    const form = document.getElementById('clientPaymentForm');
+    const resumenText = document.getElementById('clientPaymentResumenText');
+
+    const updateResumen = () => {
+      const tipoId = (document.getElementById('clientPaymentTipo') as HTMLSelectElement).value;
+      const tipoNombre = (tiposValidos.find(t => String(t.id) === String(tipoId)) || {}).pago || '—';
+      const montoV = parseFloat((document.getElementById('clientPaymentMonto') as HTMLInputElement).value || '0');
+      const retCant = parseInt((document.getElementById('clientReturnCantidad') as HTMLInputElement).value || '0');
+      const retProdSel = (document.getElementById('clientReturnProducto') as HTMLSelectElement);
+      const retProdTxt = retProdSel && retProdSel.value ? (retProdSel.options[retProdSel.selectedIndex].text || 'Retornable') : 'Retornables';
+      const partes = [] as any[];
+      if (tipoId && montoV > 0) partes.push(`Se reciben $${montoV.toFixed(2)} en ${tipoNombre}`);
+      if (retCant > 0 && retProdSel.value) partes.push(`Se devuelven ${retCant} ${retProdTxt}`);
+      resumenText.textContent = partes.length ? partes.join(' • ') : 'Complete los campos para ver el resumen';
+    };
+
+    form.addEventListener('input', updateResumen);
+    document.getElementById('clientPaymentCloseBtn').onclick = () => overlay.remove();
+    document.getElementById('clientPaymentCancel').onclick = () => overlay.remove();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const tipoPagoId = (document.getElementById('clientPaymentTipo') as HTMLSelectElement).value;
+        const montoV = parseFloat((document.getElementById('clientPaymentMonto') as HTMLInputElement).value || '0');
+        const retCant = parseInt((document.getElementById('clientReturnCantidad') as HTMLInputElement).value || '0');
+        const retProd = (document.getElementById('clientReturnProducto') as HTMLSelectElement).value;
+
+        // Validaciones básicas
+        if ((!tipoPagoId || montoV <= 0) && !(retProd && retCant > 0)) {
+          alert('Ingrese un pago válido o una devolución de retornables.');
+          return;
+        }
+
+        // 1) Registrar cobro (si corresponde)
+        if (tipoPagoId && montoV > 0) {
+          const r = await fetch('/api/pagos/cliente', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clienteId, tipoPagoId, monto: montoV, observaciones: 'Cobro desde gestión de clientes' })
+          });
+          if (!r.ok) {
+            const t = await r.text();
+            throw new Error(`Error registrando cobro: ${t}`);
+          }
+        }
+
+        // 2) Registrar devolución de retornables (si corresponde)
+        if (retProd && retCant > 0) {
+          const r2 = await fetch('/api/clientes/retornables/devolver', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clienteId, productoId: retProd, cantidad: retCant, observaciones: 'Devolución desde gestión de clientes' })
+          });
+          if (!r2.ok) {
+            const t2 = await r2.text();
+            throw new Error(`Error registrando devolución: ${t2}`);
+          }
+        }
+
+        overlay.remove();
+        alert('Operación registrada correctamente');
+        if (window.loadClientesSection) await window.loadClientesSection();
+      } catch (err) {
+        alert(err.message || 'Error al registrar');
+      }
+    });
+  } catch (e) {
+    alert('No se pudo abrir el modal: ' + e.message);
+  }
+}
+
+// Exponer funciones globalmente para pedidos
+window.loadPedidosSection = loadPedidosSection;
+window.loadPedidosData = loadPedidosData;
+window.setupPedidosEventListeners = setupPedidosEventListeners;
+window.applyPedidoFilters = applyPedidoFilters;
+window.clearPedidoFilters = clearPedidoFilters;
+window.viewPedido = viewPedido;
+window.editPedido = editPedido;
+window.startDelivery = startDelivery;
+window.completeDelivery = completeDelivery;
+window.cancelPedido = cancelPedido;
+window.updatePedidoStatus = updatePedidoStatus;
+window.exportPedidos = exportPedidos;
+window.showPedidoDetails = showPedidoDetails;
+window.showEditPedidoModal = showEditPedidoModal;
+window.showClientPaymentModal = showClientPaymentModal;
+// Exponer helper para que DeliveryModal pueda obtener los items
+// (DeliveryModal llama a window.getPedidoItems)
+window.getPedidoItems = getPedidoItems;
+// Exponer logout para que funcione el botón del header
+window.logout = logout;
 
 // Actualizar información de resultados
 function updatePedidosInfo(pedidos) {
@@ -654,163 +1374,7 @@ async function getPedidoItems(pedidoId) {
   }
 }
 
-function renderPedidos(pedidos) {
-  const contentArea = document.getElementById('contentArea');
 
-  if (pedidos.length === 0) {
-    contentArea.innerHTML = `
-      <h3 class="content-title">Gestión de Pedidos</h3>
-      <div style="text-align: center; padding: 3rem; color: #6b7280;">
-        <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No hay pedidos registrados</p>
-        <p style="font-size: 0.875rem;">Los pedidos aparecerán aquí cuando se registren en el sistema.</p>
-        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem;">
-          <button onclick="showMapModal()" class="btn-secondary">
-            🗺️ Ver Mapa
-          </button>
-          <button onclick="showCreateOrderModal()" class="btn-primary">
-            + Crear Primer Pedido
-          </button>
-        </div>
-      </div>
-    `;
-    return;
-  }
-
-  const html = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h3 class="content-title" style="margin-bottom: 0;">Gestión de Pedidos</h3>
-      <div style="display: flex; gap: 0.5rem;">
-        <button onclick="showMapModal()" class="btn-secondary" style="width: auto; padding: 0.5rem 1rem;">
-          🗺️ Mapa
-        </button>
-        <button onclick="showCreateOrderModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
-          + Nuevo Pedido
-        </button>
-      </div>
-    </div>
-
-    <div style="margin-bottom: 1rem; background: white; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <h4 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600; color: #374151;">Filtros de Búsqueda - Pedidos Pendientes</h4>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-        <div>
-          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Estado</label>
-          <select id="filterEstado" onchange="filterPedidos()" class="form-input" style="width: 100%;">
-            <option value="">Todos los estados</option>
-            <option value="pendient" selected>📦 Pendientes</option>
-            <option value="proceso">🔄 En Proceso</option>
-            <option value="entregad">✅ Entregados</option>
-            <option value="anulado">❌ Anulados</option>
-          </select>
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Fecha</label>
-          <input
-            type="date"
-            id="filterFecha"
-            onchange="filterPedidos()"
-            class="form-input"
-            style="width: 100%;"
-          />
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Zona/Ruta</label>
-          <select id="filterZona" onchange="filterPedidos()" class="form-input" style="width: 100%;">
-            <option value="">Todas las zonas</option>
-          </select>
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Buscar Cliente</label>
-          <input
-            type="text"
-            id="filterSearch"
-            placeholder="Nombre o apellido..."
-            onchange="filterPedidos()"
-            oninput="debouncePedidosSearch()"
-            class="form-input"
-            style="width: 100%;"
-          />
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 0.5rem; justify-content: space-between; align-items: center;">
-      <div style="display: flex; gap: 0.5rem;">
-        <button onclick="clearPedidosFilters()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
-            🗑️ Limpiar Filtros
-        </button>
-        </div>
-        <div id="pedidosInfo" style="font-size: 0.875rem; color: #6b7280;">
-          <span id="pedidosCount">Cargando...</span> | <span id="pedidosFilters">Filtros: Pendientes por defecto</span>
-        </div>
-      </div>
-    </div>
-
-    <div style="display: grid; gap: 1rem;">
-      ${pedidos.map(pedido => {
-        // Asegurar que todos los campos tengan valores por defecto
-        const id = pedido.id || pedido.codigo || 'N/A';
-        const clienteNombre = pedido.cliente_nombre || pedido.nombre || 'Cliente sin nombre';
-        const direccion = pedido.direccion || 'Dirección no especificada';
-        const fechaPedido = pedido.fecha_pedido || pedido.fechaPedido;
-        const total = pedido.total || 0;
-        const estado = pedido.estado || 'pendient';
-
-        // Formatear fecha
-        let fechaFormateada = 'Fecha no disponible';
-        if (fechaPedido) {
-          try {
-            const fecha = new Date(fechaPedido);
-            if (!isNaN(fecha.getTime())) {
-              fechaFormateada = fecha.toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-              });
-            }
-          } catch (e) {
-            console.error('Error formateando fecha:', e);
-          }
-        }
-
-        return `
-          <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-              <div style="flex: 1;">
-                <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.5rem;">#${id}</h4>
-                <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">👤 ${clienteNombre}</p>
-                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">📍 ${direccion}</p>
-                <p style="font-size: 0.875rem; color: #6b7280;">📅 ${fechaFormateada}</p>
-              </div>
-              <div style="text-align: right;">
-                <p style="font-weight: 600; color: #059669; margin-bottom: 0.5rem; font-size: 1.125rem;">$${parseFloat(total).toFixed(2)}</p>
-                <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; ${getStatusColor(estado)}">
-                  ${estado}
-                </span>
-                <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end; flex-wrap: wrap;">
-                  <button onclick="viewPedido(${id})" style="padding: 0.25rem 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
-                    Ver
-                  </button>
-                  ${estado === 'pendient' ? `
-                    <button onclick="entregarPedido(${id})" style="padding: 0.25rem 0.5rem; background: #059669; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
-                      🚚 Entregar
-                    </button>
-                  ` : ''}
-                  <button onclick="editPedido(${id})" style="padding: 0.25rem 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
-                    Editar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-
-  contentArea.innerHTML = html;
-}
 
 function getStatusColor(estado) {
   switch (estado) {
@@ -827,9 +1391,7 @@ function getStatusColor(estado) {
   }
 }
 
-// Variables globales para pedidos
-let currentPedidos: any[] = [];
-let allPedidos: any[] = [];
+// Variables duplicadas eliminadas - ya están definidas arriba
 
 // Timeout para búsqueda con debounce de pedidos
 let pedidosSearchTimeout: any;
@@ -852,7 +1414,7 @@ async function filterPedidos() {
   };
 
   // Recargar pedidos con los nuevos filtros desde el backend
-  await loadPedidos();
+  await loadPedidosData();
 }
 
 // Búsqueda con debounce para el campo de búsqueda de pedidos
@@ -863,32 +1425,7 @@ function debouncePedidosSearch() {
   }, 500); // Esperar 500ms después de que el usuario deje de escribir
 }
 
-// Limpiar filtros de pedidos
-async function clearPedidosFilters() {
-  console.log('🧹 Limpiando filtros de pedidos');
 
-  // Limpiar campos de filtro
-  const filterEstado = document.getElementById('filterEstado');
-  const filterFecha = document.getElementById('filterFecha');
-  const filterZona = document.getElementById('filterZona');
-  const filterSearch = document.getElementById('filterSearch');
-
-  if (filterEstado) filterEstado.value = 'pendient'; // Volver a pendientes por defecto
-  if (filterFecha) filterFecha.value = '';
-  if (filterZona) filterZona.value = '';
-  if (filterSearch) filterSearch.value = '';
-
-  // Resetear filtros globales
-  currentFilters = {
-    estado: 'pendient', // Mantener pendientes por defecto
-    fecha: '',
-    zona: '',
-    search: ''
-  };
-
-  // Aplicar filtros (mostrará solo pedidos pendientes)
-  await filterPedidos();
-}
 
 // Ver detalles del pedido
 async function viewPedido(pedidoId) {
@@ -918,7 +1455,7 @@ async function viewPedido(pedidoId) {
       itemsText = '\n\n📦 PRODUCTOS:\n';
       items.forEach(item => {
         const subtotal = parseFloat(item.subtotal || 0).toFixed(2);
-        itemsText += `• ${item.nombreProducto}\n  Cantidad: ${item.cantidad} x $${parseFloat(item.precioUnitario || 0).toFixed(2)} = $${subtotal}\n`;
+        itemsText += `• ${item.descripcion}\n  Cantidad: ${item.cantidad} x $${parseFloat(item.precioUnitario || 0).toFixed(2)} = $${subtotal}\n`;
       });
     } else {
       itemsText = '\n\n📦 No hay items registrados para este pedido';
@@ -954,10 +1491,7 @@ async function viewPedido(pedidoId) {
   }
 }
 
-// Editar pedido
-function editPedido(pedidoId) {
-  alert('Funcionalidad de edición en desarrollo...');
-}
+
 
 // Cargar sección de clientes con diseño moderno
 async function loadClientesSection() {
@@ -1060,15 +1594,15 @@ async function loadClientesSection() {
       </div>
     </div>
     
-    <!-- Modal para crear/editar cliente -->
-    <div id="clientModal" class="modal-overlay">
+    <!-- Modal para crear/editar cliente - DESHABILITADO - Usando ClientModal.js en su lugar -->
+    <div id="indexClientModal" class="modal-overlay" style="display: none !important;">
       <div class="cliente-modal">
         <div class="modal-header">
           <h4 id="modalTitle" class="modal-title">Nuevo Cliente</h4>
           <button onclick="closeClientModal()" class="btn-close">×</button>
         </div>
         
-        <form id="clientForm" class="modal-form">
+        <form id="indexClientForm" class="modal-form">
           <div class="form-group">
             <label class="form-label">Nombre</label>
             <input type="text" id="clientName" name="nombre" required class="form-input" placeholder="Nombre del cliente" />
@@ -1133,7 +1667,7 @@ async function loadClientesSection() {
   contentArea.innerHTML = clientesHTML;
   
   // Configurar el formulario
-  const clientForm = document.getElementById('clientForm');
+  const clientForm = document.getElementById('indexClientForm');
   if (clientForm) {
     clientForm.addEventListener('submit', handleClientSubmit);
   }
@@ -1307,6 +1841,14 @@ function renderClientes(clientes) {
                     <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708L10.5 8.207l-3-3L12.146.146zM11.207 9l-3-3L2.5 11.707V14.5a.5.5 0 0 0 .5.5h2.793L11.207 9z"/>
                   </svg>
                   Editar
+                </button>
+
+                <button
+                  onclick="showClientPaymentModal(${id})"
+                  style="padding: 0.5rem; background: #059669; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;"
+                  title="Registrar cobro"
+                >
+                  💳 Cobrar
                 </button>
 
                 ${(cliente.latitud && cliente.longitud) ? `
@@ -2601,54 +3143,31 @@ loadClientesData();
 
 // Función para editar cliente inline
 function editClienteInline(clientId) {
-  console.log('✏️ Editando cliente:', clientId);
-  editingClientId = clientId;
+  console.log('✏️ editClienteInline llamada - redirigiendo a ClientModal.js');
+  console.log('🔄 Cliente ID:', clientId);
   
-  // Usar window.currentClients para asegurar acceso global
-  const clients = window.currentClients || currentClients || [];
-  const cliente = clients.find(c => c.id == clientId || c.codigo == clientId);
-  if (!cliente) {
-    console.error('❌ Cliente no encontrado:', clientId);
-    return;
-  }
-  
-  const modal = document.getElementById('clientModal');
-  const modalTitle = document.getElementById('modalTitle');
-  const form = document.getElementById('clientForm');
-  
-  if (modal && modalTitle && form) {
-    modalTitle.textContent = 'Editar Cliente';
+  // Redirigir al ClientModal.js en lugar de usar el modal duplicado
+  if (window.clientModal) {
+    console.log('✅ Usando ClientModal.js para edición');
     
-    // Llenar formulario con datos del cliente
-    const nameInput = document.getElementById('clientName');
-    const apellidoInput = document.getElementById('clientApellido');
-    const telefonoInput = document.getElementById('clientTelefono');
-    const direccionInput = document.getElementById('clientDireccion');
-    const saldoInput = document.getElementById('clientSaldo');
-    const retornablesInput = document.getElementById('clientRetornables');
+    // Obtener el cliente de la lista actual
+    const clients = window.currentClients || currentClients || [];
+    const cliente = clients.find(c => c.id == clientId || c.codigo == clientId);
     
-    if (nameInput) nameInput.value = cliente.nombre || cliente.name || '';
-    if (apellidoInput) apellidoInput.value = cliente.apellido || cliente.lastname || '';
-    if (telefonoInput) telefonoInput.value = cliente.telefono || cliente.phone || '';
-    if (direccionInput) direccionInput.value = cliente.direccion || cliente.address || '';
-    if (saldoInput) saldoInput.value = cliente.saldo || 0;
-    if (retornablesInput) retornablesInput.value = cliente.retornables || 0;
+    if (!cliente) {
+      console.error('❌ Cliente no encontrado:', clientId);
+      alert('Error: Cliente no encontrado');
+      return;
+    }
     
-    // Llenar coordenadas GPS si existen
-    const latitudInput = document.getElementById('clientLatitud');
-    const longitudInput = document.getElementById('clientLongitud');
-    if (latitudInput) latitudInput.value = cliente.latitud || '';
-    if (longitudInput) longitudInput.value = cliente.longitud || '';
-    
-    modal.classList.add('show');
-    
-    // Inicializar mapa después de que el modal esté visible
-    setTimeout(() => {
-      initializeClientMap(cliente.latitud, cliente.longitud);
-    }, 100);
+    console.log('👤 Cliente encontrado:', cliente);
+    window.clientModal.show(cliente);
   } else {
-    console.error('❌ Elementos del modal no encontrados');
+    console.error('❌ ClientModal.js no disponible');
+    alert('Error: Modal de clientes no disponible. Por favor recarga la página.');
   }
+  
+  return; // Evitar ejecutar el código del modal duplicado
 }
 
 // Función para ver cliente inline
@@ -2726,11 +3245,19 @@ async function toggleClienteStatus(clientId) {
     await loadClientesData();
     
     // Mostrar mensaje de éxito
-    showMessage(`Cliente ${action}do correctamente`, 'success');
+    if (window.clientModal && window.clientModal.showNotification) {
+      window.clientModal.showNotification(`Cliente ${action}do correctamente`, 'success');
+    } else {
+      console.log(`✅ Cliente ${action}do correctamente`);
+    }
     
   } catch (error) {
     console.error('💥 Error cambiando estado del cliente:', error);
-    showMessage(`Error: ${error.message}`, 'error');
+    if (window.clientModal && window.clientModal.showNotification) {
+      window.clientModal.showNotification(`Error: ${error.message}`, 'error');
+    } else {
+      alert(`Error: ${error.message}`);
+    }
   }
 }
 
@@ -2964,6 +3491,9 @@ function renderClientesList(clientes) {
               <button onclick="editClienteInline(${id})" class="btn-edit">
                 ✏️ Editar
               </button>
+              <button onclick="showClientPaymentModal(${id})" class="btn-view" title="Registrar cobro">
+                💳 Cobrar
+              </button>
               <button onclick="toggleClienteStatus(${id})" class="btn-toggle ${cliente.activo === 0 ? 'btn-blocked' : 'btn-active'}">
                 ${cliente.activo === 0 ? '🔓 Desbloquear' : '🔒 Bloquear'}
               </button>
@@ -3158,6 +3688,7 @@ function clearClientSearch() {
 function editClient(clientId) {
   console.log('✏️ Editando cliente ID:', clientId);
   console.log('📋 Clientes disponibles:', currentClients.length);
+  console.log('🔍 editingClientId ANTES de editar:', editingClientId);
 
   const cliente = currentClients.find(c => {
     const id = c.codigo || c.id;
@@ -3174,12 +3705,27 @@ function editClient(clientId) {
   console.log('✅ Cliente encontrado:', cliente);
 
   // Usar el modal component
+  console.log('🔍 Verificando disponibilidad de ClientModal...');
+  console.log('🔍 window.clientModal:', !!window.clientModal);
+  console.log('🔍 typeof window.clientModal:', typeof window.clientModal);
+  
   if (window.clientModal) {
+    console.log('✅ Usando ClientModal.js para edición');
+    console.log('🔧 Estableciendo editingClientId en ClientModal...');
     window.clientModal.show(cliente);
   } else {
-    console.error('❌ ClientModal no está disponible');
-    alert('Error: Modal no disponible');
+    console.error('❌ ClientModal no está disponible, usando modal del index.astro como fallback');
+    console.log('🔧 Configurando editingClientId para el modal del index.astro...');
+    console.log('🔧 editingClientId ANTES de asignar:', editingClientId);
+    
+    // Fallback: usar el modal del index.astro
+    editingClientId = clientId;
+    console.log('🔧 editingClientId DESPUÉS de asignar:', editingClientId);
+    
+    showEditClientModal(cliente);
   }
+  
+  console.log('🔍 editingClientId FINAL:', editingClientId);
 }
 
 // Mostrar ubicación del cliente en el mapa
@@ -3298,12 +3844,14 @@ window.deleteProduct = deleteProduct;
 window.showSuccessMessage = showSuccessMessage;
 window.showErrorMessage = showErrorMessage;
 
-// Funciones de pedidos
-window.loadPedidos = loadPedidos;
+// Funciones de pedidos (loadPedidos no existe, usar loadPedidosData)
+window.loadPedidos = loadPedidosData;
 window.clearPedidosFilters = clearPedidosFilters;
 window.viewPedido = viewPedido;
 window.editPedido = editPedido;
 window.entregarPedido = entregarPedido;
+window.cancelPedido = cancelPedido;
+window.updatePedidoStatus = updatePedidoStatus;
 
 // Funciones de clientes
 window.loadClientes = loadClientes;
@@ -3317,16 +3865,6 @@ window.deleteClient = deleteClient;
 window.loadProductosData = loadProductosData;
 
 // ========== FUNCIONES PARA PEDIDOS ==========
-
-// Mostrar modal para crear pedido
-function showCreateOrderModal() {
-  if (window.orderModal) {
-    window.orderModal.show();
-  } else {
-    console.error('❌ OrderModal no está disponible');
-    alert('Error: Modal no disponible');
-  }
-}
 
 // Mostrar modal del mapa de pedidos
 function showMapModal() {
@@ -3386,13 +3924,14 @@ window.showSuccessMessage = showSuccessMessage;
 window.showErrorMessage = showErrorMessage;
 
 // Funciones de pedidos
-window.showCreateOrderModal = showCreateOrderModal;
 window.showMapModal = showMapModal;
 window.entregarPedido = entregarPedido;
 window.getPedidoItems = getPedidoItems;
 window.viewPedido = viewPedido;
 window.filterPedidos = filterPedidos;
 window.clearPedidosFilters = clearPedidosFilters;
+window.cancelPedido = cancelPedido;
+window.updatePedidoStatus = updatePedidoStatus;
 
 // Funciones de autenticación
 window.logout = logout;
@@ -3779,6 +4318,19 @@ let editingClientId = null;
 async function handleClientSubmit(e) {
   e.preventDefault();
   console.log('📝 Enviando formulario de cliente...');
+  console.log('🔍 Formulario que se envía:', e.target.id);
+  console.log('🔍 Handler: index.astro handleClientSubmit');
+  
+  // Verificar que este handler solo se ejecute para el formulario correcto
+  if (e.target.id !== 'indexClientForm') {
+    console.log('❌ Este handler no debe ejecutarse para el formulario:', e.target.id);
+    console.log('❌ Deteniendo ejecución del handler del index.astro');
+    return;
+  }
+  
+  // Debug de editingClientId
+  console.log('🔍 editingClientId:', editingClientId);
+  console.log('🔍 ¿Es edición?', !!editingClientId);
   
   const formData = new FormData(e.target);
   const clientData = {
@@ -3798,6 +4350,9 @@ async function handleClientSubmit(e) {
     const token = localStorage.getItem('token');
     const url = editingClientId ? `/api/clientes/${editingClientId}` : '/api/clientes';
     const method = editingClientId ? 'PUT' : 'POST';
+    
+    console.log('🌐 URL:', url);
+    console.log('🔧 Método:', method);
     
     const response = await fetch(url, {
       method: method,
@@ -3820,25 +4375,57 @@ async function handleClientSubmit(e) {
     closeClientModal();
     
     // Recargar clientes
-    await loadClientesData();
+    if (typeof loadClientesData === 'function') {
+      await loadClientesData();
+    } else if (typeof loadClientes === 'function') {
+      await loadClientes();
+    } else if (window.loadClientesData) {
+      await window.loadClientesData();
+    } else {
+      console.log('⚠️ Función de recarga de clientes no encontrada');
+    }
     
-    // Mostrar mensaje de éxito
-    showMessage(editingClientId ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente', 'success');
+    // Mostrar mensaje de éxito usando el sistema de notificaciones del ClientModal
+    if (window.clientModal && window.clientModal.showNotification) {
+      window.clientModal.showNotification(
+        editingClientId ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente', 
+        'success'
+      );
+    } else {
+      console.log('✅', editingClientId ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente');
+    }
     
   } catch (error) {
     console.error('💥 Error guardando cliente:', error);
-    showMessage(`Error: ${error.message}`, 'error');
+    
+    // Mostrar mensaje de error usando el sistema de notificaciones del ClientModal
+    if (window.clientModal && window.clientModal.showNotification) {
+      window.clientModal.showNotification(`Error: ${error.message}`, 'error');
+    } else {
+      console.error('❌ Error:', error.message);
+      alert(`Error: ${error.message}`);
+    }
   }
 }
 
 // Función para mostrar el modal de crear cliente
 function showCreateClientModal() {
-  console.log('➕ Abriendo modal para crear cliente...');
-  editingClientId = null;
+  console.log('➕ showCreateClientModal (duplicada) - redirigiendo a ClientModal.js');
   
-  const modal = document.getElementById('clientModal');
+  // Redirigir al ClientModal.js en lugar de usar el modal duplicado
+  if (window.clientModal) {
+    console.log('✅ Usando ClientModal.js para creación');
+    window.clientModal.show();
+  } else {
+    console.error('❌ ClientModal.js no disponible');
+    alert('Error: Modal de clientes no disponible. Por favor recarga la página.');
+  }
+  
+  return; // Evitar ejecutar el código del modal duplicado
+  
+  const modal = document.getElementById('indexClientModal');
   const modalTitle = document.getElementById('modalTitle');
-  const form = document.getElementById('clientForm');
+  const form = document.getElementById('indexClientForm');
   
   if (modal && modalTitle && form) {
     modalTitle.textContent = 'Nuevo Cliente';
@@ -3865,10 +4452,53 @@ function showCreateClientModal() {
   }
 }
 
+// Función para mostrar el modal de editar cliente
+function showEditClientModal(cliente) {
+  console.log('✏️ Abriendo modal para editar cliente:', cliente);
+  
+  const modal = document.getElementById('indexClientModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const form = document.getElementById('indexClientForm');
+  
+  if (modal && modalTitle && form) {
+    modalTitle.textContent = 'Editar Cliente';
+    
+    // Llenar formulario con datos del cliente
+    const nameInput = document.getElementById('clientName');
+    const apellidoInput = document.getElementById('clientApellido');
+    const telefonoInput = document.getElementById('clientTelefono');
+    const direccionInput = document.getElementById('clientDireccion');
+    const saldoInput = document.getElementById('clientSaldo');
+    const retornablesInput = document.getElementById('clientRetornables');
+    
+    if (nameInput) nameInput.value = cliente.nombre || cliente.name || '';
+    if (apellidoInput) apellidoInput.value = cliente.apellido || cliente.lastname || '';
+    if (telefonoInput) telefonoInput.value = cliente.telefono || cliente.phone || '';
+    if (direccionInput) direccionInput.value = cliente.direccion || cliente.address || '';
+    if (saldoInput) saldoInput.value = cliente.saldo || 0;
+    if (retornablesInput) retornablesInput.value = cliente.retornables || 0;
+    
+    // Llenar coordenadas GPS si existen
+    const latitudInput = document.getElementById('clientLatitud');
+    const longitudInput = document.getElementById('clientLongitud');
+    if (latitudInput) latitudInput.value = cliente.latitud || '';
+    if (longitudInput) longitudInput.value = cliente.longitud || '';
+    
+    modal.classList.add('show');
+    
+    // Inicializar mapa después de que el modal esté visible
+    setTimeout(() => {
+      initializeClientMap(cliente.latitud, cliente.longitud);
+    }, 100);
+  } else {
+    console.error('❌ Elementos del modal no encontrados');
+  }
+}
+
 // Función para cerrar el modal de cliente
 function closeClientModal() {
   console.log('❌ Cerrando modal de cliente...');
-  const modal = document.getElementById('clientModal');
+  const modal = document.getElementById('indexClientModal');
   if (modal) {
     modal.classList.remove('show');
   }
@@ -3880,7 +4510,7 @@ function setupClientEventListeners() {
   console.log('🔧 Configurando event listeners del modal de clientes...');
   
   // Cerrar modal al hacer clic fuera
-  const modal = document.getElementById('clientModal');
+  const modal = document.getElementById('indexClientModal');
   if (modal) {
     modal.addEventListener('click', function(e) {
       if (e.target === modal) {
@@ -3892,7 +4522,7 @@ function setupClientEventListeners() {
   // Cerrar modal con Escape
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-      const modal = document.getElementById('clientModal');
+      const modal = document.getElementById('indexClientModal');
       if (modal && modal.classList.contains('show')) {
         closeClientModal();
       }
@@ -3903,8 +4533,10 @@ function setupClientEventListeners() {
 // Hacer las funciones y variables disponibles globalmente
 window.handleClientSubmit = handleClientSubmit;
 window.showCreateClientModal = showCreateClientModal;
+window.showEditClientModal = showEditClientModal;
 window.closeClientModal = closeClientModal;
 window.setupClientEventListeners = setupClientEventListeners;
+window.loadClientesData = loadClientesData;
 window.currentClients = currentClients;
 // Configurar listeners de eventos para actualización reactiva
 function setupEventListeners() {
@@ -3916,7 +4548,7 @@ function setupEventListeners() {
       // Solo actualizar si estamos en la vista de pedidos
       if (window.currentRoute === 'pedidos') {
         try {
-          await loadPedidos();
+          await loadPedidosData();
           console.log('✅ Lista de pedidos actualizada reactivamente');
         } catch (error) {
           console.error('❌ Error actualizando pedidos:', error);
@@ -3931,7 +4563,7 @@ function setupEventListeners() {
       // Solo actualizar si estamos en la vista de pedidos
       if (window.currentRoute === 'pedidos') {
         try {
-          await loadPedidos();
+          await loadPedidosData();
           console.log('✅ Lista de pedidos actualizada reactivamente');
         } catch (error) {
           console.error('❌ Error actualizando pedidos:', error);
@@ -3943,26 +4575,6 @@ function setupEventListeners() {
     return true; // Indicar que se configuró exitosamente
   } else {
     return false; // Indicar que no se pudo configurar
-  }
-}
-
-// Configurar listeners con límite de reintentos
-let setupAttempts = 0;
-const maxAttempts = 10;
-
-function trySetupEventListeners() {
-  setupAttempts++;
-
-  if (setupEventListeners()) {
-    console.log('✅ Event listeners configurados exitosamente');
-    return;
-  }
-
-  if (setupAttempts < maxAttempts) {
-    console.warn(`⚠️ Sistema de eventos no disponible, reintento ${setupAttempts}/${maxAttempts} en 500ms...`);
-    setTimeout(trySetupEventListeners, 500);
-  } else {
-    console.error('❌ No se pudo configurar el sistema de eventos después de', maxAttempts, 'intentos');
   }
 }
 

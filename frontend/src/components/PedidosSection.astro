@@ -68,10 +68,25 @@
   </div>
 </div>
 
+<!-- Modal de detalle de pedido -->
+<div id="pedidoDetailModal" class="hidden modal-overlay">
+  <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h4 class="modal-title" style="margin: 0;">Detalle de Pedido</h4>
+      <button onclick="closePedidoDetailModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+    </div>
+    <div id="pedidoDetailContent"></div>
+    <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+      <button onclick="closePedidoDetailModal()" class="btn-secondary">Cerrar</button>
+    </div>
+  </div>
+  
+</div>
+
 <script>
 // Variables globales para pedidos
-let currentPedidos = [];
-let allPedidos = [];
+let currentPedidos: any[] = [];
+let allPedidos: any[] = [];
 
 // Cargar pedidos
 async function loadPedidos() {
@@ -97,7 +112,7 @@ async function loadPedidos() {
     // Aplicar filtro por defecto (pendientes)
     if (pedidos.length > 0) {
       // Configurar filtro por defecto
-      const estadoSelect = document.getElementById('filterEstado');
+      const estadoSelect = document.getElementById('filterEstado') as HTMLSelectElement;
       if (estadoSelect) {
         estadoSelect.value = 'pendient';
       }
@@ -118,7 +133,8 @@ async function loadPedidos() {
     console.error('💥 Error cargando pedidos:', error);
     const pedidosList = document.getElementById('pedidosList');
     if (pedidosList) {
-      pedidosList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando pedidos: ' + error.message + '</div>';
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      pedidosList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando pedidos: ' + errorMessage + '</div>';
     }
   }
 }
@@ -127,32 +143,27 @@ function renderPedidosList(pedidos) {
   const pedidosList = document.getElementById('pedidosList');
   if (!pedidosList) return;
 
-  pedidosList.innerHTML = pedidos.map(pedido => `
-    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
-      <div style="display: flex; justify-content: space-between; align-items: start;">
-        <div style="flex: 1;">
-          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;">#${pedido.id}</h4>
-          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">${pedido.cliente_nombre}</p>
-          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">${pedido.direccion}</p>
-          <p style="font-size: 0.875rem; color: #6b7280;">${new Date(pedido.fecha_pedido).toLocaleDateString()}</p>
-        </div>
-        <div style="text-align: right;">
-          <p style="font-weight: 600; color: #059669; margin-bottom: 0.5rem;">$${parseFloat(pedido.total).toFixed(2)}</p>
-          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; ${getStatusColor(pedido.estado)}">
-            ${getStatusText(pedido.estado)}
-          </span>
-          <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem;">
-            <button onclick="viewPedido(${pedido.id})" class="btn-small" style="background: #6b7280; color: white;">
-              Ver
-            </button>
-            <button onclick="editPedido(${pedido.id})" class="btn-small btn-edit">
-              Editar
-            </button>
+  pedidosList.innerHTML = pedidos.map(pedido => {
+    const id = pedido.id;
+    const nombreCompleto = pedido.cliente_nombre || `${pedido.nombre || ''} ${pedido.apellido || ''}`.trim();
+    const direccion = pedido.direccion || '';
+    return `
+      <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+        <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
+          <div style="flex: 1;">
+            <h4 style="font-weight: 700; color: #111827; margin: 0 0 0.25rem 0;">#${id}</h4>
+            <p style="font-size: 0.95rem; color: #111827; margin: 0 0 0.25rem 0;">${nombreCompleto || 'Cliente'}</p>
+            <p style="font-size: 0.875rem; color: #4b5563; margin: 0;">${direccion}</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.25rem; min-width: 220px; align-items: flex-end;">
+            <button onclick="viewPedido(${id})" class="btn-small" style="background: #374151; color: white;">Ver detalle</button>
+            <button onclick="cancelPedido(${id})" class="btn-small" style="background: #ef4444; color: white;">Anular</button>
+            <button onclick="(window.startDelivery ? window.startDelivery(${id}) : (window.deliveryModal ? window.deliveryModal.show(${id}) : alert('Modal de entrega no disponible')))" class="btn-small" style="background: #10b981; color: white;">Entregar</button>
           </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function getStatusColor(estado) {
@@ -187,25 +198,25 @@ function getStatusText(estado) {
 
 // Filtrar pedidos
 function filterPedidos() {
-  const estadoFilter = document.getElementById('filterEstado')?.value || '';
-  const fechaFilter = document.getElementById('filterFecha')?.value || '';
-  const clienteFilter = document.getElementById('filterCliente')?.value || '';
+  const estadoFilter = (document.getElementById('filterEstado') as HTMLSelectElement)?.value || '';
+  const fechaFilter = (document.getElementById('filterFecha') as HTMLInputElement)?.value || '';
+  const clienteFilter = (document.getElementById('filterCliente') as HTMLInputElement)?.value || '';
 
   let filteredPedidos = allPedidos;
 
   if (estadoFilter) {
-    filteredPedidos = filteredPedidos.filter(pedido => pedido.estado === estadoFilter);
+    filteredPedidos = filteredPedidos.filter((pedido: any) => pedido.estado === estadoFilter);
   }
 
   if (fechaFilter) {
-    filteredPedidos = filteredPedidos.filter(pedido => {
+    filteredPedidos = filteredPedidos.filter((pedido: any) => {
       const pedidoFecha = new Date(pedido.fecha_pedido).toISOString().split('T')[0];
       return pedidoFecha === fechaFilter;
     });
   }
 
   if (clienteFilter) {
-    filteredPedidos = filteredPedidos.filter(pedido => 
+    filteredPedidos = filteredPedidos.filter((pedido: any) => 
       pedido.cliente_nombre.toLowerCase().includes(clienteFilter.toLowerCase())
     );
   }
@@ -240,7 +251,7 @@ function updatePedidosInfo(filteredPedidos, estadoFilter, fechaFilter, clienteFi
   }
   
   if (pedidosFilters) {
-    const filters = [];
+    const filters: string[] = [];
     if (estadoFilter) filters.push(`Estado: ${getStatusText(estadoFilter)}`);
     if (fechaFilter) filters.push(`Fecha: ${fechaFilter}`);
     if (clienteFilter) filters.push(`Cliente: "${clienteFilter}"`);
@@ -252,9 +263,9 @@ function updatePedidosInfo(filteredPedidos, estadoFilter, fechaFilter, clienteFi
 
 // Limpiar filtros
 function clearPedidosFilters() {
-  const estadoSelect = document.getElementById('filterEstado');
-  const fechaInput = document.getElementById('filterFecha');
-  const clienteInput = document.getElementById('filterCliente');
+  const estadoSelect = document.getElementById('filterEstado') as HTMLSelectElement;
+  const fechaInput = document.getElementById('filterFecha') as HTMLInputElement;
+  const clienteInput = document.getElementById('filterCliente') as HTMLInputElement;
   
   if (estadoSelect) estadoSelect.value = '';
   if (fechaInput) fechaInput.value = '';
@@ -264,20 +275,92 @@ function clearPedidosFilters() {
 }
 
 // Ver detalles del pedido
-function viewPedido(pedidoId) {
-  const pedido = currentPedidos.find(p => p.id == pedidoId);
+function viewPedido(pedidoId: number) {
+  const pedido = currentPedidos.find((p: any) => p.id == pedidoId);
   if (!pedido) return;
-  
-  alert(`Pedido #${pedido.id}\nCliente: ${pedido.cliente_nombre}\nTotal: $${pedido.total}\nEstado: ${getStatusText(pedido.estado)}`);
+
+  const modal = document.getElementById('pedidoDetailModal');
+  const content = document.getElementById('pedidoDetailContent');
+  if (!modal || !content) return;
+
+  const nombre = pedido.cliente_nombre || `${pedido.nombre || ''} ${pedido.apellido || ''}`.trim();
+  const fecha = new Date(pedido.fecha_pedido).toLocaleString();
+
+  const items = (pedido.detalles || []).map((it: any) => `
+    <tr>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${it.descripcion || it.nombreProducto}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #eee; text-align: right;">${it.cantidad}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #eee; text-align: right;">$${parseFloat(it.precioUnitario || it.precio || 0).toFixed(2)}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #eee; text-align: right;">$${parseFloat(it.subtotal || (it.cantidad * (it.precioUnitario || it.precio || 0))).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  content.innerHTML = `
+    <div style="display:grid; gap: 8px;">
+      <div><strong>Pedido:</strong> #${pedido.id}</div>
+      <div><strong>Cliente:</strong> ${nombre}</div>
+      <div><strong>Dirección:</strong> ${pedido.direccion || ''}</div>
+      <div><strong>Teléfono:</strong> ${pedido.telefono || ''}</div>
+      <div><strong>Fecha:</strong> ${fecha}</div>
+      <div><strong>Estado:</strong> ${getStatusText(pedido.estado)}</div>
+      <div><strong>Total:</strong> $${parseFloat(pedido.total).toFixed(2)}</div>
+    </div>
+    <div style="margin-top:12px;">
+      <h5 style="margin: 0 0 6px 0;">Items</h5>
+      <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding: 6px 8px; border-bottom: 1px solid #ddd;">Producto</th>
+            <th style="text-align:right; padding: 6px 8px; border-bottom: 1px solid #ddd;">Cant.</th>
+            <th style="text-align:right; padding: 6px 8px; border-bottom: 1px solid #ddd;">Precio</th>
+            <th style="text-align:right; padding: 6px 8px; border-bottom: 1px solid #ddd;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items || ''}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('show');
 }
 
 // Editar pedido
-function editPedido(pedidoId) {
+function editPedido(pedidoId: number) {
   alert('Funcionalidad de edición en desarrollo...');
 }
 
 // Crear nuevo pedido
 function showCreatePedidoModal() {
   alert('Funcionalidad de creación en desarrollo...');
+}
+
+function closePedidoDetailModal() {
+  const modal = document.getElementById('pedidoDetailModal');
+  if (modal) {
+    modal.classList.remove('show');
+    modal.classList.add('hidden');
+  }
+}
+
+async function cancelPedido(pedidoId: number) {
+  if (!confirm('¿Seguro que quieres anular este pedido?')) return;
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/pedidos/${pedidoId}/estado`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ estado: 'anulado' })
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Error ${res.status}: ${errorText}`);
+    }
+    await loadPedidos();
+  } catch (e) {
+    alert(`Error anulando pedido: ${e.message}`);
+  }
 }
 </script>

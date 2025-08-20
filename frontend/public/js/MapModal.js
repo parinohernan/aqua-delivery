@@ -99,13 +99,45 @@ class MapModal {
 
   async show() {
     const modal = document.getElementById('mapModal');
-    modal.classList.remove('hidden');
-    
     console.log('🗺️ Abriendo mapa de pedidos pendientes...');
+    console.log('🔍 Modal element encontrado:', !!modal);
+    
+    // Verificar si el modal ya está abierto
+    if (modal && modal.classList.contains('show')) {
+      console.log('⚠️ Modal ya está abierto, cerrando primero...');
+      this.close();
+      // Esperar un momento para que se complete el cierre
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('show');
+      
+      console.log('🔍 Clases del modal después de show:', modal.className);
+      
+      // Verificar estilos computados
+      setTimeout(() => {
+        const styles = window.getComputedStyle(modal);
+        console.log('🔍 Estilos computados del MapModal:', {
+          display: styles.display,
+          opacity: styles.opacity,
+          visibility: styles.visibility,
+          position: styles.position,
+          zIndex: styles.zIndex
+        });
+      }, 100);
+    } else {
+      console.error('❌ Modal element no encontrado');
+      return;
+    }
     
     try {
       // Cargar pedidos pendientes con datos de clientes
       await this.loadPedidosPendientes();
+      
+      // Esperar un momento para que el modal sea visible antes de inicializar el mapa
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Inicializar el mapa
       await this.initializeMap();
@@ -115,6 +147,14 @@ class MapModal {
       
       // Mostrar estadísticas
       this.showStats();
+      
+      // Forzar que Leaflet recalcule el tamaño del mapa
+      if (this.map) {
+        setTimeout(() => {
+          this.map.invalidateSize();
+          console.log('🗺️ Tamaño del mapa recalculado');
+        }, 100);
+      }
       
     } catch (error) {
       console.error('❌ Error cargando mapa:', error);
@@ -146,6 +186,28 @@ class MapModal {
 
   async initializeMap() {
     console.log('🗺️ Inicializando mapa...');
+    
+    // Limpiar mapa existente si existe
+    if (this.map) {
+      console.log('🧹 Limpiando mapa existente...');
+      this.map.remove();
+      this.map = null;
+    }
+    
+    // Verificar que el contenedor esté disponible
+    const container = document.getElementById('mapContainer');
+    if (!container) {
+      throw new Error('Contenedor del mapa no encontrado');
+    }
+    
+    // Limpiar cualquier instancia de Leaflet en el contenedor
+    container._leaflet_id = null;
+    
+    // Limpiar completamente el contenido del contenedor
+    container.innerHTML = '';
+    
+    // Remover cualquier clase de Leaflet que pueda quedar
+    container.className = container.className.replace(/leaflet-\S+/g, '').trim();
     
     // Ubicación por defecto (Buenos Aires)
     const defaultLocation = [-34.6037, -58.3816];
@@ -379,19 +441,39 @@ class MapModal {
 
   close() {
     const modal = document.getElementById('mapModal');
-    modal.classList.add('hidden');
+    if (modal) {
+      modal.classList.remove('show');
+      modal.classList.add('hidden');
+    }
     
-    // Limpiar el mapa
+    // Limpiar el mapa completamente
     if (this.map) {
+      console.log('🧹 Limpiando mapa al cerrar...');
       this.map.remove();
       this.map = null;
     }
     
-    // Limpiar marcadores
+    // Limpiar el contenedor de Leaflet
+    const container = document.getElementById('mapContainer');
+    if (container) {
+      container._leaflet_id = null;
+      // Restaurar el contenido original del contenedor
+      container.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280;">
+          <div style="text-align: center;">
+            <div class="spinner" style="margin: 0 auto 1rem;"></div>
+            <p>Cargando mapa...</p>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Limpiar marcadores y datos
     this.markers = [];
     this.pedidosPendientes = [];
+    this.userMarker = null;
     
-    console.log('🗺️ Mapa cerrado');
+    console.log('🗺️ Mapa cerrado y limpiado completamente');
   }
 }
 

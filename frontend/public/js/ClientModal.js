@@ -1,6 +1,7 @@
 // Componente para el modal de clientes
 class ClientModal {
   constructor() {
+    console.log('🏗️ Inicializando ClientModal...');
     this.editingClientId = null;
     this.currentClients = [];
     this.availableZonas = [];
@@ -8,6 +9,7 @@ class ClientModal {
     this.marker = null;
     this.defaultLocation = [-34.6037, -58.3816]; // Buenos Aires por defecto
     this.init();
+    console.log('✅ ClientModal inicializado');
   }
 
   async init() {
@@ -103,21 +105,21 @@ class ClientModal {
                   🗑️ Limpiar
                 </button>
               </div>
-              <div id="clientMap" style="height: 300px; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-bottom: 0.5rem;"></div>
+              <div id="clientModalMap" style="height: 300px; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-bottom: 0.5rem;"></div>
               <div class="grid-2">
                 <div>
                   <label class="form-label" style="font-size: 0.75rem;">Latitud</label>
                   <input type="number" id="clientLatitude" name="latitud" step="any" class="form-input"
-                         placeholder="-34.6037" readonly style="font-size: 0.875rem;" />
+                         placeholder="-34.6037" style="font-size: 0.875rem;" />
                 </div>
                 <div>
                   <label class="form-label" style="font-size: 0.75rem;">Longitud</label>
                   <input type="number" id="clientLongitude" name="longitud" step="any" class="form-input"
-                         placeholder="-58.3816" readonly style="font-size: 0.875rem;" />
+                         placeholder="-58.3816" style="font-size: 0.875rem;" />
                 </div>
               </div>
               <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
-                Haz clic en el mapa para seleccionar la ubicación del cliente
+                Haz clic en el mapa para seleccionar la ubicación del cliente o ingresa las coordenadas manualmente
               </p>
             </div>
             
@@ -162,8 +164,53 @@ class ClientModal {
 
   attachEventListeners() {
     const form = document.getElementById('clientForm');
+    console.log('🔧 ClientModal attachEventListeners - form encontrado:', !!form);
     if (form) {
-      form.addEventListener('submit', (e) => this.handleSubmit(e));
+      // Remover event listeners previos para evitar duplicados
+      form.removeEventListener('submit', this.boundHandleSubmit);
+      
+      // Crear una función bound para poder removerla después
+      this.boundHandleSubmit = (e) => this.handleSubmit(e);
+      
+      console.log('🔧 Configurando event listener en ClientModal.handleSubmit');
+      form.addEventListener('submit', this.boundHandleSubmit, { capture: true });
+    } else {
+      console.error('❌ Formulario clientForm no encontrado para ClientModal');
+    }
+
+    // Event listeners para actualizar el mapa cuando se cambien las coordenadas manualmente
+    const latInput = document.getElementById('clientLatitude');
+    const lngInput = document.getElementById('clientLongitude');
+    
+    if (latInput && lngInput) {
+      const updateMapFromCoordinates = () => {
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        
+        if (!isNaN(lat) && !isNaN(lng) && this.map) {
+          console.log('📍 Actualizando mapa desde coordenadas manuales:', lat, lng);
+          
+          // Actualizar vista del mapa
+          this.map.setView([lat, lng], 15);
+          
+          // Actualizar marcador
+          if (this.marker) {
+            this.marker.setLatLng([lat, lng]);
+          } else {
+            this.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+            
+            // Event listener para cuando se mueva el marcador
+            this.marker.on('dragend', (e) => {
+              const position = e.target.getLatLng();
+              document.getElementById('clientLatitude').value = position.lat.toFixed(6);
+              document.getElementById('clientLongitude').value = position.lng.toFixed(6);
+            });
+          }
+        }
+      };
+      
+      latInput.addEventListener('input', updateMapFromCoordinates);
+      lngInput.addEventListener('input', updateMapFromCoordinates);
     }
 
     // Cerrar modal al hacer clic fuera
@@ -189,50 +236,79 @@ class ClientModal {
 
     if (clientData) {
       // Modo edición
-      this.editingClientId = clientData.id || clientData.codigo;
+      const clientId = clientData.id || clientData.codigo;
+      this.editingClientId = clientId;
+      console.log('🔧 ClientModal - Editando cliente ID:', this.editingClientId);
+      
+      if (!this.editingClientId) {
+        console.error('❌ Error: No se puede determinar el ID del cliente');
+        alert('Error: No se puede determinar el ID del cliente para editar');
+        return;
+      }
+      
       title.textContent = 'Editar Cliente';
 
-      // Llenar el formulario con los datos existentes
-      document.getElementById('clientName').value = clientData.nombre || '';
-      document.getElementById('clientLastName').value = clientData.apellido || '';
-      document.getElementById('clientPhone').value = clientData.telefono || '';
-      document.getElementById('clientAddress').value = clientData.direccion || '';
-      document.getElementById('clientZona').value = clientData.zona || '';
-      document.getElementById('clientBalance').value = clientData.saldo || 0;
-      document.getElementById('clientReturnables').value = clientData.retornables || 0;
+      // Llenar el formulario con los datos existentes (scoped al modal para evitar IDs duplicados)
+      modal.querySelector('#clientName').value = clientData.nombre || '';
+      modal.querySelector('#clientLastName').value = clientData.apellido || '';
+      modal.querySelector('#clientPhone').value = clientData.telefono || '';
+      modal.querySelector('#clientAddress').value = clientData.direccion || '';
+      modal.querySelector('#clientZona').value = clientData.zona || '';
+      modal.querySelector('#clientBalance').value = clientData.saldo || 0;
+      modal.querySelector('#clientReturnables').value = clientData.retornables || 0;
 
       // Cargar coordenadas si existen
       const lat = clientData.latitud || clientData.latitude;
       const lng = clientData.longitud || clientData.longitude;
       if (lat && lng) {
-        document.getElementById('clientLatitude').value = lat;
-        document.getElementById('clientLongitude').value = lng;
+        modal.querySelector('#clientLatitude').value = lat;
+        modal.querySelector('#clientLongitude').value = lng;
       }
 
-      document.getElementById('clientSubmitButtonText').textContent = 'Actualizar Cliente';
+      modal.querySelector('#clientSubmitButtonText').textContent = 'Actualizar Cliente';
     } else {
       // Modo creación
       this.editingClientId = null;
       title.textContent = 'Nuevo Cliente';
       form.reset();
       // Establecer valores por defecto
-      document.getElementById('clientBalance').value = '0';
-      document.getElementById('clientReturnables').value = '0';
-      document.getElementById('clientSubmitButtonText').textContent = 'Guardar Cliente';
+      modal.querySelector('#clientBalance').value = '0';
+      modal.querySelector('#clientReturnables').value = '0';
+      modal.querySelector('#clientSubmitButtonText').textContent = 'Guardar Cliente';
     }
 
+    // Asegurar visibilidad del modal según estilos globales (.hidden y .modal-overlay.show)
     modal.classList.remove('hidden');
+    modal.classList.add('show');
+    // Forzar z-index alto por si hay overlays de otras secciones
+    modal.style.zIndex = '10000';
 
+    // Configurar event listeners cada vez que se abre (importante para asegurar prioridad)
+    this.attachEventListeners();
+    
     // Inicializar el mapa después de que el modal sea visible
     setTimeout(() => {
       this.initMap(clientData);
-      document.getElementById('clientName').focus();
+      modal.querySelector('#clientName').focus();
+      // Invalidate size una vez visible para que Leaflet calcule bien el tamaño
+      setTimeout(() => {
+        if (this.map) {
+          this.map.invalidateSize();
+        }
+      }, 150);
     }, 100);
   }
 
   initMap(clientData = null) {
-    const mapContainer = document.getElementById('clientMap');
+    const mapContainer = document.getElementById('clientModalMap');
     if (!mapContainer) return;
+
+    // Asegurar que Leaflet esté cargado
+    if (typeof window.L === 'undefined') {
+      console.warn('⚠️ Leaflet aún no está disponible. Reintentando en 200ms...');
+      setTimeout(() => this.initMap(clientData), 200);
+      return;
+    }
 
     // Destruir mapa existente si existe
     if (this.map) {
@@ -241,9 +317,18 @@ class ClientModal {
       this.marker = null;
     }
 
+    // Limpiar posibles residuos de Leaflet si el contenedor fue reutilizado
+    try {
+      if (mapContainer._leaflet_id) {
+        mapContainer._leaflet_id = null;
+      }
+      mapContainer.className = (mapContainer.className || '').replace(/leaflet-\S+/g, '').trim();
+    } catch (_) {}
+
     // Determinar la ubicación inicial del mapa
-    const savedLat = parseFloat(document.getElementById('clientLatitude').value);
-    const savedLng = parseFloat(document.getElementById('clientLongitude').value);
+    const modal = document.getElementById('clientModal');
+    const savedLat = parseFloat((modal.querySelector('#clientLatitude')?.value) || '');
+    const savedLng = parseFloat((modal.querySelector('#clientLongitude')?.value) || '');
 
     if (savedLat && savedLng) {
       // Si el cliente tiene coordenadas guardadas, usar esas
@@ -261,24 +346,46 @@ class ClientModal {
   }
 
   createMapAtLocation(lat, lng, zoom, addMarker) {
-    // Crear el mapa
-    this.map = L.map('clientMap').setView([lat, lng], zoom);
+    // Crear el mapa asegurando que el contenedor sea visible
+    const create = () => {
+      this.map = L.map('clientModalMap').setView([lat, lng], zoom);
 
-    // Agregar capa de tiles (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(this.map);
+      // Agregar capa de tiles (OpenStreetMap)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(this.map);
 
-    // Agregar marcador si se especifica
-    if (addMarker) {
-      this.addMarker(lat, lng);
+      // Asegurar que el mapa re-calcula su tamaño tras crearse en modal
+      setTimeout(() => {
+        if (this.map) {
+          this.map.invalidateSize();
+        }
+      }, 0);
+
+      // Agregar marcador si se especifica
+      if (addMarker) {
+        this.addMarker(lat, lng);
+      }
+
+      // Manejar clics en el mapa
+      this.map.on('click', (e) => {
+        this.addMarker(e.latlng.lat, e.latlng.lng);
+        this.updateCoordinates(e.latlng.lat, e.latlng.lng);
+      });
+    };
+
+    // Si el contenedor no es visible aún, esperar un frame
+    const container = document.getElementById('clientModalMap');
+    const isVisible = container && container.offsetParent !== null && container.offsetWidth > 0 && container.offsetHeight > 0;
+    if (!isVisible) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          create();
+        });
+      });
+    } else {
+      create();
     }
-
-    // Manejar clics en el mapa
-    this.map.on('click', (e) => {
-      this.addMarker(e.latlng.lat, e.latlng.lng);
-      this.updateCoordinates(e.latlng.lat, e.latlng.lng);
-    });
   }
 
   initMapWithCurrentLocation() {
@@ -436,6 +543,8 @@ class ClientModal {
 
   close() {
     const modal = document.getElementById('clientModal');
+    // Ocultar modal respetando los estilos globales
+    modal.classList.remove('show');
     modal.classList.add('hidden');
     this.editingClientId = null;
 
@@ -452,6 +561,12 @@ class ClientModal {
 
   async handleSubmit(e) {
     e.preventDefault();
+    e.stopPropagation(); // Evitar que se ejecuten otros handlers
+    e.stopImmediatePropagation(); // Evitar que se ejecuten otros handlers en el mismo elemento
+    
+    console.log('📝 ClientModal.handleSubmit ejecutándose');
+    console.log('🔍 Formulario:', e.target.id);
+    console.log('🔍 editingClientId (ClientModal):', this.editingClientId);
     
     const submitButton = e.target.querySelector('button[type="submit"]');
     const submitButtonText = document.getElementById('clientSubmitButtonText');
@@ -475,6 +590,9 @@ class ClientModal {
         longitud: formData.get('longitud') ? parseFloat(formData.get('longitud')) : null
       };
 
+      console.log('📋 Datos del cliente a enviar:', clientData);
+      console.log('📍 Coordenadas:', { latitud: clientData.latitud, longitud: clientData.longitud });
+
       // Validaciones
       if (!clientData.nombre) {
         throw new Error('El nombre del cliente es requerido');
@@ -491,6 +609,7 @@ class ClientModal {
 
       if (this.editingClientId) {
         // Actualizar cliente existente
+        console.log('🔄 Actualizando cliente ID:', this.editingClientId);
         response = await fetch(`/api/clientes/${this.editingClientId}`, {
           method: 'PUT',
           headers: {
@@ -516,12 +635,22 @@ class ClientModal {
         throw new Error(errorData.error || 'Error guardando cliente');
       }
 
-      // Éxito
+      // Éxito: cerrar y refrescar sección reactiva
       this.close();
-      
-      // Recargar la lista de clientes
-      if (typeof loadClientes === 'function') {
-        await loadClientes();
+      try {
+        if (window.loadClientesSection) {
+          await window.loadClientesSection();
+        } else if (window.loadClientesData) {
+          await window.loadClientesData();
+        } else if (typeof loadClientes === 'function') {
+          await loadClientes();
+        } else if (window.loadClientes) {
+          await window.loadClientes();
+        } else {
+          console.log('⚠️ Función de recarga de clientes no encontrada, recarga manual necesaria');
+        }
+      } catch (e) {
+        console.warn('⚠️ Error intentando refrescar sección de clientes:', e);
       }
       
       // Mostrar mensaje de éxito
@@ -612,7 +741,99 @@ class ClientModal {
   setCurrentClients(clients) {
     this.currentClients = clients;
   }
+
+  showSuccessMessage(action) {
+    const message = `Cliente ${action} exitosamente`;
+    console.log('✅', message);
+    
+    // Mostrar notificación visual
+    this.showNotification(message, 'success');
+  }
+
+  showErrorMessage(message) {
+    console.error('❌ Error:', message);
+    
+    // Mostrar notificación visual
+    this.showNotification(message, 'error');
+  }
+
+  showNotification(message, type = 'info') {
+    // Crear elemento de notificación
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      color: white;
+      font-weight: 500;
+      z-index: 10000;
+      animation: slideIn 0.3s ease-out;
+      max-width: 300px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    `;
+    
+    // Colores según el tipo
+    switch (type) {
+      case 'success':
+        notification.style.backgroundColor = '#059669';
+        notification.innerHTML = `✅ ${message}`;
+        break;
+      case 'error':
+        notification.style.backgroundColor = '#dc2626';
+        notification.innerHTML = `❌ ${message}`;
+        break;
+      default:
+        notification.style.backgroundColor = '#3b82f6';
+        notification.innerHTML = `ℹ️ ${message}`;
+    }
+    
+    // Agregar estilos de animación
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+    `;
+    
+    if (!document.querySelector('#notification-styles')) {
+      style.id = 'notification-styles';
+      document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(notification);
+    
+    // Remover después de 3 segundos
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
+  }
 }
 
 // Crear instancia global
+console.log('🏗️ Creando instancia global de ClientModal...');
 window.clientModal = new ClientModal();
+console.log('✅ window.clientModal creado:', !!window.clientModal);

@@ -26,9 +26,93 @@
   </div>
 </div>
 
+<!-- Modal de Cliente Integrado -->
+<div id="clientModalLocal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+  <div style="background: white; border-radius: 0.5rem; padding: 2rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h4 id="clientModalLocalTitle" style="margin: 0; font-size: 1.25rem; font-weight: 600;">Nuevo Cliente</h4>
+      <button onclick="closeClientModalLocal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; padding: 0.25rem;">×</button>
+    </div>
+    
+    <form id="clientFormLocal">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <label style="display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151;">Nombre *</label>
+          <input type="text" id="clientNameLocal" name="nombre" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" placeholder="Ej: Juan" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151;">Apellido</label>
+          <input type="text" id="clientLastNameLocal" name="apellido" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" placeholder="Ej: Pérez" />
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151;">Teléfono *</label>
+        <input type="tel" id="clientPhoneLocal" name="telefono" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" placeholder="Ej: +54 9 11 1234-5678" />
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151;">Dirección *</label>
+        <textarea id="clientAddressLocal" name="direccion" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; resize: vertical;" rows="2" placeholder="Ej: Av. Corrientes 1234, CABA"></textarea>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151;">Zona/Ruta</label>
+        <select id="clientZonaLocal" name="zona" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+          <option value="">Seleccionar zona...</option>
+        </select>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+          <label style="display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151;">Saldo ($)</label>
+          <input type="number" id="clientBalanceLocal" name="saldoDinero" step="0.01" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" placeholder="0.00" value="0" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151;">Retornables</label>
+          <input type="number" id="clientReturnablesLocal" name="saldoRetornables" min="0" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" placeholder="0" value="0" />
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <button type="button" onclick="closeClientModalLocal()" style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; background: white; border-radius: 0.375rem; cursor: pointer; color: #374151;">
+          Cancelar
+        </button>
+        <button type="submit" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+          <span id="clientSubmitButtonLocalText">Guardar Cliente</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 // Variables globales para clientes
 let currentClientes = [];
+let editingClientId = null;
+
+// Cargar zonas disponibles
+async function loadZonasLocal() {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/zonas', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      const zonas = await response.json();
+      const zonaSelect = document.getElementById('clientZonaLocal');
+      if (zonaSelect) {
+        zonaSelect.innerHTML = '<option value="">Seleccionar zona...</option>' +
+          zonas.map(zona => `<option value="${zona.zona}">${zona.zona}</option>`).join('');
+      }
+    }
+  } catch (error) {
+    console.error('Error cargando zonas:', error);
+  }
+}
 
 // Cargar clientes
 async function loadClientes() {
@@ -55,7 +139,7 @@ async function loadClientes() {
     console.error('💥 Error cargando clientes:', error);
     const clientesList = document.getElementById('clientesList');
     if (clientesList) {
-      clientesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando clientes: ' + error.message + '</div>';
+      clientesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando clientes: ' + (error instanceof Error ? error.message : String(error)) + '</div>';
     }
   }
 }
@@ -69,26 +153,48 @@ function renderClientesList(clientes) {
     return;
   }
   
-  clientesList.innerHTML = clientes.map(cliente => `
-    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
+  clientesList.innerHTML = clientes.map(cliente => {
+    const clienteId = cliente.id || cliente.codigo;
+    const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ''}`.trim();
+    const saldo = parseFloat(cliente.saldo || 0);
+    const retornables = parseInt(cliente.retornables || 0);
+    
+    return `
+    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
       <div style="display: flex; justify-content: space-between; align-items: start;">
         <div style="flex: 1;">
-          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.5rem;">${cliente.nombre}</h4>
-          <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.25rem;">📞 ${cliente.telefono}</p>
-          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem;">📍 ${cliente.direccion}</p>
-          ${cliente.email ? `<p style="font-size: 0.875rem; color: #6b7280;">✉️ ${cliente.email}</p>` : ''}
+          <h4 style="font-weight: 600; color: #111827; margin-bottom: 0.5rem;">${nombreCompleto}</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <p style="font-size: 0.875rem; color: #4b5563; margin: 0;">📞 ${cliente.telefono}</p>
+            ${cliente.zona ? `<p style="font-size: 0.875rem; color: #6366f1; margin: 0;">🗺️ ${cliente.zona}</p>` : ''}
+          </div>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">📍 ${cliente.direccion}</p>
+          
+          <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+              <span style="font-size: 0.75rem; color: ${saldo > 0 ? '#dc2626' : saldo < 0 ? '#059669' : '#6b7280'};">
+                💰 $${saldo.toFixed(2)}
+              </span>
+              ${saldo > 0 ? '<span style="font-size: 0.625rem; color: #dc2626;">(debe)</span>' : 
+                saldo < 0 ? '<span style="font-size: 0.625rem; color: #059669;">(crédito)</span>' : ''}
+            </div>
+            ${retornables > 0 ? `<div style="display: flex; align-items: center; gap: 0.25rem;">
+              <span style="font-size: 0.75rem; color: #f59e0b;">🔄 ${retornables} ret.</span>
+            </div>` : ''}
+          </div>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button onclick="editCliente(${cliente.id})" class="btn-small btn-edit">
-            Editar
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <button onclick="editCliente(${clienteId})" class="btn-small btn-edit" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
+            ✏️ Editar
           </button>
-          <button onclick="deleteCliente(${cliente.id})" class="btn-small btn-delete">
-            Eliminar
+          <button onclick="deleteCliente(${clienteId})" class="btn-small btn-delete" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
+            🗑️ Eliminar
           </button>
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // Buscar clientes
@@ -117,19 +223,309 @@ async function searchClientes(searchTerm) {
 
 // Crear nuevo cliente
 function showCreateClienteModal() {
-  alert('Funcionalidad de creación de clientes en desarrollo...');
+  console.log('🆕 Abriendo modal local para crear cliente');
+  editingClientId = null;
+  
+  // Limpiar formulario
+  const form = document.getElementById('clientFormLocal');
+  if (form) {
+    form.reset();
+    document.getElementById('clientBalanceLocal').value = '0';
+    document.getElementById('clientReturnablesLocal').value = '0';
+  }
+  
+  // Actualizar título y botón
+  const title = document.getElementById('clientModalLocalTitle');
+  const submitButtonText = document.getElementById('clientSubmitButtonLocalText');
+  if (title) title.textContent = 'Nuevo Cliente';
+  if (submitButtonText) submitButtonText.textContent = 'Guardar Cliente';
+  
+  // Mostrar modal
+  const modal = document.getElementById('clientModalLocal');
+  if (modal) {
+    modal.style.display = 'flex';
+    // Cargar zonas
+    loadZonasLocal();
+    // Focus en el primer campo
+    setTimeout(() => {
+      const nameInput = document.getElementById('clientNameLocal');
+      if (nameInput) nameInput.focus();
+    }, 100);
+  }
 }
 
 // Editar cliente
 function editCliente(clienteId) {
-  alert('Funcionalidad de edición de clientes en desarrollo...');
+  console.log('✏️ Editando cliente:', clienteId);
+  
+  const cliente = currentClientes.find(c => {
+    const id = c.id || c.codigo;
+    return id == clienteId;
+  });
+  
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clienteId);
+    alert('Error: Cliente no encontrado');
+    return;
+  }
+
+  console.log('👤 Cliente encontrado para editar:', cliente);
+  editingClientId = clienteId;
+  
+  // Llenar formulario con datos del cliente
+  document.getElementById('clientNameLocal').value = cliente.nombre || '';
+  document.getElementById('clientLastNameLocal').value = cliente.apellido || '';
+  document.getElementById('clientPhoneLocal').value = cliente.telefono || '';
+  document.getElementById('clientAddressLocal').value = cliente.direccion || '';
+  document.getElementById('clientZonaLocal').value = cliente.zona || '';
+  document.getElementById('clientBalanceLocal').value = cliente.saldo || 0;
+  document.getElementById('clientReturnablesLocal').value = cliente.retornables || 0;
+  
+  // Actualizar título y botón
+  const title = document.getElementById('clientModalLocalTitle');
+  const submitButtonText = document.getElementById('clientSubmitButtonLocalText');
+  if (title) title.textContent = 'Editar Cliente';
+  if (submitButtonText) submitButtonText.textContent = 'Actualizar Cliente';
+  
+  // Mostrar modal
+  const modal = document.getElementById('clientModalLocal');
+  if (modal) {
+    modal.style.display = 'flex';
+    // Cargar zonas
+    loadZonasLocal();
+    // Focus en el primer campo
+    setTimeout(() => {
+      const nameInput = document.getElementById('clientNameLocal');
+      if (nameInput) nameInput.focus();
+    }, 100);
+  }
 }
 
 // Eliminar cliente
-function deleteCliente(clienteId) {
-  if (!confirm('¿Estás seguro de que quieres eliminar este cliente?')) {
+async function deleteCliente(clienteId) {
+  const cliente = currentClientes.find(c => c.id == clienteId || c.codigo == clienteId);
+  
+  if (!cliente) {
+    console.error('❌ Cliente no encontrado:', clienteId);
+    alert('Error: Cliente no encontrado');
     return;
   }
-  alert('Funcionalidad de eliminación de clientes en desarrollo...');
+
+  const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ''}`.trim();
+  
+  if (!confirm(`¿Estás seguro de que quieres eliminar al cliente "${nombreCompleto}"?\n\nEsta acción no se puede deshacer.`)) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/clientes/${clienteId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error eliminando cliente');
+    }
+
+    const result = await response.json();
+    console.log('✅ Cliente eliminado:', result);
+
+    // Mostrar mensaje de éxito
+    showNotification(`Cliente "${nombreCompleto}" eliminado exitosamente`, 'success');
+
+    // Recargar lista de clientes
+    await loadClientes();
+
+  } catch (error) {
+    console.error('❌ Error eliminando cliente:', error);
+    showNotification(`Error eliminando cliente: ${error.message}`, 'error');
+  }
 }
+
+// Función para mostrar notificaciones
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    color: white;
+    font-weight: 500;
+    z-index: 10000;
+    animation: slideIn 0.3s ease-out;
+    max-width: 300px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  `;
+  
+  switch (type) {
+    case 'success':
+      notification.style.backgroundColor = '#059669';
+      notification.innerHTML = `✅ ${message}`;
+      break;
+    case 'error':
+      notification.style.backgroundColor = '#dc2626';
+      notification.innerHTML = `❌ ${message}`;
+      break;
+    default:
+      notification.style.backgroundColor = '#3b82f6';
+      notification.innerHTML = `ℹ️ ${message}`;
+  }
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 3000);
+}
+
+// Cerrar modal local
+function closeClientModalLocal() {
+  console.log('❌ Cerrando modal local de cliente');
+  const modal = document.getElementById('clientModalLocal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  editingClientId = null;
+  
+  // Limpiar formulario
+  const form = document.getElementById('clientFormLocal');
+  if (form) {
+    form.reset();
+  }
+}
+
+// Manejar envío del formulario local
+async function handleClientSubmitLocal(e) {
+  e.preventDefault();
+  console.log('📝 Enviando formulario local de cliente...');
+  console.log('🔍 editingClientId:', editingClientId);
+  console.log('🔍 ¿Es edición?', !!editingClientId);
+  
+  const submitButton = e.target.querySelector('button[type="submit"]');
+  const submitButtonText = document.getElementById('clientSubmitButtonLocalText');
+  const originalText = submitButtonText.textContent;
+  
+  // Mostrar loading
+  submitButton.disabled = true;
+  submitButtonText.textContent = 'Guardando...';
+  
+  try {
+    const formData = new FormData(e.target);
+    const clientData = {
+      nombre: formData.get('nombre').trim(),
+      apellido: formData.get('apellido').trim(),
+      telefono: formData.get('telefono').trim(),
+      direccion: formData.get('direccion').trim(),
+      zona: formData.get('zona') || null,
+      saldoDinero: parseFloat(formData.get('saldoDinero') || 0),
+      saldoRetornables: parseInt(formData.get('saldoRetornables') || 0)
+    };
+
+    console.log('📋 Datos del cliente:', clientData);
+
+    // Validaciones
+    if (!clientData.nombre) {
+      throw new Error('El nombre del cliente es requerido');
+    }
+    if (!clientData.telefono) {
+      throw new Error('El teléfono del cliente es requerido');
+    }
+    if (!clientData.direccion) {
+      throw new Error('La dirección del cliente es requerida');
+    }
+
+    const token = localStorage.getItem('token');
+    let response;
+    let url, method;
+
+    if (editingClientId) {
+      // Actualizar cliente existente
+      url = `/api/clientes/${editingClientId}`;
+      method = 'PUT';
+      console.log('🔄 Haciendo PUT a:', url);
+    } else {
+      // Crear nuevo cliente
+      url = '/api/clientes';
+      method = 'POST';
+      console.log('🆕 Haciendo POST a:', url);
+    }
+
+    console.log('🌐 URL:', url);
+    console.log('🔧 Método:', method);
+    console.log('📤 Datos enviados:', clientData);
+
+    response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(clientData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Error ${method === 'PUT' ? 'actualizando' : 'creando'} cliente`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Cliente guardado:', result);
+
+    // Cerrar modal
+    closeClientModalLocal();
+    
+    // Recargar lista de clientes
+    await loadClientes();
+    
+    // Mostrar mensaje de éxito
+    showNotification(
+      `Cliente ${editingClientId ? 'actualizado' : 'creado'} exitosamente`, 
+      'success'
+    );
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+    showNotification(`Error: ${error.message}`, 'error');
+  } finally {
+    // Restaurar botón
+    submitButton.disabled = false;
+    submitButtonText.textContent = originalText;
+  }
+}
+
+// Configurar event listeners cuando se carga la página
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('clientFormLocal');
+  if (form) {
+    form.addEventListener('submit', handleClientSubmitLocal);
+  }
+  
+  // Cerrar modal al hacer clic fuera
+  const modal = document.getElementById('clientModalLocal');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeClientModalLocal();
+      }
+    });
+  }
+  
+  // Cerrar modal con ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('clientModalLocal');
+      if (modal && modal.style.display === 'flex') {
+        closeClientModalLocal();
+      }
+    }
+  });
+});
 </script>

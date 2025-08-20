@@ -24,6 +24,12 @@
     "test-fix-function-order": "node test-fix-function-order.js",
     "test-fix-modal-and-functions": "node test-fix-modal-and-functions.js",
     "test-fix-map-and-inputs": "node test-fix-map-and-inputs.js",
+    "test-pedidos-modernos": "node test-pedidos-modernos.js",
+    "test-fix-funciones-duplicadas": "node test-fix-funciones-duplicadas.js",
+    "test-datos-pedidos": "node test-datos-pedidos.js",
+    "test-fix-errores-pedidos": "node test-fix-errores-pedidos.js",
+    "test-botones-pedidos": "node test-botones-pedidos.js",
+    "test-fix-timing-funciones": "node test-fix-timing-funciones.js",
     "test-completo": "node entrega-pedidos.test.js",
     "cleanup": "node -e \"require('./entrega-pedidos.test.js').cleanupTestData()\""
   },

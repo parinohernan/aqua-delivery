@@ -208,8 +208,10 @@ class DeliveryModal {
       // Configurar el modal
       this.setupModal();
       
-      // Mostrar el modal
+      // Mostrar el modal (respetando estilos globales)
       modal.classList.remove('hidden');
+      modal.classList.add('show');
+      modal.style.zIndex = '10000';
       
       // Enfocar el primer campo
       setTimeout(() => {
@@ -507,6 +509,7 @@ class DeliveryModal {
 
   close() {
     const modal = document.getElementById('deliveryModal');
+    modal.classList.remove('show');
     modal.classList.add('hidden');
     
     // Limpiar datos
@@ -676,3 +679,5 @@ class DeliveryModal {
 
 // Crear instancia global
 window.deliveryModal = new DeliveryModal();
+// Función global de conveniencia
+window.startDelivery = function(pedidoId) { window.deliveryModal.show(pedidoId); }

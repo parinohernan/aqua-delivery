@@ -60,9 +60,21 @@ declare global {
     showCreateClientModal: () => void;
     
     // Funciones de pedidos
-    clearPedidosFilters: () => void;
+    loadPedidosSection: () => Promise<void>;
+    loadPedidosData: () => Promise<void>;
+    setupPedidosEventListeners: () => void;
+    applyPedidoFilters: () => Promise<void>;
+    clearPedidoFilters: () => void;
     viewPedido: (pedidoId: any) => void;
     editPedido: (pedidoId: any) => void;
+    startDelivery: (pedidoId: any) => void;
+    completeDelivery: (pedidoId: any) => void;
+    cancelPedido: (pedidoId: any) => void;
+    updatePedidoStatus: (pedidoId: any, newStatus: string) => Promise<void>;
+    exportPedidos: () => void;
+    showDeliveryMap: () => void;
+    showPedidoDetails: (pedidoId: any) => void;
+    showEditPedidoModal: (pedidoId: any) => void;
     entregarPedido: (pedidoId: any) => void;
     getPedidoItems: (pedidoId: any) => any[];
     filterPedidos: () => void;

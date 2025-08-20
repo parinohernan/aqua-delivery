@@ -76,7 +76,7 @@ class OrderModal {
 
   createModal() {
     const modalHTML = `
-      <div id="orderModal" class="hidden modal-overlay">
+      <div id="orderModal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h4 id="orderModalTitle" class="modal-title">Nuevo Pedido</h4>
@@ -266,6 +266,7 @@ class OrderModal {
     
     // Mostrar el modal
     modal.classList.remove('hidden');
+    modal.classList.add('show');
     
     // Poblar select de productos después de mostrar el modal
     this.populateProductSelect();
@@ -346,6 +347,7 @@ class OrderModal {
 
   close() {
     const modal = document.getElementById('orderModal');
+    modal.classList.remove('show');
     modal.classList.add('hidden');
     this.editingOrderId = null;
     this.resetForm();

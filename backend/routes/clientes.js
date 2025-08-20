@@ -104,7 +104,8 @@ router.put('/:id', verifyToken, async (req, res) => {
             params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, req.params.id, req.user.codigoEmpresa];
         }
 
-        await query(sql, params);
+        const updateResult = await query(sql, params);
+        console.log('✅ Cliente actualizado. Filas afectadas:', updateResult.affectedRows);
         
         const cliente = await query(
             'SELECT * FROM clientes WHERE codigo = ? AND codigoEmpresa = ?',
@@ -203,6 +204,94 @@ router.post('/retornables/devolver', verifyToken, async (req, res) => {
 
     } catch (error) {
         console.error('❌ Error procesando devolución de retornables:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Eliminar cliente (soft delete - marcar como inactivo)
+router.delete('/:id', verifyToken, async (req, res) => {
+    try {
+        const clienteId = req.params.id;
+
+        console.log('🗑️ Eliminando cliente:', clienteId);
+
+        // Verificar que el cliente existe y pertenece a la empresa
+        const cliente = await query(
+            'SELECT codigo, nombre, apellido FROM clientes WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1',
+            [clienteId, req.user.codigoEmpresa]
+        );
+
+        if (cliente.length === 0) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
+        }
+
+        // Verificar si el cliente tiene pedidos activos
+        const pedidosActivos = await query(
+            'SELECT COUNT(*) as count FROM pedidos WHERE clienteId = ? AND estado != "Entregado" AND estado != "Cancelado"',
+            [clienteId]
+        );
+
+        if (pedidosActivos[0].count > 0) {
+            return res.status(400).json({ 
+                error: 'No se puede eliminar el cliente porque tiene pedidos activos' 
+            });
+        }
+
+        // Soft delete - marcar como inactivo
+        await query(
+            'UPDATE clientes SET activo = 0 WHERE codigo = ? AND codigoEmpresa = ?',
+            [clienteId, req.user.codigoEmpresa]
+        );
+
+        const nombreCompleto = `${cliente[0].nombre} ${cliente[0].apellido || ''}`.trim();
+
+        console.log('✅ Cliente eliminado exitosamente:', nombreCompleto);
+
+        res.json({
+            success: true,
+            message: 'Cliente eliminado exitosamente',
+            clienteNombre: nombreCompleto
+        });
+
+    } catch (error) {
+        console.error('❌ Error eliminando cliente:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Alternar estado activo/inactivo de un cliente
+router.put('/:id/toggle-status', verifyToken, async (req, res) => {
+    try {
+        const clienteId = req.params.id;
+        const { activo } = req.body; // 1 o 0
+
+        if (typeof activo === 'undefined') {
+            return res.status(400).json({ error: 'Falta el campo activo' });
+        }
+
+        // Verificar que el cliente existe y pertenece a la empresa
+        const cliente = await query(
+            'SELECT codigo, activo FROM clientes WHERE codigo = ? AND codigoEmpresa = ? AND activo IN (0,1)',
+            [clienteId, req.user.codigoEmpresa]
+        );
+
+        if (cliente.length === 0) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
+        }
+
+        await query(
+            'UPDATE clientes SET activo = ? WHERE codigo = ? AND codigoEmpresa = ? ',
+            [activo ? 1 : 0, clienteId, req.user.codigoEmpresa]
+        );
+
+        const actualizado = await query(
+            'SELECT codigo as id, codigo, nombre, apellido, telefono, direccion, zona, saldo, retornables, latitud, longitud, activo FROM clientes WHERE codigo = ? AND codigoEmpresa = ? LIMIT 1',
+            [clienteId, req.user.codigoEmpresa]
+        );
+
+        res.json({ success: true, cliente: actualizado[0] });
+    } catch (error) {
+        console.error('❌ Error alternando estado de cliente:', error);
         res.status(500).json({ error: error.message });
     }
 });
