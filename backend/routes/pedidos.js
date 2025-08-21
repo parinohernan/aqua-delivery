@@ -11,6 +11,7 @@ router.get('/', verifyToken, async (req, res) => {
 
         const { clienteId, fecha, zona, search, estado } = req.query;
 
+        // Consulta base sin columnas de ubicación
         let sql = `
             SELECT p.codigo as id,
                    p.fechaPedido as fecha_pedido,
@@ -22,8 +23,8 @@ router.get('/', verifyToken, async (req, res) => {
                    c.apellido,
                    c.direccion,
                    c.telefono,
-                   c.latitud,
-                   c.longitud,
+                   NULL as latitud,
+                   NULL as longitud,
                    v1.nombre as vendedor_pedido,
                    v2.nombre as vendedor_entrega
             FROM pedidos p
@@ -32,6 +33,36 @@ router.get('/', verifyToken, async (req, res) => {
             LEFT JOIN vendedores v2 ON p.codigoVendedorEntrega = v2.codigo
             WHERE p.codigoEmpresa = ?
         `;
+        
+        // Intentar usar columnas de ubicación si existen
+        try {
+            const testQuery = await query('SELECT latitud, longitud FROM clientes LIMIT 1');
+            console.log('🗺️ Columnas de ubicación disponibles en pedidos');
+            
+            sql = `
+                SELECT p.codigo as id,
+                       p.fechaPedido as fecha_pedido,
+                       p.total,
+                       p.estado,
+                       p.zona,
+                       CONCAT(c.nombre, ' ', COALESCE(c.apellido, '')) as cliente_nombre,
+                       c.nombre,
+                       c.apellido,
+                       c.direccion,
+                       c.telefono,
+                       c.latitud,
+                       c.longitud,
+                       v1.nombre as vendedor_pedido,
+                       v2.nombre as vendedor_entrega
+                FROM pedidos p
+                JOIN clientes c ON p.codigoCliente = c.codigo
+                LEFT JOIN vendedores v1 ON p.codigoVendedorPedido = v1.codigo
+                LEFT JOIN vendedores v2 ON p.codigoVendedorEntrega = v2.codigo
+                WHERE p.codigoEmpresa = ?
+            `;
+        } catch (error) {
+            console.log('⚠️ Columnas de ubicación no disponibles en pedidos, usando valores NULL');
+        }
         let params = [req.user.codigoEmpresa];
 
         if (estado) {

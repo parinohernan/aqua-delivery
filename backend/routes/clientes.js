@@ -8,6 +8,7 @@ router.get('/', verifyToken, async (req, res) => {
     try {
         const { search } = req.query;
 
+        // Intentar consulta con columnas de ubicación, si falla usar consulta sin ellas
         let sql = `
             SELECT
                 codigo as id,
@@ -19,14 +20,45 @@ router.get('/', verifyToken, async (req, res) => {
                 zona,
                 saldo,
                 retornables,
-                latitud,
-                longitud,
+                NULL as latitud,
+                NULL as longitud,
                 activo,
                 codigoEmpresa,
                 CONCAT(nombre, ' ', IFNULL(apellido, '')) as nombreCompleto
             FROM clientes
             WHERE codigoEmpresa = ? AND activo = 1
         `;
+        
+        // Intentar determinar si las columnas existen
+        let hasLocationColumns = false;
+        try {
+            const testQuery = await query('SELECT latitud, longitud FROM clientes LIMIT 1');
+            hasLocationColumns = true;
+            console.log('🗺️ Columnas de ubicación disponibles');
+            
+            // Usar consulta con columnas reales
+            sql = `
+                SELECT
+                    codigo as id,
+                    codigo,
+                    nombre,
+                    apellido,
+                    telefono,
+                    direccion,
+                    zona,
+                    saldo,
+                    retornables,
+                    latitud,
+                    longitud,
+                    activo,
+                    codigoEmpresa,
+                    CONCAT(nombre, ' ', IFNULL(apellido, '')) as nombreCompleto
+                FROM clientes
+                WHERE codigoEmpresa = ? AND activo = 1
+            `;
+        } catch (error) {
+            console.log('⚠️ Columnas de ubicación no disponibles, usando valores NULL');
+        }
         let params = [req.user.codigoEmpresa];
 
         if (search) {
@@ -63,9 +95,19 @@ router.post('/', verifyToken, async (req, res) => {
 
         console.log('👤 Creando cliente:', { nombre, apellido, telefono, direccion, zona, saldoDinero, saldoRetornables, latitud, longitud });
 
-        // Incluir coordenadas si están disponibles
+        // Verificar si las columnas latitud y longitud existen
+        let hasLocationColumns = false;
+        try {
+            const tableInfo = await query('DESCRIBE clientes');
+            hasLocationColumns = tableInfo.some(col => col.Field === 'latitud') && 
+                               tableInfo.some(col => col.Field === 'longitud');
+        } catch (error) {
+            console.log('⚠️ No se pudo verificar estructura de tabla para crear cliente');
+        }
+
+        // Incluir coordenadas si están disponibles y la tabla las soporta
         let sql, params;
-        if (latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
+        if (hasLocationColumns && latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
             sql = 'INSERT INTO clientes (nombre, apellido, direccion, zona, telefono, saldo, retornables, latitud, longitud, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)';
             params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.user.codigoEmpresa];
         } else {
@@ -94,9 +136,19 @@ router.put('/:id', verifyToken, async (req, res) => {
 
         console.log('👤 Actualizando cliente:', req.params.id, { nombre, apellido, telefono, direccion, zona, saldoDinero, saldoRetornables, latitud, longitud });
 
-        // Incluir coordenadas si están disponibles
+        // Verificar si las columnas latitud y longitud existen
+        let hasLocationColumns = false;
+        try {
+            const tableInfo = await query('DESCRIBE clientes');
+            hasLocationColumns = tableInfo.some(col => col.Field === 'latitud') && 
+                               tableInfo.some(col => col.Field === 'longitud');
+        } catch (error) {
+            console.log('⚠️ No se pudo verificar estructura de tabla para actualizar cliente');
+        }
+
+        // Incluir coordenadas si están disponibles y la tabla las soporta
         let sql, params;
-        if (latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
+        if (hasLocationColumns && latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
             sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, zona = ?, telefono = ?, saldo = ?, retornables = ?, latitud = ?, longitud = ? WHERE codigo = ? AND codigoEmpresa = ?';
             params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.params.id, req.user.codigoEmpresa];
         } else {
@@ -284,8 +336,18 @@ router.put('/:id/toggle-status', verifyToken, async (req, res) => {
             [activo ? 1 : 0, clienteId, req.user.codigoEmpresa]
         );
 
+        // Verificar columnas disponibles para la consulta de actualización
+        let hasLocationColumns = false;
+        try {
+            const tableInfo = await query('DESCRIBE clientes');
+            hasLocationColumns = tableInfo.some(col => col.Field === 'latitud') && 
+                               tableInfo.some(col => col.Field === 'longitud');
+        } catch (error) {
+            console.log('⚠️ No se pudo verificar estructura de tabla');
+        }
+
         const actualizado = await query(
-            'SELECT codigo as id, codigo, nombre, apellido, telefono, direccion, zona, saldo, retornables, latitud, longitud, activo FROM clientes WHERE codigo = ? AND codigoEmpresa = ? LIMIT 1',
+            `SELECT codigo as id, codigo, nombre, apellido, telefono, direccion, zona, saldo, retornables, ${hasLocationColumns ? 'latitud, longitud,' : 'NULL as latitud, NULL as longitud,'} activo FROM clientes WHERE codigo = ? AND codigoEmpresa = ? LIMIT 1`,
             [clienteId, req.user.codigoEmpresa]
         );
 

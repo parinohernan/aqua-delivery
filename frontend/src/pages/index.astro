@@ -447,7 +447,7 @@ async function checkAuth() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
     
-    const response = await fetch('/api/pedidos', {
+    const response = await fetch('/api/clientes', {
       headers: {
         'Authorization': `Bearer ${token}`
       },
@@ -1410,6 +1410,25 @@ function getStatusText(estado) {
   }
 }
 
+// Limpiar filtros de pedidos
+function clearPedidosFilters() {
+  console.log('🧹 Limpiando filtros de pedidos...');
+  const estadoSelect = document.getElementById('filterEstado');
+  const fechaInput = document.getElementById('filterFecha');
+  const clienteInput = document.getElementById('filterCliente');
+  
+  if (estadoSelect) estadoSelect.value = '';
+  if (fechaInput) fechaInput.value = '';
+  if (clienteInput) clienteInput.value = '';
+  
+  // Recargar pedidos sin filtros
+  if (typeof filterPedidos === 'function') {
+    filterPedidos();
+  } else if (typeof loadPedidosData === 'function') {
+    loadPedidosData();
+  }
+}
+
 // Obtener items de un pedido específico
 async function getPedidoItems(pedidoId) {
   console.log('📋 Obteniendo items del pedido:', pedidoId);
@@ -1740,14 +1759,16 @@ async function loadClientesSection() {
   // Configurar listeners de eventos
   setupClientEventListeners();
   
-  // Cargar los clientes
-  await loadClientesData();
-  
-  // Configurar event listeners después de cargar el HTML y los clientes
+  // Configurar event listeners después de cargar el HTML
   setTimeout(() => {
-    console.log('🔧 Configurando event listeners después de cargar clientes...');
+    console.log('🔧 Configurando event listeners...');
     setupClientesEventListeners();
-  }, 500);
+  }, 100);
+  
+  // Cargar los datos de clientes
+  setTimeout(async () => {
+    await loadClientesData();
+  }, 200);
 }
 
 // Cargar clientes (función original renombrada)
@@ -4412,7 +4433,7 @@ async function processReturnablesReturn(event, clientId) {
 <script src="/js/utils/events.js" is:inline></script>
 
 <!-- Cargar los componentes modales -->
-<script src="/js/ProductModal.js" is:inline></script>
+<!-- ProductModal.js no es necesario, funcionalidad incluida en otros modales -->
 <script src="/js/ClientModal.js" is:inline></script>
 <script src="/js/OrderModal.js" is:inline></script>
 <script src="/js/MapModal.js" is:inline></script>

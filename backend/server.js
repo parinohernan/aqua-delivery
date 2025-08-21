@@ -3,11 +3,16 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = 8001;
+const PORT = process.env.PORT || 8001;
 
 // Middlewares
 app.use(cors({
-  origin: ['http://localhost:4321', 'http://localhost:4322', 'http://localhost:3000'], // Permitir frontend
+  origin: [
+    'http://localhost:4321', 
+    'http://localhost:4322', 
+    'http://localhost:3000',
+    process.env.FRONTEND_URL || 'https://tu-app-frontend.onrender.com'
+  ], // Permitir frontend local y producción
   credentials: true
 }));
 app.use(express.json());
