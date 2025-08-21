@@ -19,7 +19,6 @@ declare global {
     editingProductId: any;
     
     // Modales
-    productModal: any;
     clientModal: any;
     orderModal: any;
     mapModal: any;

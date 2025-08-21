@@ -118,6 +118,7 @@ body {
   display: flex;
   gap: var(--spacing-2);
   align-items: center;
+  /* background-color: #31a6eb91; */
 }
 
 .logout-button {

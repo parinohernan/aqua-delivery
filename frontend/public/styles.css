@@ -7,7 +7,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f9fafb;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   color: #111827;
   line-height: 1.6;
 }
@@ -56,7 +56,7 @@ body {
 
 .login-card {
   background: white;
-  padding: 2rem;
+  padding: 3rem;
   border-radius: 1rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: 100%;
@@ -431,6 +431,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
 }
 
 .header {
@@ -500,8 +501,8 @@ body {
 /* Navegación */
 .nav-buttons {
   display: flex;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
   padding: 0 2rem;
   max-width: 1200px;
   margin: 0 auto;
@@ -539,18 +540,23 @@ body {
 /* Contenido principal */
 .main-content {
   flex: 1;
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
   width: 100%;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .content-card {
-  background: white;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.05) 100%);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 0.75rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  padding: 2rem;
+  box-shadow: 0 10px 20px -10px rgba(0,0,0,0.08);
+  padding: 1 rem;
   min-height: 500px;
+  backdrop-filter: blur(6px) saturate(120%);
 }
 
 .content-title {
@@ -567,10 +573,11 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
-  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-top: none;
   padding: 0.5rem;
   z-index: 100;
+  backdrop-filter: blur(6px);
 }
 
 .mobile-nav-button {
@@ -719,15 +726,15 @@ body {
 .main-content {
   max-width: 80rem;
   margin: 0 auto;
-  padding: 1.5rem;
+  /* padding: 1.5rem; */
 }
 
-.content-card {
+/* .content-card {
   background: white;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   border-radius: 0.5rem;
   padding: 1.5rem;
-}
+} */
 
 .content-title {
   font-size: 1.125rem;
@@ -757,7 +764,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
+  /* background: white; */
   border-top: 1px solid #e5e7eb;
   display: none;
 }
@@ -819,6 +826,8 @@ body {
   max-height: 90vh;
   overflow-y: auto;
 }
+
+
 
 .modal-title {
   font-size: 1.25rem;
@@ -912,13 +921,15 @@ body {
   }
 
   .main-content {
-    padding: 1rem;
-    padding-bottom: 5rem;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
   }
 
-  .content-card {
-    padding: 1.5rem;
-  }
+  /* .content-card {
+    padding: 0.5rem;
+  } */
 
   .grid-2 {
     grid-template-columns: 1fr;

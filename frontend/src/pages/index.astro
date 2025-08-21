@@ -16,7 +16,9 @@ import Layout from '../layouts/Layout.astro';
       <header class="header">
         <div class="header-content">
           <div class="header-left">
-            <div class="app-icon">💧</div>
+            <div class="app-icon">
+              <img src="/drop.png" alt="Aqua Logo" style="width: 50%; height: 50%; object-fit: contain;" />
+            </div>
             <h1 class="app-title">Aqua Delivery Manager</h1>
           </div>
           <div class="header-right">
@@ -635,11 +637,9 @@ async function loadPedidosSection() {
         <div class="header-content">
           <h1 class="section-title">
             <span class="icon">📦</span>
-            Gestión de Pedidos
+            Pedidos
           </h1>
-          <p class="section-subtitle">
-            Administra y gestiona todos los pedidos de tu negocio de manera eficiente
-          </p>
+
         </div>
       </div>
 
@@ -651,20 +651,41 @@ async function loadPedidosSection() {
             <h3>🎯 Acciones Rápidas</h3>
           </div>
           <div class="actions-content">
-            <button onclick="window.showCreateOrderModal()" class="btn-create">
-              ➕ Nuevo Pedido
-            </button>
-            <button onclick="exportPedidos()" class="btn-export">
-              📊 Exportar Datos
-            </button>
-            <button onclick="window.showDeliveryMap()" class="btn-export">
-              🗺️ Mapa de Entregas
-            </button>
+            <!-- Campo de búsqueda -->
+            <div class="search-group">
+              <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                  type="text" 
+                  id="pedidoClienteFilter" 
+                  class="search-input"
+                  placeholder="Buscar cliente..."
+                  oninput="applyPedidoFilters()"
+                />
+              </div>
+            </div>
+
+            <div class="action-buttons">
+              <button onclick="window.showCreateOrderModal()" class="btn-create">
+                ➕ Nuevo Pedido
+              </button>
+
+              <button onclick="window.showDeliveryMap()" class="btn-export">
+                🗺️ Mapa de Entregas
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Panel de filtros -->
-        <div class="filters-panel">
+        <!-- Botón para mostrar/ocultar filtros -->
+        <div class="filters-toggle">
+          <button onclick="toggleAdvancedFilters()" class="btn-toggle-filters" id="toggleFiltersBtn">
+            ▼ Mostrar Filtros
+          </button>
+        </div>
+
+        <!-- Panel de filtros (oculto por defecto) -->
+        <div class="filters-panel" id="advancedFiltersPanel" style="display: none;">
           <div class="filters-header">
             <h3>🔍 Filtros Avanzados</h3>
           </div>
@@ -695,16 +716,6 @@ async function loadPedidosSection() {
               <select id="pedidoZonaFilter" class="filter-select">
                 <option value="">Todas las zonas</option>
               </select>
-            </div>
-            
-            <div class="filter-group">
-              <label class="filter-label">Buscar Cliente</label>
-              <input 
-                type="text" 
-                id="pedidoClienteFilter" 
-                class="filter-input"
-                placeholder="Nombre o teléfono del cliente..."
-              />
             </div>
           </div>
           
@@ -752,7 +763,7 @@ let currentPedidoFilters = {
   estado: 'pendient',
   fecha: '',
   zona: '',
-  cliente: ''
+  search: ''
 };
 
 // Cargar datos de pedidos
@@ -805,7 +816,6 @@ function setupPedidosEventListeners() {
   const clienteFilter = document.getElementById('pedidoClienteFilter');
   if (clienteFilter) {
     clienteFilter.addEventListener('input', debounce(() => {
-      currentPedidoFilters.cliente = clienteFilter.value;
       applyPedidoFilters();
     }, 300));
   }
@@ -813,7 +823,6 @@ function setupPedidosEventListeners() {
   const estadoFilter = document.getElementById('pedidoEstadoFilter');
   if (estadoFilter) {
     estadoFilter.addEventListener('change', () => {
-      currentPedidoFilters.estado = estadoFilter.value;
       applyPedidoFilters();
     });
   }
@@ -821,7 +830,6 @@ function setupPedidosEventListeners() {
   const fechaFilter = document.getElementById('pedidoFechaFilter');
   if (fechaFilter) {
     fechaFilter.addEventListener('change', () => {
-      currentPedidoFilters.fecha = fechaFilter.value;
       applyPedidoFilters();
     });
   }
@@ -829,7 +837,6 @@ function setupPedidosEventListeners() {
   const zonaFilter = document.getElementById('pedidoZonaFilter');
   if (zonaFilter) {
     zonaFilter.addEventListener('change', () => {
-      currentPedidoFilters.zona = zonaFilter.value;
       applyPedidoFilters();
     });
   }
@@ -837,6 +844,20 @@ function setupPedidosEventListeners() {
 
 // Aplicar filtros de pedidos
 async function applyPedidoFilters() {
+  // Leer valores actuales de todos los filtros
+  const estadoFilter = document.getElementById('pedidoEstadoFilter');
+  const fechaFilter = document.getElementById('pedidoFechaFilter');
+  const zonaFilter = document.getElementById('pedidoZonaFilter');
+  const clienteFilter = document.getElementById('pedidoClienteFilter');
+  
+  // Actualizar currentPedidoFilters con valores actuales
+  currentPedidoFilters = {
+    estado: estadoFilter ? estadoFilter.value : '',
+    fecha: fechaFilter ? fechaFilter.value : '',
+    zona: zonaFilter ? zonaFilter.value : '',
+    search: clienteFilter ? clienteFilter.value : ''  // Cambiar 'cliente' por 'search'
+  };
+  
   console.log('🔍 Aplicando filtros de pedidos:', currentPedidoFilters);
   const token = localStorage.getItem('token');
 
@@ -879,7 +900,7 @@ function clearPedidoFilters() {
     estado: '',
     fecha: '',
     zona: '',
-    cliente: ''
+    search: ''
   };
   
   // Resetear inputs
@@ -896,6 +917,48 @@ function clearPedidoFilters() {
   // Recargar todos los pedidos
   loadPedidosData();
 }
+
+// Mostrar/ocultar filtros avanzados
+function toggleAdvancedFilters() {
+  const filtersPanel = document.getElementById('advancedFiltersPanel');
+  const toggleBtn = document.getElementById('toggleFiltersBtn');
+  
+  if (!filtersPanel || !toggleBtn) return;
+  
+  const isHidden = filtersPanel.style.display === 'none' || !filtersPanel.style.display;
+  
+  if (isHidden) {
+    // Mostrar filtros con animación
+    filtersPanel.style.display = 'block';
+    filtersPanel.style.maxHeight = '0px';
+    filtersPanel.style.opacity = '0';
+    
+    // Forzar reflow
+    filtersPanel.offsetHeight;
+    
+    // Animar entrada
+    filtersPanel.style.maxHeight = '1000px';
+    filtersPanel.style.opacity = '1';
+    
+    toggleBtn.innerHTML = '▲ Ocultar Filtros';
+    toggleBtn.classList.add('active');
+  } else {
+    // Ocultar filtros con animación
+    filtersPanel.style.maxHeight = '0px';
+    filtersPanel.style.opacity = '0';
+    
+    // Ocultar completamente después de la animación
+    setTimeout(() => {
+      filtersPanel.style.display = 'none';
+    }, 300);
+    
+    toggleBtn.innerHTML = '▼ Mostrar Filtros';
+    toggleBtn.classList.remove('active');
+  }
+}
+
+// Exponer función globalmente
+window.toggleAdvancedFilters = toggleAdvancedFilters;
 
 // Actualizar contador de pedidos
 function updatePedidosCounter(count) {
@@ -927,16 +990,18 @@ function renderPedidosGrid(pedidos) {
     const direccion = pedido.direccion || '';
     return `
       <div class="pedido-card" style="padding: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-          <div style="flex:1;">
-            <h3 style="margin:0 0 0.25rem 0; font-weight:700; color:#111827;">#${id}</h3>
-            <div style="color:#111827; margin-bottom: 0.25rem;">${nombreCompleto || 'Cliente'}</div>
-            <div style="color:#4b5563;">${direccion}</div>
+        <!-- Layout desktop (>480px) -->
+ 
+
+        <!-- Layout móvil (≤480px) -->
+        <div class="pedido-mobile">
+          <div style="margin-bottom: 0.75rem;">
+            <div style="font-weight:700; color:#111827; margin-bottom: 0.25rem;">#${id} ${nombreCompleto || 'Cliente'}</div>
+            <div style="color:#4b5563; font-size: 0.875rem;">${direccion}</div>
           </div>
-          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:220px; align-items:flex-end;">
-            <button onclick="viewPedido(${id})" class="btn-action btn-view">Ver detalle</button>
-            ${pedido.estado === 'pendient' ? `<button onclick="startDelivery(${id})" class="btn-action btn-deliver">Entregar</button>` : ''}
-            ${pedido.estado === 'pendient' ? `<button onclick="cancelPedido(${id})" class="btn-action btn-cancel">Anular</button>` : ''}
+          <div style="display:flex; gap:0.5rem; justify-content:stretch;">
+            ${pedido.estado === 'pendient' ? `<button onclick="startDelivery(${id})" class="btn-action btn-deliver" >🚚</button>` : ''}
+            ${pedido.estado === 'pendient' ? `<button onclick="cancelPedido(${id})" class="btn-action btn-cancel">❌</button>` : ''}
           </div>
         </div>
       </div>
@@ -2018,14 +2083,14 @@ async function loadProductosSection() {
     </div>
     
     <!-- Modal para crear/editar producto -->
-    <div id="productModal" class="modal-overlay">
-      <div class="product-modal">
-        <div class="modal-header">
+    <div id="productModal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
           <h4 id="modalTitle" class="modal-title">Nuevo Producto</h4>
-          <button onclick="closeProductModal()" class="btn-close">×</button>
+          <button onclick="closeProductModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
         </div>
         
-        <form id="productForm" class="modal-form">
+        <form id="productForm">
           <div class="form-group">
             <label class="form-label">Descripción del Producto</label>
             <input type="text" id="productName" name="nombre" required class="form-input" placeholder="Ej: Botella 2L, Bidón 20L, etc." />
@@ -2057,13 +2122,12 @@ async function loadProductosSection() {
             <p style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); margin-top: 0.25rem;">Desmarcar para ocultar el producto sin eliminarlo</p>
           </div>
           
-          <div class="modal-actions">
-            <button type="button" onclick="closeProductModal()" class="btn-cancel">
+          <div class="modal-buttons">
+            <button type="button" onclick="closeProductModal()" class="btn-secondary">
               Cancelar
             </button>
-            <button type="submit" class="btn-save">
-              <span class="btn-icon">💾</span>
-              Guardar
+            <button type="submit" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+              <span id="productSubmitButtonText">Guardar Producto</span>
             </button>
           </div>
         </form>
@@ -2772,7 +2836,20 @@ function showCreateProductModal() {
   if (productRetornable) productRetornable.checked = false; // Por defecto no retornable
   if (productActivo) productActivo.checked = true; // Por defecto activo
   
-  if (productModal) productModal.classList.add('show');
+  const submitButtonText = document.getElementById('productSubmitButtonText');
+  if (submitButtonText) submitButtonText.textContent = 'Guardar Producto';
+  
+  if (productModal) {
+    productModal.classList.remove('hidden');
+    productModal.classList.add('show');
+    productModal.style.zIndex = '10000';
+  }
+  
+  // Enfocar el primer campo
+  setTimeout(() => {
+    const productName = document.getElementById('productName');
+    if (productName) productName.focus();
+  }, 100);
 }
 
 // Mostrar modal para editar producto
@@ -2796,7 +2873,20 @@ function editProductInline(productId: any) {
   if (productStock) productStock.value = producto.stock || producto.quantity || '';
   if (productRetornable) productRetornable.checked = !!(producto.esRetornable);
   if (productActivo) productActivo.checked = !!(producto.activo);
-  if (productModal) productModal.classList.add('show');
+  
+  const submitButtonText = document.getElementById('productSubmitButtonText');
+  if (submitButtonText) submitButtonText.textContent = 'Actualizar Producto';
+  
+  if (productModal) {
+    productModal.classList.remove('hidden');
+    productModal.classList.add('show');
+    productModal.style.zIndex = '10000';
+  }
+  
+  // Enfocar el primer campo
+  setTimeout(() => {
+    if (productName) productName.focus();
+  }, 100);
 }
 
 // Hacer la función disponible globalmente
@@ -2805,13 +2895,28 @@ window.editProductInline = editProductInline;
 // Cerrar modal
 function closeProductModal() {
   const productModal = document.getElementById('productModal');
-  if (productModal) productModal.classList.remove('show');
+  if (productModal) {
+    productModal.classList.remove('show');
+    productModal.classList.add('hidden');
+  }
   editingProductId = null;
+  
+  // Limpiar formulario
+  const productForm = document.getElementById('productForm') as HTMLFormElement;
+  if (productForm) productForm.reset();
 }
 
 // Manejar envío del formulario
 async function handleProductSubmit(e) {
   e.preventDefault();
+  
+  const submitButton = e.target.querySelector('button[type="submit"]');
+  const submitButtonText = document.getElementById('productSubmitButtonText');
+  const originalText = submitButtonText ? submitButtonText.textContent : 'Guardar';
+  
+  // Mostrar loading
+  if (submitButton) submitButton.disabled = true;
+  if (submitButtonText) submitButtonText.textContent = 'Guardando...';
   
   const formData = new FormData(e.target);
   const productData = {
@@ -2876,6 +2981,10 @@ async function handleProductSubmit(e) {
   } catch (error) {
     console.error('Error:', error);
     showErrorMessage('Error guardando producto: ' + error.message);
+  } finally {
+    // Restaurar botón
+    if (submitButton) submitButton.disabled = false;
+    if (submitButtonText) submitButtonText.textContent = originalText;
   }
 }
 
@@ -2994,7 +3103,7 @@ function setupProductosEventListeners() {
     });
     console.log('✅ Event listener de búsqueda configurado');
   } else {
-    console.error('❌ No se encontró el input de búsqueda');
+    console.log('ℹ️ Input de búsqueda de productos no encontrado (sección no activa)');
   }
 
   // Filtro de estado
@@ -3011,7 +3120,7 @@ function setupProductosEventListeners() {
     });
     console.log('✅ Event listener de filtro de estado configurado');
   } else {
-    console.error('❌ No se encontró el selector de estado');
+    console.log('ℹ️ Selector de estado de productos no encontrado (sección no activa)');
   }
 }
 
@@ -3529,7 +3638,7 @@ function setupClientesEventListeners() {
     });
     console.log('✅ Event listener de búsqueda de clientes configurado');
   } else {
-    console.error('❌ No se encontró el input de búsqueda de clientes');
+    console.log('ℹ️ Input de búsqueda de clientes no encontrado (sección no activa)');
   }
 
   // Filtro de saldo
@@ -3546,7 +3655,7 @@ function setupClientesEventListeners() {
     });
     console.log('✅ Event listener de filtro de saldo configurado');
   } else {
-    console.error('❌ No se encontró el selector de saldo');
+    console.log('ℹ️ Selector de saldo no encontrado (sección no activa)');
   }
 
   // Filtro de retornables
@@ -3563,7 +3672,7 @@ function setupClientesEventListeners() {
     });
     console.log('✅ Event listener de filtro de retornables configurado');
   } else {
-    console.error('❌ No se encontró el selector de retornables');
+    console.log('ℹ️ Selector de retornables no encontrado (sección no activa)');
   }
 }
 
@@ -5014,9 +5123,146 @@ window.processClientPayment = processClientPayment;
   }
 }
 
+/* Campo de búsqueda en acciones rápidas */
+.search-group {
+  margin-bottom: 1rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: #6b7280;
+  font-size: 1rem;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: #111827;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: #6b7280;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Botón para mostrar/ocultar filtros avanzados */
+.filters-toggle {
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.btn-toggle-filters {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle-filters:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-toggle-filters.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #1e40af;
+}
+
+/* Panel de filtros con animación */
+.filters-panel {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.filters-panel[style*="display: none"] {
+  max-height: 0px;
+  opacity: 0;
+}
+
+/* Estilos por defecto para tarjetas de pedidos */
+.pedido-desktop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.pedido-mobile {
+  display: none;
+}
+
 @media (max-width: 480px) {
   .resumen-stats {
     grid-template-columns: 1fr;
+  }
+  
+  /* Diseño móvil para tarjetas de pedidos */
+  .pedido-desktop {
+    display: none !important;
+  }
+  
+  .pedido-mobile {
+    display: block !important;
+  }
+  
+  .btn-mobile {
+    flex: 1;
+    padding: 0.75rem 0.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: #f3f4f6;
+    color: #111827;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+  
+  .btn-mobile:hover {
+    background: #e5e7eb;
+    transform: translateY(-1px);
+  }
+  
+  .btn-mobile:active {
+    transform: translateY(0);
   }
 }
 </style>
