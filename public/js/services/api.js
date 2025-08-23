@@ -1,6 +1,7 @@
 class ApiService {
     constructor() {
-        this.baseURL = '/api';
+        // Usar la configuración centralizada
+        this.baseURL = window.CONFIG ? window.CONFIG.API.BASE_URL : 'http://localhost:8001';
         this.token = localStorage.getItem('token');
     }
 
