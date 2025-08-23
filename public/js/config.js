@@ -1,19 +1,57 @@
-// config.js - Configuración del frontend para producción
+// config.js - Configuración del frontend con variables de entorno
+
+// Función para cargar variables de entorno desde archivos
+async function loadEnvVars() {
+    const isProduction = window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
+    
+    const envFile = isProduction ? '/env.production' : '/env.development';
+    
+    try {
+        const response = await fetch(envFile);
+        if (!response.ok) {
+            throw new Error(`No se pudo cargar ${envFile}`);
+        }
+        
+        const envText = await response.text();
+        const envVars = {};
+        
+        // Parsear el archivo .env
+        envText.split('\n').forEach(line => {
+            line = line.trim();
+            if (line && !line.startsWith('#')) {
+                const [key, ...valueParts] = line.split('=');
+                if (key && valueParts.length > 0) {
+                    envVars[key.trim()] = valueParts.join('=').trim();
+                }
+            }
+        });
+        
+        return envVars;
+    } catch (error) {
+        console.warn(`No se pudo cargar ${envFile}, usando valores por defecto:`, error);
+        
+        // Valores por defecto si no se puede cargar el archivo
+        return {
+            VITE_API_BASE_URL: isProduction ? 'https://back-adm.fly.dev' : 'http://localhost:8001',
+            VITE_APP_NAME: 'AquaDelivery',
+            VITE_APP_VERSION: '1.0.0',
+            VITE_DEBUG_MODE: isProduction ? 'false' : 'true',
+            VITE_LOG_API_CALLS: isProduction ? 'false' : 'true',
+            VITE_NODE_ENV: isProduction ? 'production' : 'development'
+        };
+    }
+}
+
+// Variables de entorno cargadas
+let ENV_VARS = {};
 
 const CONFIG = {
     // URLs del backend
     API: {
-        // IMPORTANTE: Reemplaza esta URL con la URL real de tu backend en Fly.io
-        PRODUCTION: 'https://tu-app-name.fly.dev',  // ⚠️ CAMBIAR POR TU URL REAL
-        DEVELOPMENT: 'http://localhost:8001',
-        
-        // Detectar automáticamente el entorno
+        // Obtener URL base desde variables de entorno
         get BASE_URL() {
-            // En Netlify, window.location.hostname será tu dominio de Netlify
-            const isProduction = window.location.hostname !== 'localhost' && 
-                                window.location.hostname !== '127.0.0.1';
-            
-            return isProduction ? this.PRODUCTION : this.DEVELOPMENT;
+            return ENV_VARS.VITE_API_BASE_URL || 'https://back-adm.fly.dev';
         },
         
         get ENDPOINTS() {
@@ -33,16 +71,37 @@ const CONFIG = {
 
     // Configuración de la aplicación
     APP: {
-        NAME: 'AquaDelivery',
-        VERSION: '1.0.0',
+        get NAME() {
+            return ENV_VARS.VITE_APP_NAME || 'AquaDelivery';
+        },
+        get VERSION() {
+            return ENV_VARS.VITE_APP_VERSION || '1.0.0';
+        },
         DESCRIPTION: 'Sistema de gestión de delivery de agua'
     },
 
     // Configuración de desarrollo
     DEBUG: {
-        ENABLED: window.location.hostname === 'localhost',
-        LOG_API_CALLS: true,
+        get ENABLED() {
+            return ENV_VARS.VITE_DEBUG_MODE === 'true';
+        },
+        get LOG_API_CALLS() {
+            return ENV_VARS.VITE_LOG_API_CALLS === 'true';
+        },
         LOG_ERRORS: true
+    },
+
+    // Variables de entorno
+    ENV: {
+        get NODE_ENV() {
+            return ENV_VARS.VITE_NODE_ENV || 'development';
+        },
+        get IS_PRODUCTION() {
+            return this.NODE_ENV === 'production';
+        },
+        get IS_DEVELOPMENT() {
+            return this.NODE_ENV === 'development';
+        }
     },
 
     // Configuración de autenticación
@@ -58,22 +117,50 @@ function getConfig() {
     return CONFIG;
 }
 
-// Función para actualizar la URL del backend (útil para configuración dinámica)
+// Función para inicializar la configuración
+async function initConfig() {
+    try {
+        ENV_VARS = await loadEnvVars();
+        
+        // Log de configuración en desarrollo
+        if (CONFIG.DEBUG.ENABLED) {
+            console.log('🔧 Configuración de AquaDelivery:', {
+                'Backend URL': CONFIG.API.BASE_URL,
+                'Environment': CONFIG.ENV.NODE_ENV,
+                'Debug Mode': CONFIG.DEBUG.ENABLED,
+                'Variables cargadas': Object.keys(ENV_VARS).length
+            });
+        }
+        
+        return CONFIG;
+    } catch (error) {
+        console.error('Error inicializando configuración:', error);
+        return CONFIG;
+    }
+}
+
+// Función para obtener la configuración
+function getConfig() {
+    return CONFIG;
+}
+
+// Función para actualizar la URL del backend dinámicamente
 function updateBackendURL(newURL) {
-    CONFIG.API.PRODUCTION = newURL;
+    ENV_VARS.VITE_API_BASE_URL = newURL;
     console.log(`Backend URL actualizada a: ${newURL}`);
 }
 
-// Log de configuración en desarrollo
-if (CONFIG.DEBUG.ENABLED) {
-    console.log('🔧 Configuración de AquaDelivery:', {
-        'Backend URL': CONFIG.API.BASE_URL,
-        'Environment': window.location.hostname === 'localhost' ? 'Development' : 'Production',
-        'Debug Mode': CONFIG.DEBUG.ENABLED
-    });
+// Función para recargar variables de entorno
+async function reloadEnvVars() {
+    ENV_VARS = await loadEnvVars();
+    console.log('Variables de entorno recargadas');
+    return ENV_VARS;
 }
 
 // Hacer disponible globalmente
 window.CONFIG = CONFIG;
+window.ENV_VARS = ENV_VARS;
 window.getConfig = getConfig;
 window.updateBackendURL = updateBackendURL;
+window.reloadEnvVars = reloadEnvVars;
+window.initConfig = initConfig;

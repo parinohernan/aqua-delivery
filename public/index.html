@@ -140,10 +140,23 @@
     <script src="js/app.js"></script>
 
     <script>
-        // Inicializar iconos cuando se carga la página
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
+        // Inicializar configuración y aplicación
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // 1. Inicializar configuración con variables de entorno
+                console.log('🚀 Iniciando AquaDelivery...');
+                await initConfig();
+                
+                // 2. Inicializar iconos
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+                
+                console.log('✅ AquaDelivery iniciado correctamente');
+                console.log('🌐 Backend URL:', CONFIG.API.BASE_URL);
+                
+            } catch (error) {
+                console.error('❌ Error iniciando AquaDelivery:', error);
             }
         });
     </script>

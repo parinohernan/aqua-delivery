@@ -1,8 +1,18 @@
 class ApiService {
     constructor() {
-        // Usar la configuración centralizada
-        this.baseURL = window.CONFIG ? window.CONFIG.API.BASE_URL : 'http://localhost:8001';
         this.token = localStorage.getItem('token');
+    }
+
+    // Obtener URL base dinámicamente desde la configuración
+    get baseURL() {
+        if (window.CONFIG && window.CONFIG.API && window.CONFIG.API.BASE_URL) {
+            return window.CONFIG.API.BASE_URL;
+        }
+        
+        // Fallback si no hay configuración cargada
+        const isProduction = window.location.hostname !== 'localhost' && 
+                            window.location.hostname !== '127.0.0.1';
+        return isProduction ? 'https://back-adm.fly.dev' : 'http://localhost:8001';
     }
 
     setToken(token) {
@@ -20,6 +30,14 @@ class ApiService {
             ...options
         };
 
+        // Log de API calls si está habilitado
+        if (window.CONFIG && window.CONFIG.DEBUG && window.CONFIG.DEBUG.LOG_API_CALLS) {
+            console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`, {
+                headers: config.headers,
+                body: config.body
+            });
+        }
+
         if (config.body && typeof config.body === 'object') {
             config.body = JSON.stringify(config.body);
         }
@@ -28,13 +46,23 @@ class ApiService {
             const response = await fetch(url, config);
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Error en la petición');
+                const error = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                throw new Error(error.error || `Error HTTP ${response.status}`);
             }
 
-            return await response.json();
+            const result = await response.json();
+            
+            // Log de respuesta exitosa si está habilitado
+            if (window.CONFIG && window.CONFIG.DEBUG && window.CONFIG.DEBUG.LOG_API_CALLS) {
+                console.log(`✅ API Response: ${options.method || 'GET'} ${url}`, result);
+            }
+            
+            return result;
         } catch (error) {
-            console.error('API Error:', error);
+            // Log de error si está habilitado
+            if (window.CONFIG && window.CONFIG.DEBUG && window.CONFIG.DEBUG.LOG_ERRORS) {
+                console.error(`❌ API Error: ${options.method || 'GET'} ${url}`, error);
+            }
             throw error;
         }
     }
