@@ -2,10 +2,18 @@
 
 // Función para cargar variables de entorno desde archivos
 async function loadEnvVars() {
-    const isProduction = window.location.hostname !== 'localhost' && 
-                        window.location.hostname !== '127.0.0.1';
+    // Detectar entorno - forzar producción si no es localhost:8000 o localhost:4321
+    const isLocalDev = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+                       (window.location.port === '8000' || window.location.port === '4321' || window.location.port === '3000');
     
-    const envFile = isProduction ? '/env.production' : '/env.development';
+    const envFile = isLocalDev ? '/env.development' : '/env.production';
+    
+    console.log('🌍 Entorno detectado:', {
+        hostname: window.location.hostname,
+        port: window.location.port,
+        isLocalDev,
+        envFile
+    });
     
     try {
         const response = await fetch(envFile);
@@ -33,12 +41,12 @@ async function loadEnvVars() {
         
         // Valores por defecto si no se puede cargar el archivo
         return {
-            VITE_API_BASE_URL: isProduction ? 'https://back-adm.fly.dev' : 'http://localhost:8001',
+            VITE_API_BASE_URL: isLocalDev ? 'http://localhost:8001' : 'https://back-adm.fly.dev',
             VITE_APP_NAME: 'AquaDelivery',
             VITE_APP_VERSION: '1.0.0',
-            VITE_DEBUG_MODE: isProduction ? 'false' : 'true',
-            VITE_LOG_API_CALLS: isProduction ? 'false' : 'true',
-            VITE_NODE_ENV: isProduction ? 'production' : 'development'
+            VITE_DEBUG_MODE: isLocalDev ? 'true' : 'false',
+            VITE_LOG_API_CALLS: isLocalDev ? 'true' : 'false',
+            VITE_NODE_ENV: isLocalDev ? 'development' : 'production'
         };
     }
 }

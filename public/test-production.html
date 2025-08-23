@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaDelivery - Test Producción</title>
+    
+    <!-- Parse SDK -->
+    <script src="https://unpkg.com/parse@5.2.0/dist/parse.min.js"></script>
+    
+    <!-- Iconos Lucide -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <link rel="stylesheet" href="../styles.css">
+    
+    <style>
+        .test-panel {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .test-result {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .status-ok { color: #10b981; }
+        .status-error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="test-panel">
+        <h1>🧪 Test de Conexión con Backend de Producción</h1>
+        <p><strong>Backend URL:</strong> <span id="backend-url">https://back-adm.fly.dev</span></p>
+        
+        <div>
+            <button class="test-button" onclick="testHealthCheck()">🩺 Test Health Check</button>
+            <button class="test-button" onclick="testAuth()">🔐 Test Autenticación</button>
+            <button class="test-button" onclick="testClientes()">👥 Test Clientes</button>
+            <button class="test-button" onclick="testProductos()">🛍️ Test Productos</button>
+            <button class="test-button" onclick="clearResults()">🧹 Limpiar</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Configuración fija para producción
+        const BACKEND_URL = 'https://back-adm.fly.dev';
+        
+        function addResult(title, content, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'test-result';
+            div.innerHTML = `
+                <strong class="${isError ? 'status-error' : 'status-ok'}">${title}</strong>
+                ${content}
+            `;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testHealthCheck() {
+            try {
+                addResult('🩺 Health Check', 'Probando conexión...');
+                
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                
+                addResult('✅ Health Check OK', JSON.stringify(data, null, 2));
+            } catch (error) {
+                addResult('❌ Health Check Error', error.message, true);
+            }
+        }
+        
+        async function testAuth() {
+            try {
+                addResult('🔐 Autenticación', 'Probando login...');
+                
+                const response = await fetch(`${BACKEND_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        telegramId: 'freedom135',
+                        codigoEmpresa: '1'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('✅ Autenticación OK', JSON.stringify(data, null, 2));
+                    // Guardar token para próximos tests
+                    window.testToken = data.token;
+                } else {
+                    addResult('❌ Autenticación Error', JSON.stringify(data, null, 2), true);
+                }
+            } catch (error) {
+                addResult('❌ Autenticación Error', error.message, true);
+            }
+        }
+        
+        async function testClientes() {
+            try {
+                addResult('👥 Clientes', 'Obteniendo lista de clientes...');
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (window.testToken) {
+                    headers['Authorization'] = `Bearer ${window.testToken}`;
+                }
+                
+                const response = await fetch(`${BACKEND_URL}/api/clientes`, {
+                    headers
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('✅ Clientes OK', `${data.length || 0} clientes encontrados:\n${JSON.stringify(data.slice(0, 3), null, 2)}`);
+                } else {
+                    addResult('❌ Clientes Error', JSON.stringify(data, null, 2), true);
+                }
+            } catch (error) {
+                addResult('❌ Clientes Error', error.message, true);
+            }
+        }
+        
+        async function testProductos() {
+            try {
+                addResult('🛍️ Productos', 'Obteniendo lista de productos...');
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (window.testToken) {
+                    headers['Authorization'] = `Bearer ${window.testToken}`;
+                }
+                
+                const response = await fetch(`${BACKEND_URL}/api/productos`, {
+                    headers
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('✅ Productos OK', `${data.length || 0} productos encontrados:\n${JSON.stringify(data.slice(0, 3), null, 2)}`);
+                } else {
+                    addResult('❌ Productos Error', JSON.stringify(data, null, 2), true);
+                }
+            } catch (error) {
+                addResult('❌ Productos Error', error.message, true);
+            }
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 Test de producción iniciado');
+            console.log('🌐 Backend URL:', BACKEND_URL);
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>
