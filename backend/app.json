@@ -1,0 +1,54 @@
+{
+  "name": "aqua-delivery-backend",
+  "description": "Backend API para sistema de delivery de agua",
+  "image": "heroku/nodejs",
+  "addons": [],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Environment",
+      "value": "production"
+    },
+    "PORT": {
+      "description": "Port number",
+      "value": "8001"
+    },
+    "DB_HOST": {
+      "description": "Database host"
+    },
+    "DB_USER": {
+      "description": "Database user"
+    },
+    "DB_PASSWORD": {
+      "description": "Database password"
+    },
+    "DB_NAME": {
+      "description": "Database name",
+      "value": "deliverydeagua"
+    },
+    "DB_PORT": {
+      "description": "Database port",
+      "value": "3306"
+    },
+    "JWT_SECRET": {
+      "description": "JWT secret key for authentication"
+    },
+    "FRONTEND_URL": {
+      "description": "Frontend URL for CORS",
+      "value": "https://tu-frontend.netlify.app"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "stack": "heroku-20",
+  "scripts": {
+    "postdeploy": "echo 'Deployment completed successfully!'"
+  }
+}
