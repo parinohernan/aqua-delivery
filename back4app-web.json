@@ -1,0 +1,25 @@
+{
+  "name": "aqua-delivery-backend",
+  "description": "Backend API para sistema de delivery de agua - Web Deployment",
+  "type": "web",
+  "dockerfile": "Dockerfile",
+  "port": 8001,
+  "healthcheck": "/health",
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "8001"
+  },
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "deploy": {
+    "source": "github",
+    "branch": "main",
+    "auto_deploy": true
+  },
+  "scaling": {
+    "min_instances": 1,
+    "max_instances": 3
+  }
+}

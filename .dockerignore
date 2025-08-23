@@ -1,0 +1,26 @@
+# Ignorar archivos innecesarios para el build
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.production
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+coverage
+.nyc_output
+
+# Ignorar carpetas que no son del backend
+frontend/
+documentos/
+tests/
+scripts/
+
+# Ignorar archivos de configuración específicos
+docker-compose.yml
+back4app.yml
+back4app.json
+deploy.sh
+DEPLOYMENT_*.md
