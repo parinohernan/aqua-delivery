@@ -1,0 +1,22 @@
+{
+  "name": "aqua-delivery-parse-cloud",
+  "version": "1.0.0",
+  "description": "Parse Cloud Code para AquaDelivery",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"No tests configured\""
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "parse",
+    "cloud-code",
+    "back4app",
+    "delivery",
+    "agua"
+  ],
+  "author": "Hernan",
+  "license": "MIT"
+}
