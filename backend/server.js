@@ -11,6 +11,10 @@ app.use(cors({
     'http://localhost:4321', 
     'http://localhost:4322', 
     'http://localhost:3000',
+    'http://localhost:8000',
+    'http://localhost:9000',
+    'http://127.0.0.1:8000',
+    'http://127.0.0.1:9000',
     process.env.FRONTEND_URL || 'https://tu-app-frontend.onrender.com'
   ], // Permitir frontend local y producción
   credentials: true
