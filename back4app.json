@@ -1,0 +1,46 @@
+{
+  "name": "aqua-delivery-manager",
+  "description": "Sistema de gestión de delivery de agua con Astro y Node.js",
+  "version": "1.0.0",
+  "main": "backend/server.js",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "start": "cd backend && npm start",
+    "build": "cd frontend && npm run build",
+    "postinstall": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "back4app": {
+    "type": "container",
+    "dockerfile": "backend/Dockerfile",
+    "port": 8001,
+    "healthcheck": "/health",
+    "environment": [
+      "PORT",
+      "NODE_ENV",
+      "DB_HOST",
+      "DB_USER", 
+      "DB_PASSWORD",
+      "DB_NAME",
+      "DB_PORT",
+      "JWT_SECRET",
+      "FRONTEND_URL"
+    ],
+    "database": {
+      "type": "mysql",
+      "version": "8.0"
+    }
+  },
+  "keywords": [
+    "delivery",
+    "agua",
+    "astro",
+    "express",
+    "mysql",
+    "back4app"
+  ],
+  "author": "Hernan",
+  "license": "MIT"
+}

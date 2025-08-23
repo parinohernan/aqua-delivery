@@ -1,0 +1,37 @@
+# Configuración para Back4App Container Deployment
+# Este archivo define la configuración para deployar en Back4App usando containers
+
+version: '3.8'
+
+services:
+  # Servicio principal de la aplicación
+  app:
+    # Usar el Dockerfile del backend como servicio principal
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+      NODE_ENV: production
+      # Variables que Back4App inyectará automáticamente
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT:-3306}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+    restart: unless-stopped
+    
+  # Servicio del frontend (opcional, puede ser deployado por separado)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
