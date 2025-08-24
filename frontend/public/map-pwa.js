@@ -6,6 +6,14 @@ const MAP_CONFIG = {
   
   // Proveedores de tiles con fallbacks
   tileProviders: [
+    // Proveedores optimizados para móviles (más ligeros)
+    {
+      name: 'CartoDB Light Mobile',
+      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      attribution: '© CartoDB',
+      subdomains: 'abcd',
+      mobileOptimized: true
+    },
     {
       name: 'OpenStreetMap',
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -13,16 +21,18 @@ const MAP_CONFIG = {
       subdomains: 'abc'
     },
     {
-      name: 'CartoDB Light',
-      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      attribution: '© CartoDB',
-      subdomains: 'abcd'
-    },
-    {
-      name: 'CartoDB Dark',
+      name: 'CartoDB Dark Mobile',
       url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
       attribution: '© CartoDB',
-      subdomains: 'abcd'
+      subdomains: 'abcd',
+      mobileOptimized: true
+    },
+    // Proveedores alternativos para móviles
+    {
+      name: 'Thunderforest Transport',
+      url: 'https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png',
+      attribution: '© Thunderforest',
+      subdomains: 'abc'
     },
     {
       name: 'Esri World Street',
@@ -34,6 +44,7 @@ const MAP_CONFIG = {
       url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
       attribution: '© Esri'
     },
+    // Proveedores de respaldo
     {
       name: 'Stamen Terrain',
       url: 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png',
@@ -83,6 +94,15 @@ async function initMapPWA(containerId, options = {}) {
     
     // Detectar mejor proveedor y agregar capa de tiles
     const optimizedProviders = await detectBestTileProvider();
+    
+    // En móvil, agregar configuración específica
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      console.log('📱 Configurando mapa optimizado para móvil...');
+      // Reducir el zoom máximo en móvil para mejor rendimiento
+      map.setMaxZoom(16);
+    }
+    
     addTileLayerWithFallback(map, optimizedProviders);
     
     // Configurar controles adicionales
@@ -104,6 +124,9 @@ function addTileLayerWithFallback(map, providers = MAP_CONFIG.tileProviders) {
   let tileLoadTimeout;
   let tilesLoaded = 0;
   let tilesFailed = 0;
+  
+  // Verificar si estamos en móvil
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
   function addTileLayer() {
     if (currentProviderIndex >= providers.length) {
@@ -148,7 +171,9 @@ function addTileLayerWithFallback(map, providers = MAP_CONFIG.tileProviders) {
     tilesLoaded = 0;
     tilesFailed = 0;
     
-    // Timeout para detectar si no se cargan tiles
+    // Timeout más agresivo en móviles
+    const timeoutDuration = isMobile ? 5000 : 10000; // 5 segundos en móvil, 10 en desktop
+    
     tileLoadTimeout = setTimeout(() => {
       if (tilesLoaded === 0) {
         console.warn(`⚠️ Timeout con proveedor ${provider.name} - no se cargaron tiles`);
@@ -156,7 +181,7 @@ function addTileLayerWithFallback(map, providers = MAP_CONFIG.tileProviders) {
         currentProviderIndex++;
         addTileLayer();
       }
-    }, 10000); // 10 segundos de timeout
+    }, timeoutDuration);
     
     tileLayer.addTo(map);
     
@@ -266,25 +291,27 @@ function createFallbackMap(containerId, options = {}) {
       attributionControl: false
     });
     
-    // Crear un fondo simple con gradiente
+    // Crear un fondo más informativo
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 256;
     canvas.height = 256;
     
-    // Crear gradiente de fondo
+    // Crear gradiente de fondo más atractivo
     const gradient = ctx.createLinearGradient(0, 0, 256, 256);
-    gradient.addColorStop(0, '#e3f2fd');
-    gradient.addColorStop(1, '#bbdefb');
+    gradient.addColorStop(0, '#f0f8ff');
+    gradient.addColorStop(0.5, '#e6f3ff');
+    gradient.addColorStop(1, '#d4edda');
     
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 256, 256);
     
-    // Agregar líneas de cuadrícula
-    ctx.strokeStyle = '#90caf9';
+    // Agregar líneas de cuadrícula más visibles
+    ctx.strokeStyle = '#4a90e2';
     ctx.lineWidth = 1;
     
-    for (let i = 0; i < 256; i += 32) {
+    // Cuadrícula principal
+    for (let i = 0; i < 256; i += 64) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i, 256);
@@ -295,6 +322,32 @@ function createFallbackMap(containerId, options = {}) {
       ctx.lineTo(256, i);
       ctx.stroke();
     }
+    
+    // Cuadrícula secundaria
+    ctx.strokeStyle = '#7bb3f0';
+    ctx.lineWidth = 0.5;
+    
+    for (let i = 32; i < 256; i += 32) {
+      if (i % 64 !== 0) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, 256);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(256, i);
+        ctx.stroke();
+      }
+    }
+    
+    // Agregar texto informativo en el centro
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('MAPA', 128, 120);
+    ctx.font = '12px Arial';
+    ctx.fillText('DE RESPALDO', 128, 140);
     
     // Crear URL de datos para el canvas
     const dataURL = canvas.toDataURL();
@@ -307,27 +360,32 @@ function createFallbackMap(containerId, options = {}) {
     
     customTileLayer.addTo(map);
     
-    // Agregar mensaje informativo
+    // Agregar mensaje informativo más detallado
     const infoDiv = L.control({ position: 'topright' });
     infoDiv.onAdd = function() {
       const div = L.DomUtil.create('div', 'info');
       div.innerHTML = `
         <div style="
-          background: rgba(255, 255, 255, 0.9);
-          padding: 8px 12px;
-          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.95);
+          padding: 10px 15px;
+          border-radius: 6px;
           font-size: 12px;
-          color: #666;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          color: #333;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          border-left: 4px solid #4a90e2;
+          max-width: 200px;
         ">
-          🗺️ Mapa de respaldo
+          <div style="font-weight: bold; margin-bottom: 4px;">🗺️ Mapa de Respaldo</div>
+          <div style="font-size: 11px; color: #666;">
+            Los marcadores funcionan normalmente
+          </div>
         </div>
       `;
       return div;
     };
     infoDiv.addTo(map);
     
-    console.log('✅ Mapa de respaldo creado');
+    console.log('✅ Mapa de respaldo mejorado creado');
     return map;
     
   } catch (error) {
@@ -461,12 +519,18 @@ async function detectBestTileProvider() {
   let optimizedProviders = [...MAP_CONFIG.tileProviders];
   
   if (isMobile) {
-    // En móvil, priorizar proveedores más ligeros
+    // En móvil, priorizar proveedores optimizados para móviles
     optimizedProviders.sort((a, b) => {
+      // Priorizar proveedores marcados como mobileOptimized
+      if (a.mobileOptimized && !b.mobileOptimized) return -1;
+      if (!a.mobileOptimized && b.mobileOptimized) return 1;
+      
       const aPriority = getProviderPriority(a.name, isSlowConnection);
       const bPriority = getProviderPriority(b.name, isSlowConnection);
       return bPriority - aPriority;
     });
+    
+    console.log('📱 Proveedores optimizados para móvil:', optimizedProviders.map(p => p.name));
   }
   
   return optimizedProviders;
@@ -475,9 +539,10 @@ async function detectBestTileProvider() {
 // Función para obtener prioridad del proveedor
 function getProviderPriority(providerName, isSlowConnection) {
   const priorities = {
-    'CartoDB Light': isSlowConnection ? 10 : 8,
-    'CartoDB Dark': isSlowConnection ? 9 : 7,
+    'CartoDB Light Mobile': isSlowConnection ? 12 : 10,
+    'CartoDB Dark Mobile': isSlowConnection ? 11 : 9,
     'OpenStreetMap': isSlowConnection ? 8 : 9,
+    'Thunderforest Transport': isSlowConnection ? 7 : 8,
     'Esri World Street': isSlowConnection ? 7 : 6,
     'Esri World Topo': isSlowConnection ? 6 : 5,
     'Stamen Terrain': isSlowConnection ? 5 : 4,
