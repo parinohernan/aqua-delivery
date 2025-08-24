@@ -34,7 +34,7 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://stamen-tiles-*.a.ssl.fastly.net; connect-src 'self' https://back-adm.fly.dev https://nominatim.openstreetmap.org https://router.project-osrm.org;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://stamen-tiles-*.a.ssl.fastly.net https://server.arcgisonline.com; connect-src 'self' https://back-adm.fly.dev https://nominatim.openstreetmap.org https://router.project-osrm.org;"
 
 # Headers específicos para PWA
 [[headers]]
