@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aqua-delivery-v2';
+const CACHE_NAME = 'aqua-delivery-v3';
 const urlsToCache = [
     '/',
     '/styles.css',
@@ -45,6 +45,22 @@ self.addEventListener('install', event => {
                     );
                 });
             })
+    );
+});
+
+// Limpiar caches antiguos cuando se activa el nuevo Service Worker
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('🗑️ Eliminando cache antiguo:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
     );
 });
 

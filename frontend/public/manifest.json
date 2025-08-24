@@ -4,6 +4,7 @@
     "description": "Sistema completo de gestión para delivery de agua con pedidos, clientes y productos",
     "start_url": "/",
     "display": "standalone",
+    "prefer_related_applications": false,
     "background_color": "#ffffff",
     "theme_color": "#6366f1",
     "orientation": "portrait-primary",
