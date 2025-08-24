@@ -90,7 +90,10 @@ import Layout from '../layouts/Layout.astro';
 
       try {
         console.log('Enviando petición de login...');
-        const response = await fetch('/auth/login', {
+        const loginUrl = 'https://back-adm.fly.dev/auth/login';
+        console.log('URL de login:', loginUrl);
+        
+        const response = await fetch(loginUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

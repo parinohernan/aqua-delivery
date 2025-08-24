@@ -447,7 +447,7 @@ async function checkAuth() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
     
-    const response = await fetch('/api/clientes', {
+    const response = await fetch('https://back-adm.fly.dev/api/clientes', {
       headers: {
         'Authorization': `Bearer ${token}`
       },
@@ -590,7 +590,7 @@ async function loadZonas() {
   const token = localStorage.getItem('token');
 
   try {
-    const response = await fetch('/api/zonas', {
+    const response = await fetch('https://back-adm.fly.dev/api/zonas', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -1183,7 +1183,7 @@ async function showClientPaymentModal(clienteId) {
     let cliente = [...listA, ...listB].find(c => String(c.id ?? c.codigo ?? c.Code) === wantedId);
     if (!cliente) {
       try {
-        const respCli = await fetch('/api/clientes', { headers: { 'Authorization': `Bearer ${token}` } });
+        const respCli = await fetch('https://back-adm.fly.dev/api/clientes', { headers: { 'Authorization': `Bearer ${token}` } });
         if (respCli.ok) {
           const allCli = await respCli.json();
           cliente = (allCli || []).find(c => String(c.id ?? c.codigo ?? c.Code) === wantedId);
@@ -1194,7 +1194,7 @@ async function showClientPaymentModal(clienteId) {
     }
 
     // Cargar tipos de pago (excluir los que aplican saldo)
-    const tpResp = await fetch('/api/tiposdepago', { headers: { 'Authorization': `Bearer ${token}` } });
+    const tpResp = await fetch('https://back-adm.fly.dev/api/tiposdepago', { headers: { 'Authorization': `Bearer ${token}` } });
     const tipos = tpResp.ok ? await tpResp.json() : [];
     const tiposValidos = tipos.filter(tp => {
       const v = tp.aplicaSaldo;
@@ -1209,7 +1209,7 @@ async function showClientPaymentModal(clienteId) {
     // Cargar productos retornables para seleccionar cuál devuelve (si existen)
     let productosRet = [];
     try {
-      const pr = await fetch('/api/productos', { headers: { 'Authorization': `Bearer ${token}` } });
+      const pr = await fetch('https://back-adm.fly.dev/api/productos', { headers: { 'Authorization': `Bearer ${token}` } });
       const prods = pr.ok ? await pr.json() : [];
       productosRet = (prods || []).filter(p => p.esRetornable === 1 || p.esRetornable === true);
     } catch (_) {}
@@ -1312,7 +1312,7 @@ async function showClientPaymentModal(clienteId) {
 
         // 1) Registrar cobro (si corresponde)
         if (tipoPagoId && montoV > 0) {
-          const r = await fetch('/api/pagos/cliente', {
+          const r = await fetch('https://back-adm.fly.dev/api/pagos/cliente', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ clienteId, tipoPagoId, monto: montoV, observaciones: 'Cobro desde gestión de clientes' })
@@ -1325,7 +1325,7 @@ async function showClientPaymentModal(clienteId) {
 
         // 2) Registrar devolución de retornables (si corresponde)
         if (retProd && retCant > 0) {
-          const r2 = await fetch('/api/clientes/retornables/devolver', {
+          const r2 = await fetch('https://back-adm.fly.dev/api/clientes/retornables/devolver', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ clienteId, productoId: retProd, cantidad: retCant, observaciones: 'Devolución desde gestión de clientes' })
@@ -1777,7 +1777,7 @@ async function loadClientesData() {
   const token = localStorage.getItem('token');
 
   try {
-    const response = await fetch('/api/clientes', {
+    const response = await fetch('https://back-adm.fly.dev/api/clientes', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -2185,7 +2185,7 @@ async function loadProductosData() {
   const token = localStorage.getItem('token');
 
   try {
-    const response = await fetch('/api/productos', {
+    const response = await fetch('https://back-adm.fly.dev/api/productos', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -2706,7 +2706,7 @@ async function applyProductFilters() {
 
   try {
     // Primero cargar todos los productos
-    const response = await fetch('/api/productos', {
+    const response = await fetch('https://back-adm.fly.dev/api/productos', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -2964,7 +2964,7 @@ async function handleProductSubmit(e) {
         body: JSON.stringify(productData)
       });
     } else {
-      response = await fetch('/api/productos', {
+      response = await fetch('https://back-adm.fly.dev/api/productos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3188,7 +3188,7 @@ async function applyClientFilters() {
 
   try {
     // Primero cargar todos los clientes
-    const response = await fetch('/api/clientes', {
+    const response = await fetch('https://back-adm.fly.dev/api/clientes', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -4100,7 +4100,7 @@ async function showClientPayment(clientId) {
   let tiposPagoDisponibles = [];
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/tiposdepago', {
+    const response = await fetch('https://back-adm.fly.dev/api/tiposdepago', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -4220,7 +4220,7 @@ async function processClientPayment(event, clientId) {
 
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/pagos/cliente', {
+    const response = await fetch('https://back-adm.fly.dev/api/pagos/cliente', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -4278,7 +4278,7 @@ async function showReturnablesModal(clientId) {
   let productosRetornables = [];
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/productos', {
+    const response = await fetch('https://back-adm.fly.dev/api/productos', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -4391,7 +4391,7 @@ async function processReturnablesReturn(event, clientId) {
 
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/clientes/retornables/devolver', {
+    const response = await fetch('https://back-adm.fly.dev/api/clientes/retornables/devolver', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

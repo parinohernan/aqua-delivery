@@ -95,7 +95,7 @@ let editingClientId = null;
 async function loadZonasLocal() {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/zonas', {
+    const response = await fetch('https://back-adm.fly.dev/api/zonas', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -120,7 +120,7 @@ async function loadClientes() {
   const token = localStorage.getItem('token');
   
   try {
-    const response = await fetch('/api/clientes', {
+    const response = await fetch('https://back-adm.fly.dev/api/clientes', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
