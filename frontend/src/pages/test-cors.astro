@@ -1,0 +1,96 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Test CORS - AquaDelivery">
+  <div style="padding: 2rem; max-width: 800px; margin: 0 auto;">
+    <h1>🧪 Test de Conexión CORS</h1>
+    
+    <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+      <h3>Backend URL: https://back-adm.fly.dev</h3>
+      <p>Esta página prueba la conexión entre el frontend y el backend.</p>
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin: 1rem 0;">
+      <button onclick="testHealth()" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🩺 Test Health Check
+      </button>
+      <button onclick="testLogin()" style="padding: 0.5rem 1rem; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🔐 Test Login
+      </button>
+      <button onclick="clearResults()" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🧹 Limpiar
+      </button>
+    </div>
+
+    <div id="results" style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; min-height: 200px;">
+      <p>Haz clic en un botón para probar la conexión...</p>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  function log(message, type = 'info') {
+    const results = document.getElementById('results');
+    const timestamp = new Date().toLocaleTimeString();
+    const color = type === 'error' ? '#dc2626' : type === 'success' ? '#059669' : '#3b82f6';
+    
+    results.innerHTML += `<div style="color: ${color}; margin: 0.5rem 0; font-family: monospace;">
+      [${timestamp}] ${message}
+    </div>`;
+    results.scrollTop = results.scrollHeight;
+  }
+
+  async function testHealth() {
+    log('🩺 Probando Health Check...');
+    
+    try {
+      const response = await fetch('https://back-adm.fly.dev/health', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        log(`✅ Health Check exitoso: ${data.message}`, 'success');
+      } else {
+        log(`❌ Health Check falló: ${response.status} ${response.statusText}`, 'error');
+      }
+    } catch (error) {
+      log(`💥 Error en Health Check: ${error.message}`, 'error');
+    }
+  }
+
+  async function testLogin() {
+    log('🔐 Probando Login...');
+    
+    try {
+      const response = await fetch('https://back-adm.fly.dev/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          telegramId: 'test',
+          codigoEmpresa: 'test'
+        })
+      });
+      
+      if (response.status === 401) {
+        log('✅ Login funciona (401 es esperado para credenciales incorrectas)', 'success');
+      } else if (response.ok) {
+        log('✅ Login exitoso', 'success');
+      } else {
+        log(`❌ Login falló: ${response.status} ${response.statusText}`, 'error');
+      }
+    } catch (error) {
+      log(`💥 Error en Login: ${error.message}`, 'error');
+    }
+  }
+
+  function clearResults() {
+    document.getElementById('results').innerHTML = '<p>Haz clic en un botón para probar la conexión...</p>';
+  }
+</script>
