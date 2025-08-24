@@ -11,7 +11,10 @@ const urlsToCache = [
     '/js/components/pedidos.js',
     '/js/components/clientes.js',
     '/js/components/productos.js',
-    '/js/components/pagos.js'
+    '/js/components/pagos.js',
+    '/leaflet.css',
+    '/leaflet.js',
+    '/map-pwa.js'
 ];
 
 // Lista de archivos que pueden fallar sin problemas

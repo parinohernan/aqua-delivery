@@ -212,13 +212,16 @@ class MapModal {
     // Ubicación por defecto (Buenos Aires)
     const defaultLocation = [-34.6037, -58.3816];
     
-    // Inicializar mapa con Leaflet
-    this.map = L.map('mapContainer').setView(defaultLocation, 12);
+    // Inicializar mapa con configuración PWA
+    this.map = initMapPWA('mapContainer', {
+      center: defaultLocation,
+      zoom: 12
+    });
     
-    // Agregar capa de OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(this.map);
+    if (!this.map) {
+      console.error('❌ No se pudo inicializar el mapa');
+      return;
+    }
     
     // Intentar obtener ubicación del usuario
     this.addUserLocation();

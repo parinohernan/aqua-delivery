@@ -348,12 +348,16 @@ class ClientModal {
   createMapAtLocation(lat, lng, zoom, addMarker) {
     // Crear el mapa asegurando que el contenedor sea visible
     const create = () => {
-      this.map = L.map('clientModalMap').setView([lat, lng], zoom);
-
-      // Agregar capa de tiles (OpenStreetMap)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(this.map);
+      // Inicializar mapa con configuración PWA
+      this.map = initMapPWA('clientModalMap', {
+        center: [lat, lng],
+        zoom: zoom
+      });
+      
+      if (!this.map) {
+        console.error('❌ No se pudo inicializar el mapa');
+        return;
+      }
 
       // Asegurar que el mapa re-calcula su tamaño tras crearse en modal
       setTimeout(() => {
