@@ -4,6 +4,10 @@ class MapModal {
     this.map = null;
     this.markers = [];
     this.pedidosPendientes = [];
+    this.userLocation = null;
+    this.routeLayer = null;
+    this.routeMarkers = [];
+    this.optimizedRoute = null;
     this.init();
   }
 
@@ -33,12 +37,18 @@ class MapModal {
                   <span style="color: #059669;">🟢 Tu ubicación actual</span>
                 </p>
               </div>
-              <div style="display: flex; gap: 0.5rem;">
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <button onclick="mapModal.centerOnUser()" style="padding: 0.5rem 1rem; background: #059669; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
                   📍 Mi Ubicación
                 </button>
                 <button onclick="mapModal.fitAllMarkers()" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
                   🔍 Ver Todos
+                </button>
+                <button onclick="mapModal.generateOptimizedRoute()" style="padding: 0.5rem 1rem; background: #f59e0b; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+                  🛣️ Ruta Optimizada
+                </button>
+                <button onclick="mapModal.clearRoute()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+                  🗑️ Limpiar Ruta
                 </button>
               </div>
             </div>
@@ -267,6 +277,9 @@ class MapModal {
           const userLng = position.coords.longitude;
           
           console.log('📍 Ubicación del usuario obtenida:', userLat, userLng);
+          
+          // Guardar ubicación del usuario para la ruta optimizada
+          this.userLocation = { lat: userLat, lng: userLng };
           
           // Agregar marcador del usuario
           const userIcon = L.divIcon({
@@ -529,8 +542,307 @@ class MapModal {
     this.markers = [];
     this.pedidosPendientes = [];
     this.userMarker = null;
+    this.userLocation = null;
+    
+    // Limpiar ruta si existe
+    this.clearRoute();
     
     console.log('🗺️ Mapa cerrado y limpiado completamente');
+  }
+
+  // ===== FUNCIONES DE RUTA OPTIMIZADA =====
+
+  async generateOptimizedRoute() {
+    console.log('🛣️ Generando ruta optimizada...');
+    
+    if (!this.userLocation) {
+      alert('❌ Necesitamos tu ubicación actual para generar la ruta optimizada');
+      return;
+    }
+
+    if (this.markers.length === 0) {
+      alert('❌ No hay pedidos pendientes para generar una ruta');
+      return;
+    }
+
+    // Mostrar indicador de carga
+    this.showRouteLoading();
+
+    try {
+      // Obtener coordenadas de todos los puntos
+      const points = [
+        this.userLocation, // Punto de inicio (tu ubicación)
+        ...this.markers.map(marker => marker.getLatLng())
+      ];
+
+      console.log('📍 Puntos para optimizar:', points.length);
+
+      // Generar ruta optimizada usando algoritmo del viajante
+      const optimizedOrder = this.solveTSP(points);
+      
+      // Crear la ruta con OSRM
+      await this.createRouteWithOSRM(optimizedOrder);
+
+    } catch (error) {
+      console.error('💥 Error generando ruta optimizada:', error);
+      this.showRouteError('Error generando la ruta optimizada');
+    }
+  }
+
+  solveTSP(points) {
+    console.log('🧮 Resolviendo problema del viajante...');
+    
+    // Algoritmo simple: Nearest Neighbor (Vecino más cercano)
+    const unvisited = [...points];
+    const route = [];
+    
+    // Empezar desde la ubicación del usuario
+    let current = unvisited.shift(); // Tu ubicación
+    route.push(current);
+    
+    while (unvisited.length > 0) {
+      // Encontrar el punto más cercano
+      let nearestIndex = 0;
+      let minDistance = this.calculateDistance(current, unvisited[0]);
+      
+      for (let i = 1; i < unvisited.length; i++) {
+        const distance = this.calculateDistance(current, unvisited[i]);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestIndex = i;
+        }
+      }
+      
+      // Agregar el punto más cercano a la ruta
+      current = unvisited.splice(nearestIndex, 1)[0];
+      route.push(current);
+    }
+    
+    console.log('✅ Ruta optimizada generada:', route.length, 'puntos');
+    return route;
+  }
+
+  calculateDistance(point1, point2) {
+    // Fórmula de Haversine para calcular distancia entre dos puntos
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+    const dLon = (point2.lng - point1.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  async createRouteWithOSRM(optimizedOrder) {
+    console.log('🗺️ Creando ruta con OSRM...');
+    
+    try {
+      // Limpiar ruta anterior
+      this.clearRoute();
+      
+      // Crear waypoints para OSRM
+      const waypoints = optimizedOrder.map(point => `${point.lng},${point.lat}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`;
+      
+      console.log('🌐 URL OSRM:', url);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Error OSRM: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        
+        // Dibujar la ruta en el mapa
+        this.drawRoute(route.geometry, optimizedOrder);
+        
+        // Mostrar información de la ruta
+        this.showRouteInfo(route);
+        
+        console.log('✅ Ruta creada exitosamente');
+      } else {
+        throw new Error('No se pudo generar la ruta');
+      }
+      
+    } catch (error) {
+      console.error('💥 Error creando ruta con OSRM:', error);
+      this.showRouteError('Error conectando con el servicio de rutas');
+    }
+  }
+
+  drawRoute(geometry, optimizedOrder) {
+    console.log('🎨 Dibujando ruta en el mapa...');
+    
+    // Crear capa de ruta
+    this.routeLayer = L.geoJSON(geometry, {
+      style: {
+        color: '#f59e0b',
+        weight: 6,
+        opacity: 0.8
+      }
+    }).addTo(this.map);
+    
+    // Crear marcadores numerados para la ruta
+    this.routeMarkers = optimizedOrder.map((point, index) => {
+      const isStart = index === 0;
+      const icon = L.divIcon({
+        html: `
+          <div style="
+            width: 24px; 
+            height: 24px; 
+            background: ${isStart ? '#059669' : '#dc2626'}; 
+            border: 3px solid white; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          ">
+            ${isStart ? '📍' : index}
+          </div>
+        `,
+        className: 'route-marker',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+      
+      const marker = L.marker(point, { icon: icon }).addTo(this.map);
+      
+      // Popup con información
+      const popupContent = isStart ? 
+        '<strong>📍 Tu ubicación</strong><br><small>Punto de inicio</small>' :
+        `<strong>📦 Pedido #${index}</strong><br><small>Parada ${index}</small>`;
+      
+      marker.bindPopup(popupContent);
+      return marker;
+    });
+    
+    // Ajustar vista para mostrar toda la ruta
+    if (this.routeLayer) {
+      this.map.fitBounds(this.routeLayer.getBounds().pad(0.1));
+    }
+  }
+
+  showRouteInfo(route) {
+    const duration = Math.round(route.duration / 60); // minutos
+    const distance = Math.round(route.distance / 1000 * 10) / 10; // km
+    
+    // Crear o actualizar panel de información
+    let infoPanel = document.getElementById('routeInfo');
+    if (!infoPanel) {
+      infoPanel = document.createElement('div');
+      infoPanel.id = 'routeInfo';
+      infoPanel.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 1000;
+        max-width: 250px;
+        border-left: 4px solid #f59e0b;
+      `;
+      document.getElementById('mapContainer').appendChild(infoPanel);
+    }
+    
+    infoPanel.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 10px; color: #f59e0b;">
+        🛣️ Ruta Optimizada
+      </div>
+      <div style="font-size: 14px; margin-bottom: 5px;">
+        <strong>⏱️ Tiempo estimado:</strong> ${duration} min
+      </div>
+      <div style="font-size: 14px; margin-bottom: 5px;">
+        <strong>📏 Distancia total:</strong> ${distance} km
+      </div>
+      <div style="font-size: 14px; margin-bottom: 10px;">
+        <strong>📦 Paradas:</strong> ${this.markers.length}
+      </div>
+      <button onclick="mapModal.clearRoute()" style="
+        padding: 5px 10px; 
+        background: #6b7280; 
+        color: white; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+        font-size: 12px;
+      ">
+        🗑️ Limpiar
+      </button>
+    `;
+  }
+
+  showRouteLoading() {
+    // Mostrar indicador de carga
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'routeLoading';
+    loadingDiv.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      z-index: 1000;
+      text-align: center;
+    `;
+    loadingDiv.innerHTML = `
+      <div class="spinner" style="margin: 0 auto 10px;"></div>
+      <div>🛣️ Generando ruta optimizada...</div>
+    `;
+    document.getElementById('mapContainer').appendChild(loadingDiv);
+  }
+
+  showRouteError(message) {
+    // Remover indicador de carga
+    const loadingDiv = document.getElementById('routeLoading');
+    if (loadingDiv) {
+      loadingDiv.remove();
+    }
+    
+    // Mostrar error
+    alert(`❌ ${message}`);
+  }
+
+  clearRoute() {
+    console.log('🗑️ Limpiando ruta...');
+    
+    // Remover capa de ruta
+    if (this.routeLayer) {
+      this.map.removeLayer(this.routeLayer);
+      this.routeLayer = null;
+    }
+    
+    // Remover marcadores de ruta
+    this.routeMarkers.forEach(marker => {
+      this.map.removeLayer(marker);
+    });
+    this.routeMarkers = [];
+    
+    // Remover panel de información
+    const infoPanel = document.getElementById('routeInfo');
+    if (infoPanel) {
+      infoPanel.remove();
+    }
+    
+    // Remover indicador de carga
+    const loadingDiv = document.getElementById('routeLoading');
+    if (loadingDiv) {
+      loadingDiv.remove();
+    }
+    
+    console.log('✅ Ruta limpiada');
   }
 }
 
