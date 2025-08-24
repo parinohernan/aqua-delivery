@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aqua-delivery-v3';
+const CACHE_NAME = 'aqua-delivery-v4';
 const urlsToCache = [
     '/',
     '/styles.css',
@@ -74,6 +74,12 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // Permitir que TODAS las peticiones externas pasen directamente sin interceptar
+    if (!event.request.url.startsWith(self.location.origin)) {
+        return;
+    }
+
+    // Solo interceptar peticiones del mismo origen
     event.respondWith(
         caches.match(event.request)
             .then(response => {
