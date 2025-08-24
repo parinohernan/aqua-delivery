@@ -996,12 +996,16 @@ function renderPedidosGrid(pedidos) {
         <!-- Layout móvil (≤480px) -->
         <div class="pedido-mobile">
           <div style="margin-bottom: 0.75rem;">
-            <div style="font-weight:700; color:#111827; margin-bottom: 0.25rem;">#${id} ${nombreCompleto || 'Cliente'}</div>
-            <div style="color:#4b5563; font-size: 0.875rem;">${direccion}</div>
+            <div style="font-weight:700; color:white; margin-bottom: 0.25rem;">#${id} ${nombreCompleto || 'Cliente'}</div>
+            <div style="color:rgba(255,255,255,0.8); font-size: 0.875rem;">${direccion}</div>
+            <div style="margin-top: 0.5rem;">
+              <span class="pedido-status ${pedido.estado}">${getStatusText(pedido.estado)}</span>
+            </div>
           </div>
           <div style="display:flex; gap:0.5rem; justify-content:stretch;">
-            ${pedido.estado === 'pendient' ? `<button onclick="startDelivery(${id})" class="btn-action btn-deliver" >🚚</button>` : ''}
-            ${pedido.estado === 'pendient' ? `<button onclick="cancelPedido(${id})" class="btn-action btn-cancel">❌</button>` : ''}
+            ${pedido.estado === 'pendient' ? `<button onclick="startDelivery(${id})" class="btn-action btn-deliver" >🚚 ENTREGAR</button>` : ''}
+            ${pedido.estado === 'pendient' ? `<button onclick="cancelPedido(${id})" class="btn-action btn-cancel">❌ ANULAR</button>` : ''}
+            ${pedido.estado === 'entregad' ? `<button class="btn-action btn-deliver" disabled style="opacity: 0.7;">✅ ENTREGADO</button>` : ''}
           </div>
         </div>
       </div>
@@ -1035,6 +1039,17 @@ function getStatusIcon(estado) {
     case 'entregad': return '✅';
     case 'anulado': return '❌';
     default: return '❓';
+  }
+}
+
+// Obtener texto del estado
+function getStatusText(estado) {
+  switch (estado) {
+    case 'pendient': return 'PENDIENTE';
+    case 'proceso': return 'EN PROCESO';
+    case 'entregad': return 'ENTREGADO';
+    case 'anulado': return 'ANULADO';
+    default: return 'DESCONOCIDO';
   }
 }
 
@@ -1394,21 +1409,7 @@ function updatePedidosInfo(pedidos) {
   }
 }
 
-// Función para obtener texto del estado
-function getStatusText(estado) {
-  switch (estado) {
-    case 'pendient':
-      return 'Pendientes';
-    case 'proceso':
-      return 'En Proceso';
-    case 'entregad':
-      return 'Entregados';
-    case 'anulado':
-      return 'Anulados';
-    default:
-      return estado;
-  }
-}
+
 
 // Limpiar filtros de pedidos
 function clearPedidosFilters() {

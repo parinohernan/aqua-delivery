@@ -591,6 +591,9 @@
 .btn-deliver {
   background: linear-gradient(45deg, #4ade80, #22c55e);
   color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .btn-deliver:hover {
@@ -598,15 +601,28 @@
   box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
 }
 
+.btn-deliver:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-deliver:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
 .btn-cancel {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(45deg, #ef4444, #dc2626);
   color: white;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .btn-cancel:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
 /* Estado vacío */
@@ -878,4 +894,9 @@
   #mapContainer {
     height: 400px !important;
   }
+}
+
+/* ===== PADDING PARA BARRA DE MENÚ ===== */
+.pedidos-section {
+  padding-bottom: 120px; /* Espacio para la barra de navegación */
 }
