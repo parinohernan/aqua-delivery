@@ -7,17 +7,22 @@ const PORT = process.env.PORT || 8001;
 
 // Middlewares
 app.use(cors({
-  origin: [
-    'http://localhost:4321', 
-    'http://localhost:4322', 
-    'http://localhost:3000',
-    'http://localhost:8000',
-    'http://localhost:9000',
-    'http://127.0.0.1:8000',
-    'http://127.0.0.1:9000',
-    process.env.FRONTEND_URL || 'https://tu-app-frontend.onrender.com'
-  ], // Permitir frontend local y producción
-  credentials: true
+  origin: function(origin, callback) {
+    // Permitir cualquier origen localhost o netlify.app
+    if (!origin || 
+        origin.startsWith('http://localhost:') || 
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.endsWith('.netlify.app') ||
+        origin === 'https://aquadeliverymanager.netlify.app') {
+      callback(null, true);
+    } else {
+      console.log('CORS bloqueado para origen:', origin);
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json());
 
