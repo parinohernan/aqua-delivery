@@ -8,7 +8,18 @@
   # Directorio donde se genera el build
   publish = "dist"
 
-# Redirecciones para SPA
+# Redirecciones para SPA (solo para rutas de la aplicación)
+[[redirects]]
+  from = "/login"
+  to = "/login/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/test-cors"
+  to = "/test-cors/index.html"
+  status = 200
+
+# Redirección general para SPA (solo si no es un archivo estático)
 [[redirects]]
   from = "/*"
   to = "/index.html"
