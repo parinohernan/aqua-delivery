@@ -349,6 +349,35 @@ class ClientModal {
     // Crear el mapa asegurando que el contenedor sea visible
     const create = async () => {
       try {
+        // Limpiar mapa anterior si existe
+        if (this.map) {
+          console.log('🧹 Limpiando mapa anterior en ClientModal...');
+          try {
+            this.map.remove();
+          } catch (e) {
+            console.warn('⚠️ Error al remover mapa anterior:', e);
+          }
+          this.map = null;
+        }
+        
+        // Limpiar contenedor
+        const container = document.getElementById('clientModalMap');
+        if (container) {
+          if (container._leaflet_id) {
+            try {
+              const leafletMap = L.DomUtil.get(container._leaflet_id);
+              if (leafletMap && leafletMap._leaflet_id) {
+                leafletMap.remove();
+              }
+            } catch (e) {
+              console.warn('⚠️ Error al destruir instancia Leaflet:', e);
+            }
+            container._leaflet_id = null;
+          }
+          container.innerHTML = '';
+          container.className = container.className.replace(/leaflet-\S+/g, '').trim();
+        }
+        
         // Inicializar mapa con configuración PWA (esperar resultado)
         this.map = await initMapPWA('clientModalMap', {
           center: [lat, lng],
@@ -551,21 +580,52 @@ class ClientModal {
   }
 
   close() {
+    console.log('🗺️ Cerrando ClientModal...');
+    
     const modal = document.getElementById('clientModal');
     // Ocultar modal respetando los estilos globales
     modal.classList.remove('show');
     modal.classList.add('hidden');
     this.editingClientId = null;
 
-    // Limpiar mapa
+    // Limpiar mapa de forma más robusta
     if (this.map) {
-      this.map.remove();
+      console.log('🧹 Limpiando mapa en ClientModal...');
+      try {
+        this.map.remove();
+      } catch (e) {
+        console.warn('⚠️ Error al remover mapa:', e);
+      }
       this.map = null;
       this.marker = null;
+    }
+    
+    // Limpiar contenedor de Leaflet
+    const container = document.getElementById('clientModalMap');
+    if (container) {
+      console.log('🧹 Limpiando contenedor en ClientModal...');
+      
+      if (container._leaflet_id) {
+        try {
+          const leafletMap = L.DomUtil.get(container._leaflet_id);
+          if (leafletMap && leafletMap._leaflet_id) {
+            leafletMap.remove();
+          }
+        } catch (e) {
+          console.warn('⚠️ Error al destruir instancia Leaflet:', e);
+        }
+        container._leaflet_id = null;
+      }
+      
+      // Limpiar contenido y clases
+      container.innerHTML = '';
+      container.className = container.className.replace(/leaflet-\S+/g, '').trim();
     }
 
     // Limpiar formulario
     document.getElementById('clientForm').reset();
+    
+    console.log('🗺️ ClientModal cerrado y limpiado completamente');
   }
 
   async handleSubmit(e) {

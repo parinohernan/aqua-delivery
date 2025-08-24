@@ -190,7 +190,11 @@ class MapModal {
     // Limpiar mapa existente si existe
     if (this.map) {
       console.log('🧹 Limpiando mapa existente...');
-      this.map.remove();
+      try {
+        this.map.remove();
+      } catch (e) {
+        console.warn('⚠️ Error al remover mapa anterior:', e);
+      }
       this.map = null;
     }
     
@@ -200,14 +204,35 @@ class MapModal {
       throw new Error('Contenedor del mapa no encontrado');
     }
     
-    // Limpiar cualquier instancia de Leaflet en el contenedor
-    container._leaflet_id = null;
+    // Limpieza más robusta del contenedor
+    console.log('🧹 Limpiando contenedor del mapa...');
+    
+    // Destruir cualquier instancia de Leaflet
+    if (container._leaflet_id) {
+      console.log('🗑️ Destruyendo instancia Leaflet anterior...');
+      try {
+        // Intentar encontrar y destruir el mapa de Leaflet
+        const leafletMap = L.DomUtil.get(container._leaflet_id);
+        if (leafletMap && leafletMap._leaflet_id) {
+          leafletMap.remove();
+        }
+      } catch (e) {
+        console.warn('⚠️ Error al destruir instancia Leaflet:', e);
+      }
+      container._leaflet_id = null;
+    }
     
     // Limpiar completamente el contenido del contenedor
     container.innerHTML = '';
     
     // Remover cualquier clase de Leaflet que pueda quedar
     container.className = container.className.replace(/leaflet-\S+/g, '').trim();
+    
+    // Agregar clase base para el contenedor
+    container.className += ' map-container';
+    
+    // Esperar un momento para asegurar que la limpieza se complete
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Ubicación por defecto (Buenos Aires)
     const defaultLocation = [-34.6037, -58.3816];
@@ -448,6 +473,8 @@ class MapModal {
   }
 
   close() {
+    console.log('🗺️ Cerrando mapa...');
+    
     const modal = document.getElementById('mapModal');
     if (modal) {
       modal.classList.remove('show');
@@ -457,14 +484,36 @@ class MapModal {
     // Limpiar el mapa completamente
     if (this.map) {
       console.log('🧹 Limpiando mapa al cerrar...');
-      this.map.remove();
+      try {
+        this.map.remove();
+      } catch (e) {
+        console.warn('⚠️ Error al remover mapa:', e);
+      }
       this.map = null;
     }
     
-    // Limpiar el contenedor de Leaflet
+    // Limpiar el contenedor de Leaflet de forma más robusta
     const container = document.getElementById('mapContainer');
     if (container) {
-      container._leaflet_id = null;
+      console.log('🧹 Limpiando contenedor...');
+      
+      // Destruir cualquier instancia de Leaflet
+      if (container._leaflet_id) {
+        try {
+          const leafletMap = L.DomUtil.get(container._leaflet_id);
+          if (leafletMap && leafletMap._leaflet_id) {
+            leafletMap.remove();
+          }
+        } catch (e) {
+          console.warn('⚠️ Error al destruir instancia Leaflet:', e);
+        }
+        container._leaflet_id = null;
+      }
+      
+      // Limpiar contenido y clases
+      container.innerHTML = '';
+      container.className = container.className.replace(/leaflet-\S+/g, '').trim();
+      
       // Restaurar el contenido original del contenedor
       container.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280;">
