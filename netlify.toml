@@ -1,8 +1,8 @@
 [build]
-  # Directorio donde está el código fuente
-  base = "."
+  # Configurar el directorio base como frontend
+  base = "frontend"
   
-  # Comando para construir la aplicación
+  # Comando para construir la aplicación Astro
   command = "npm run build"
   
   # Directorio donde se genera el build
