@@ -119,7 +119,7 @@ window.generarInforme = async function() {
     }
 
     const token = localStorage.getItem('token');
-    const response = await fetch(`/api/informes/ventas?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}&tipo=${tipoInforme}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/informes/ventas?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}&tipo=${tipoInforme}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -779,7 +779,7 @@ async function loadPedidosData() {
     const params = new URLSearchParams();
     params.append('estado', currentPedidoFilters.estado);
     
-    const response = await fetch(`/api/pedidos?${params.toString()}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/pedidos?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -869,7 +869,7 @@ async function applyPedidoFilters() {
       }
     });
 
-    const response = await fetch(`/api/pedidos?${params.toString()}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/pedidos?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -1097,7 +1097,7 @@ async function updatePedidoStatus(pedidoId, newStatus) {
   try {
     console.log('🔄 Actualizando estado del pedido:', pedidoId, 'a estado:', newStatus);
     
-    const response = await fetch(`/api/pedidos/${pedidoId}/estado`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/pedidos/${pedidoId}/estado`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1435,7 +1435,7 @@ async function getPedidoItems(pedidoId) {
   const token = localStorage.getItem('token');
 
   try {
-    const response = await fetch(`/api/pedidos/${pedidoId}/items`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/pedidos/${pedidoId}/items`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -2493,7 +2493,7 @@ async function generarInforme() {
     `;
 
     const token = localStorage.getItem('token');
-    const response = await fetch(`/api/informes/ventas?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}&tipo=${tipoInforme}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/informes/ventas?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}&tipo=${tipoInforme}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -2610,7 +2610,7 @@ async function deleteProduct(productId) {
 
   try {
     console.log('📡 Enviando petición DELETE...');
-    const response = await fetch(`/api/productos/${productId}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/productos/${productId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -2955,7 +2955,7 @@ async function handleProductSubmit(e) {
     const isEditing = !!editingProductId;
     
     if (isEditing) {
-      response = await fetch(`/api/productos/${editingProductId}`, {
+      response = await fetch(`https://back-adm.fly.dev/api/productos/${editingProductId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -3018,7 +3018,7 @@ async function deleteProductInline(productId) {
   const token = localStorage.getItem('token');
   
   try {
-    const response = await fetch(`/api/productos/${productId}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/productos/${productId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -3053,7 +3053,7 @@ async function activateProductInline(productId) {
   const token = localStorage.getItem('token');
   
   try {
-    const response = await fetch(`/api/productos/${productId}/activate`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/productos/${productId}/activate`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -3354,7 +3354,7 @@ async function toggleClienteStatus(clientId) {
     const token = localStorage.getItem('token');
     const newStatus = isActive ? 0 : 1;
     
-    const response = await fetch(`/api/clientes/${clientId}/toggle-status`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/clientes/${clientId}/toggle-status`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -3788,7 +3788,7 @@ async function searchClients(searchTerm) {
   } catch (error) {
     console.error('💥 Error buscando clientes:', error);
     // En caso de error, mostrar todos los clientes
-    loadClientes();
+    loadClientesData();
   }
 }
 
@@ -3924,7 +3924,7 @@ async function deleteClient(clientId) {
 
   try {
     console.log('📡 Enviando petición DELETE...');
-    const response = await fetch(`/api/clientes/${clientId}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/clientes/${clientId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -3943,7 +3943,7 @@ async function deleteClient(clientId) {
     showSuccessMessage('Cliente eliminado correctamente');
 
     // Recargar la lista
-    loadClientes();
+    loadClientesData();
 
   } catch (error) {
     console.error('💥 Error eliminando cliente:', error);
@@ -3984,7 +3984,7 @@ window.cancelPedido = cancelPedido;
 window.updatePedidoStatus = updatePedidoStatus;
 
 // Funciones de clientes
-window.loadClientes = loadClientes;
+window.loadClientes = loadClientesData;
 window.clearClientSearch = clearClientSearch;
 window.editClient = editClient;
 window.showClientLocation = showClientLocation;
@@ -4070,7 +4070,7 @@ window.logout = logout;
 window.debugTipoPago = async function(tipoPagoId) {
   const token = localStorage.getItem('token');
   try {
-    const response = await fetch(`/api/tiposdepago/debug/${tipoPagoId}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/tiposdepago/debug/${tipoPagoId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
@@ -4748,7 +4748,7 @@ window.diagnosticar = function() {
 window.debugTipoPago = async function(tipoPagoId) {
   const token = localStorage.getItem('token');
   try {
-    const response = await fetch(`/api/tiposdepago/debug/${tipoPagoId}`, {
+    const response = await fetch(`https://back-adm.fly.dev/api/tiposdepago/debug/${tipoPagoId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
