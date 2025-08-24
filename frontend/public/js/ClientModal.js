@@ -299,7 +299,7 @@ class ClientModal {
     }, 100);
   }
 
-  initMap(clientData = null) {
+  async initMap(clientData = null) {
     const mapContainer = document.getElementById('clientModalMap');
     if (!mapContainer) return;
 
@@ -333,29 +333,34 @@ class ClientModal {
     if (savedLat && savedLng) {
       // Si el cliente tiene coordenadas guardadas, usar esas
       console.log('📍 Usando ubicación guardada del cliente:', savedLat, savedLng);
-      this.createMapAtLocation(savedLat, savedLng, 15, true);
+              await this.createMapAtLocation(savedLat, savedLng, 15, true);
     } else if (clientData && !savedLat && !savedLng) {
       // Si estamos editando pero no hay coordenadas, intentar obtener ubicación actual
       console.log('🎯 Cliente sin ubicación, intentando obtener ubicación actual...');
-      this.initMapWithCurrentLocation();
+      await this.initMapWithCurrentLocation();
     } else {
       // Nuevo cliente o sin geolocalización, usar ubicación por defecto
       console.log('🗺️ Usando ubicación por defecto');
-      this.createMapAtLocation(this.defaultLocation[0], this.defaultLocation[1], 13, false);
+      await this.createMapAtLocation(this.defaultLocation[0], this.defaultLocation[1], 13, false);
     }
   }
 
-  createMapAtLocation(lat, lng, zoom, addMarker) {
+  async createMapAtLocation(lat, lng, zoom, addMarker) {
     // Crear el mapa asegurando que el contenedor sea visible
-    const create = () => {
-      // Inicializar mapa con configuración PWA
-      this.map = initMapPWA('clientModalMap', {
-        center: [lat, lng],
-        zoom: zoom
-      });
-      
-      if (!this.map) {
-        console.error('❌ No se pudo inicializar el mapa');
+    const create = async () => {
+      try {
+        // Inicializar mapa con configuración PWA (esperar resultado)
+        this.map = await initMapPWA('clientModalMap', {
+          center: [lat, lng],
+          zoom: zoom
+        });
+        
+        if (!this.map) {
+          console.error('❌ No se pudo inicializar el mapa');
+          return;
+        }
+      } catch (error) {
+        console.error('💥 Error inicializando mapa:', error);
         return;
       }
 
@@ -392,15 +397,15 @@ class ClientModal {
     }
   }
 
-  initMapWithCurrentLocation() {
+  async initMapWithCurrentLocation() {
     if (!navigator.geolocation) {
       console.log('⚠️ Geolocalización no disponible, usando ubicación por defecto');
-      this.createMapAtLocation(this.defaultLocation[0], this.defaultLocation[1], 13, false);
+      await this.createMapAtLocation(this.defaultLocation[0], this.defaultLocation[1], 13, false);
       return;
     }
 
     // Crear mapa con ubicación por defecto primero
-    this.createMapAtLocation(this.defaultLocation[0], this.defaultLocation[1], 13, false);
+    await this.createMapAtLocation(this.defaultLocation[0], this.defaultLocation[1], 13, false);
 
     // Intentar obtener ubicación actual en segundo plano
     navigator.geolocation.getCurrentPosition(

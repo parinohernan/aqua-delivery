@@ -212,14 +212,19 @@ class MapModal {
     // Ubicación por defecto (Buenos Aires)
     const defaultLocation = [-34.6037, -58.3816];
     
-    // Inicializar mapa con configuración PWA
-    this.map = initMapPWA('mapContainer', {
-      center: defaultLocation,
-      zoom: 12
-    });
-    
-    if (!this.map) {
-      console.error('❌ No se pudo inicializar el mapa');
+    try {
+      // Inicializar mapa con configuración PWA (esperar resultado)
+      this.map = await initMapPWA('mapContainer', {
+        center: defaultLocation,
+        zoom: 12
+      });
+      
+      if (!this.map) {
+        console.error('❌ No se pudo inicializar el mapa');
+        return;
+      }
+    } catch (error) {
+      console.error('💥 Error inicializando mapa:', error);
       return;
     }
     
