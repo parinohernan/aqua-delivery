@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { config } from './config.js';
 
 // https://astro.build/config
 export default defineConfig({
@@ -12,12 +13,14 @@ export default defineConfig({
     server: {
       proxy: {
         '/api': {
-          target: 'http://localhost:8001',
-          changeOrigin: true
+          target: config.API_BASE_URL,
+          changeOrigin: true,
+          secure: true
         },
         '/auth': {
-          target: 'http://localhost:8001',
-          changeOrigin: true
+          target: config.API_BASE_URL,
+          changeOrigin: true,
+          secure: true
         }
       }
     }
