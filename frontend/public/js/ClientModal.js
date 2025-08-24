@@ -21,7 +21,7 @@ class ClientModal {
   async loadZonas() {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/zonas', {
+      const response = await fetch('https://back-adm.fly.dev/api/zonas', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -610,7 +610,7 @@ class ClientModal {
       if (this.editingClientId) {
         // Actualizar cliente existente
         console.log('🔄 Actualizando cliente ID:', this.editingClientId);
-        response = await fetch(`/api/clientes/${this.editingClientId}`, {
+        response = await fetch(`https://back-adm.fly.dev/api/clientes/${this.editingClientId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -620,7 +620,7 @@ class ClientModal {
         });
       } else {
         // Crear nuevo cliente
-        response = await fetch('/api/clientes', {
+        response = await fetch('https://back-adm.fly.dev/api/clientes', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

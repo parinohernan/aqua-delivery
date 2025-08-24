@@ -43,7 +43,7 @@ class DeliveryModal {
   async loadTiposPago() {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/tiposdepago', {
+      const response = await fetch('https://back-adm.fly.dev/api/tiposdepago', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -572,7 +572,7 @@ class DeliveryModal {
 
       // Usar el endpoint de entrega que maneja retornables
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/pedidos/${pedidoId}/entregar`, {
+      const response = await fetch(`https://back-adm.fly.dev/api/pedidos/${pedidoId}/entregar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

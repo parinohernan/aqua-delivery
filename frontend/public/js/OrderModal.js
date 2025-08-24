@@ -32,7 +32,7 @@ class OrderModal {
   async loadProducts() {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('/api/productos', {
+      const response = await fetch('https://back-adm.fly.dev/api/productos', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -47,7 +47,7 @@ class OrderModal {
   async loadClients() {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('/api/clientes', {
+      const response = await fetch('https://back-adm.fly.dev/api/clientes', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -62,7 +62,7 @@ class OrderModal {
   async loadZonas() {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('/api/zonas', {
+      const response = await fetch('https://back-adm.fly.dev/api/zonas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -450,7 +450,7 @@ class OrderModal {
     try {
       // Actualizar la zona del cliente en el backend
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/clientes/${this.selectedClient.codigo}`, {
+      const response = await fetch(`https://back-adm.fly.dev/api/clientes/${this.selectedClient.codigo}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -720,7 +720,7 @@ class OrderModal {
       console.log('📦 Creando pedido:', orderData);
 
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/pedidos', {
+      const response = await fetch('https://back-adm.fly.dev/api/pedidos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

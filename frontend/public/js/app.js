@@ -19,7 +19,7 @@ async function checkAuth() {
   
   try {
     // Verificar que el token sea válido
-    const response = await fetch('/api/pedidos', {
+    const response = await fetch('https://back-adm.fly.dev/api/pedidos', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -117,7 +117,7 @@ async function loadRoute(route) {
 // Cargar pedidos
 async function loadPedidos() {
   const token = localStorage.getItem('token');
-  const response = await fetch('/api/pedidos', {
+  const response = await fetch('https://back-adm.fly.dev/api/pedidos', {
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -190,7 +190,7 @@ function getStatusColor(estado) {
 // Cargar clientes
 async function loadClientes() {
   const token = localStorage.getItem('token');
-  const response = await fetch('/api/clientes', {
+  const response = await fetch('https://back-adm.fly.dev/api/clientes', {
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -233,7 +233,7 @@ function renderClientes(clientes) {
 // Cargar productos
 async function loadProductos() {
   const token = localStorage.getItem('token');
-  const response = await fetch('/api/productos', {
+  const response = await fetch('https://back-adm.fly.dev/api/productos', {
     headers: {
       'Authorization': `Bearer ${token}`
     }

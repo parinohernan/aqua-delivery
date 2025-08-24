@@ -167,7 +167,7 @@ class MapModal {
     const token = localStorage.getItem('token');
     
     try {
-      const response = await fetch('/api/pedidos?estado=pendient', {
+      const response = await fetch('https://back-adm.fly.dev/api/pedidos?estado=pendient', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
