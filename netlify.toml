@@ -26,61 +26,28 @@
   status = 200
   force = false
 
-# Headers de seguridad y PWA
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://stamen-tiles-*.a.ssl.fastly.net https://server.arcgisonline.com https://*.tile.thunderforest.com; connect-src 'self' https://back-adm.fly.dev https://nominatim.openstreetmap.org https://router.project-osrm.org https://*.osrm.org;"
-
-# Headers específicos para PWA
-[[headers]]
-  for = "/manifest.json"
-  [headers.values]
-    Content-Type = "application/manifest+json"
-    Cache-Control = "public, max-age=3600"
-    X-Content-Type-Options = "nosniff"
-
-[[headers]]
-  for = "/"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-
-[[headers]]
-  for = "/sw.js"
-  [headers.values]
-    Content-Type = "application/javascript"
-    Cache-Control = "public, max-age=3600"
-
-[[headers]]
-  for = "/icon-*.png"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
-
-# Headers para assets estáticos
-[[headers]]
-  for = "/*.css"
-  [headers.values]
-    Content-Type = "text/css"
-    Cache-Control = "public, max-age=86400"
-
+# Headers específicos para archivos JavaScript (debe ir ANTES del header general)
 [[headers]]
   for = "/*.js"
   [headers.values]
     Content-Type = "application/javascript"
     Cache-Control = "public, max-age=86400"
 
-# Headers para archivos de Astro
+# Headers específicos para archivos de Astro (debe ir ANTES del header general)
 [[headers]]
   for = "/_astro/*"
   [headers.values]
     Content-Type = "application/javascript"
     Cache-Control = "public, max-age=86400"
 
+# Headers para archivos CSS
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Content-Type = "text/css"
+    Cache-Control = "public, max-age=86400"
+
+# Headers para imágenes
 [[headers]]
   for = "/*.png"
   [headers.values]
@@ -104,3 +71,38 @@
   [headers.values]
     Content-Type = "image/svg+xml"
     Cache-Control = "public, max-age=86400"
+
+# Headers específicos para PWA
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "public, max-age=3600"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Content-Type = "application/javascript"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/icon-*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Headers de seguridad y PWA (debe ir DESPUÉS de los headers específicos)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://stamen-tiles-*.a.ssl.fastly.net https://server.arcgisonline.com https://*.tile.thunderforest.com; connect-src 'self' https://back-adm.fly.dev https://nominatim.openstreetmap.org https://router.project-osrm.org https://*.osrm.org;"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
