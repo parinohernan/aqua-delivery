@@ -2759,7 +2759,11 @@ function editProduct(productId) {
 
   if (!producto) {
     console.error('❌ Producto no encontrado:', productId);
-    alert('Producto no encontrado');
+    if (window.showError) {
+      window.showError('Producto no encontrado');
+    } else {
+      alert('Producto no encontrado');
+    }
     return;
   }
 
@@ -2770,7 +2774,11 @@ function editProduct(productId) {
     window.productModal.show(producto);
   } else {
     console.error('❌ ProductModal no está disponible');
-    alert('Error: Modal no disponible');
+    if (window.showError) {
+      window.showError('Error: Modal no disponible');
+    } else {
+      alert('Error: Modal no disponible');
+    }
   }
 }
 
@@ -2781,8 +2789,21 @@ async function deleteProduct(productId) {
   const producto = currentProducts.find(p => (p.codigo || p.id) == productId);
   const nombreProducto = producto ? (producto.descripcion || `Producto #${productId}`) : `Producto #${productId}`;
 
-  if (!confirm(`¿Estás seguro de que quieres desactivar "${nombreProducto}"?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.`)) {
-    return;
+  if (window.showConfirm) {
+    const confirmed = await new Promise((resolve) => {
+      window.showConfirm(
+        `¿Estás seguro de que quieres desactivar "${nombreProducto}"?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) {
+      return;
+    }
+  } else {
+    if (!confirm(`¿Estás seguro de que quieres desactivar "${nombreProducto}"?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.`)) {
+      return;
+    }
   }
 
   const token = localStorage.getItem('token');
@@ -3190,8 +3211,21 @@ async function handleProductSubmit(e) {
 
 // Eliminar producto (versión inline)
 async function deleteProductInline(productId) {
-  if (!confirm('¿Estás seguro de que quieres desactivar este producto?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.')) {
-    return;
+  if (window.showConfirm) {
+    const confirmed = await new Promise((resolve) => {
+      window.showConfirm(
+        '¿Estás seguro de que quieres desactivar este producto?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.',
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) {
+      return;
+    }
+  } else {
+    if (!confirm('¿Estás seguro de que quieres desactivar este producto?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.')) {
+      return;
+    }
   }
   
   const token = localStorage.getItem('token');
@@ -3225,8 +3259,21 @@ async function deleteProductInline(productId) {
 
 // Activar producto (versión inline)
 async function activateProductInline(productId) {
-  if (!confirm('¿Estás seguro de que quieres activar este producto?\n\nEl producto volverá a estar disponible para nuevos pedidos.')) {
-    return;
+  if (window.showConfirm) {
+    const confirmed = await new Promise((resolve) => {
+      window.showConfirm(
+        '¿Estás seguro de que quieres activar este producto?\n\nEl producto volverá a estar disponible para nuevos pedidos.',
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) {
+      return;
+    }
+  } else {
+    if (!confirm('¿Estás seguro de que quieres activar este producto?\n\nEl producto volverá a estar disponible para nuevos pedidos.')) {
+      return;
+    }
   }
   
   const token = localStorage.getItem('token');
