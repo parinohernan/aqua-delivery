@@ -250,7 +250,7 @@
 .informe-card {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 0rem;
   margin-bottom: 1.5rem;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);

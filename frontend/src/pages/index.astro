@@ -198,14 +198,33 @@ function mostrarInformeResumen(datos, container) {
 }
 
 function mostrarInformeDetallado(datos, container) {
+  // Guardar los datos originales para el filtrado
+  if (!window.informeDetalladoData) {
+    window.informeDetalladoData = datos;
+  }
+  
   const html = `
     <div class="informe-card">
       <h4>📋 Detalle por Cliente</h4>
       
       ${datos.clientes && datos.clientes.length > 0 ? `
-        <div class="clientes-detalle">
+        <div class="search-container">
+          <div style="position: relative; max-width: 400px;">
+            <input 
+              type="text" 
+              id="searchInformeClientes" 
+              placeholder="🔍 Buscar por nombre o apellido..." 
+              class="search-input"
+            />
+          </div>
+          <div class="search-counter">
+            Mostrando ${datos.clientes.length} cliente${datos.clientes.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+        
+        <div class="clientes-detalle" id="clientesDetalleContainer">
           ${datos.clientes.map((cliente, index) => `
-            <div class="cliente-card">
+            <div class="cliente-card" data-cliente-nombre="${(cliente.nombre + ' ' + (cliente.apellido || '')).toLowerCase()}">
               <div class="cliente-header">
                 <div class="cliente-info">
                   <h5>${cliente.nombre} ${cliente.apellido || ''}</h5>
@@ -261,21 +280,7 @@ function mostrarInformeDetallado(datos, container) {
                 </div>
               `}
               
-              ${cliente.pedidos && cliente.pedidos.length > 0 ? `
-                <div class="pedidos-cliente">
-                  <h6>📦 Historial de Pedidos:</h6>
-                  <div class="pedidos-list">
-                    ${cliente.pedidos.map(pedido => `
-                      <div class="pedido-item">
-                        <span class="pedido-fecha">📅 ${new Date(pedido.fecha || pedido.fechaPedido).toLocaleDateString('es-AR')}</span>
-                        <span class="pedido-total">💰 $${pedido.total.toLocaleString('es-AR')}</span>
-                        <span class="pedido-items">📦 ${pedido.cantidadItems} items</span>
-                        <span class="pedido-codigo">#${pedido.codigo}</span>
-                      </div>
-                    `).join('')}
-                  </div>
-                </div>
-              ` : ''}
+             
             </div>
           `).join('')}
         </div>
@@ -288,6 +293,107 @@ function mostrarInformeDetallado(datos, container) {
   `;
   
   container.innerHTML = html;
+  
+  // Configurar la funcionalidad de búsqueda
+  setupInformeSearch();
+}
+
+// Función para configurar la búsqueda en el informe detallado
+function setupInformeSearch() {
+  const searchInput = document.getElementById('searchInformeClientes');
+  if (!searchInput) return;
+  
+  let searchTimeout;
+  
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      const searchTerm = this.value.toLowerCase().trim();
+      filterInformeClientes(searchTerm);
+    }, 300); // Debounce de 300ms
+  });
+  
+  // También buscar al presionar Enter
+  searchInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      const searchTerm = this.value.toLowerCase().trim();
+      filterInformeClientes(searchTerm);
+    }
+  });
+}
+
+// Función para filtrar clientes en el informe detallado
+function filterInformeClientes(searchTerm) {
+  const container = document.getElementById('clientesDetalleContainer');
+  const searchInput = document.getElementById('searchInformeClientes');
+  const counterDiv = searchInput?.parentElement?.nextElementSibling;
+  
+  if (!container || !window.informeDetalladoData) return;
+  
+  const clientes = window.informeDetalladoData.clientes || [];
+  const clienteCards = container.querySelectorAll('.cliente-card');
+  
+  let visibleCount = 0;
+  
+  clienteCards.forEach(card => {
+    const nombreCompleto = card.getAttribute('data-cliente-nombre') || '';
+    const shouldShow = !searchTerm || nombreCompleto.includes(searchTerm);
+    
+    if (shouldShow) {
+      card.style.display = 'block';
+      visibleCount++;
+    } else {
+      card.style.display = 'none';
+    }
+  });
+  
+  // Actualizar contador
+  if (counterDiv) {
+    counterDiv.innerHTML = `
+      <div class="search-counter">
+        ${searchTerm ? `Mostrando ${visibleCount} de ${clientes.length} cliente${clientes.length !== 1 ? 's' : ''}` : `Mostrando ${clientes.length} cliente${clientes.length !== 1 ? 's' : ''}`}
+        ${searchTerm ? ` (filtrado por "${searchTerm}")` : ''}
+      </div>
+    `;
+  }
+  
+  // Mostrar mensaje si no hay resultados
+  if (visibleCount === 0 && searchTerm) {
+    const noResultsDiv = document.createElement('div');
+    noResultsDiv.className = 'empty-state';
+    noResultsDiv.innerHTML = `
+      <div style="text-align: center; padding: 2rem; color: rgba(255, 255, 255, 0.8);">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+        <h4 style="color: white; margin-bottom: 0.5rem;">No se encontraron clientes</h4>
+        <p>No hay clientes que coincidan con "${searchTerm}"</p>
+        <button onclick="clearInformeSearch()" class="clear-search-btn">Limpiar búsqueda</button>
+      </div>
+    `;
+    
+    // Remover mensaje anterior si existe
+    const existingNoResults = container.querySelector('.empty-state');
+    if (existingNoResults) {
+      existingNoResults.remove();
+    }
+    
+    container.appendChild(noResultsDiv);
+  } else {
+    // Remover mensaje de no resultados si existe
+    const existingNoResults = container.querySelector('.empty-state');
+    if (existingNoResults) {
+      existingNoResults.remove();
+    }
+  }
+}
+
+// Función para limpiar la búsqueda del informe
+function clearInformeSearch() {
+  const searchInput = document.getElementById('searchInformeClientes');
+  if (searchInput) {
+    searchInput.value = '';
+    filterInformeClientes('');
+    searchInput.focus();
+  }
 }
 
 // Estado global de la aplicación
@@ -2435,7 +2541,7 @@ async function loadInformes() {
 
         <!-- Área de resultados -->
         <div class="results-area">
-          <div id="informeResultados" class="results-container">
+          <div id="informeResultados">
             <div class="empty-state">
               <div class="empty-icon">📊</div>
               <h4>Selecciona las fechas y genera tu informe</h4>
@@ -3158,6 +3264,11 @@ window.applyClientFilters = applyClientFilters;
 window.renderClientesList = renderClientesList;
 window.setupClientesEventListeners = setupClientesEventListeners;
 window.loadClientesSection = loadClientesSection;
+
+// Funciones globales para informes
+window.clearInformeSearch = clearInformeSearch;
+window.filterInformeClientes = filterInformeClientes;
+window.setupInformeSearch = setupInformeSearch;
 
 // Buscar clientes
 async function searchClientes(searchTerm: string) {
