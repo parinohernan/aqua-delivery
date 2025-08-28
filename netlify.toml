@@ -65,24 +65,42 @@
 [[headers]]
   for = "/*.css"
   [headers.values]
+    Content-Type = "text/css"
     Cache-Control = "public, max-age=86400"
 
 [[headers]]
   for = "/*.js"
   [headers.values]
+    Content-Type = "application/javascript"
+    Cache-Control = "public, max-age=86400"
+
+# Headers para archivos de Astro
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Content-Type = "application/javascript"
     Cache-Control = "public, max-age=86400"
 
 [[headers]]
   for = "/*.png"
   [headers.values]
+    Content-Type = "image/png"
     Cache-Control = "public, max-age=86400"
 
 [[headers]]
   for = "/*.jpg"
   [headers.values]
+    Content-Type = "image/jpeg"
     Cache-Control = "public, max-age=86400"
 
 [[headers]]
   for = "/*.webp"
   [headers.values]
+    Content-Type = "image/webp"
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Content-Type = "image/svg+xml"
     Cache-Control = "public, max-age=86400"

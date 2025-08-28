@@ -1989,7 +1989,7 @@ async function loadClientesData() {
         <h3 class="content-title">Gestión de Clientes</h3>
         <div style="text-align: center; padding: 2rem; color: #dc2626;">
           <p>Error cargando clientes: ${error.message}</p>
-          <button onclick="loadClientesData()" class="btn-primary" style="margin-top: 1rem;">
+          <button onclick="window.loadClientesData && window.loadClientesData()" class="btn-primary" style="margin-top: 1rem;">
             Reintentar
           </button>
         </div>
