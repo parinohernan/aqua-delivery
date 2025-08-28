@@ -1477,14 +1477,26 @@ async function showClientPaymentModal(clienteId) {
         }
 
         overlay.remove();
-        alert('Operación registrada correctamente');
+        if (window.showSuccess) {
+          window.showSuccess('Operación registrada correctamente');
+        } else {
+          alert('Operación registrada correctamente');
+        }
         if (window.loadClientesSection) await window.loadClientesSection();
       } catch (err) {
-        alert(err.message || 'Error al registrar');
+        if (window.showError) {
+          window.showError(err.message || 'Error al registrar');
+        } else {
+          alert(err.message || 'Error al registrar');
+        }
       }
     });
   } catch (e) {
-    alert('No se pudo abrir el modal: ' + e.message);
+    if (window.showError) {
+      window.showError('No se pudo abrir el modal: ' + e.message);
+    } else {
+      alert('No se pudo abrir el modal: ' + e.message);
+    }
   }
 }
 
