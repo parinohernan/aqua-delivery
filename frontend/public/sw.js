@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aqua-delivery-v4';
+const CACHE_NAME = 'aqua-delivery-v5';
 const urlsToCache = [
     '/',
     '/styles.css',
@@ -65,6 +65,26 @@ self.addEventListener('activate', event => {
             );
         })
     );
+});
+
+// Manejar mensajes del cliente (especialmente para Android)
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'CLEAR_CACHE') {
+        console.log('🗑️ Limpiando caché por solicitud del cliente...');
+        event.waitUntil(
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames.map(cacheName => {
+                        console.log('🗑️ Eliminando cache:', cacheName);
+                        return caches.delete(cacheName);
+                    })
+                );
+            }).then(() => {
+                // Notificar al cliente que el caché se limpió
+                event.ports[0]?.postMessage({ type: 'CACHE_CLEARED' });
+            })
+        );
+    }
 });
 
 self.addEventListener('fetch', event => {

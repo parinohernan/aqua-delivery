@@ -16,7 +16,7 @@ import Layout from '../layouts/Layout.astro';
       <form id="loginForm">
         <div class="form-group">
           <label for="telegramId" class="form-label">
-            Contraseña de acceso
+            Contraseña de acceso 
           </label>
           <input
             type="password"
@@ -45,6 +45,12 @@ import Layout from '../layouts/Layout.astro';
         <button type="submit" class="btn-primary">
           Iniciar Sesión
         </button>
+        <span class="login-subtitle" style="font-size: 0.8rem; color: #666; margin-top: 1rem;">Puedes probar la aplicación usando los siguientes datos:
+          <br> 
+          Contraseña: test
+          \
+          Empresa: 1
+        </span>
       </form>
 
       <div id="errorMessage" class="error-message hidden">

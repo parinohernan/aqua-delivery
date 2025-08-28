@@ -101,7 +101,7 @@ window.generarInforme = async function() {
     if (window.showWarning) {
       window.showWarning('Por favor selecciona ambas fechas');
     } else {
-      alert('Por favor selecciona ambas fechas');
+    alert('Por favor selecciona ambas fechas');
     }
     return;
   }
@@ -110,7 +110,7 @@ window.generarInforme = async function() {
     if (window.showWarning) {
       window.showWarning('La fecha desde no puede ser mayor a la fecha hasta');
     } else {
-      alert('La fecha desde no puede ser mayor a la fecha hasta');
+    alert('La fecha desde no puede ser mayor a la fecha hasta');
     }
     return;
   }
@@ -590,14 +590,14 @@ async function checkAuth() {
       if (window.showError) {
         window.showError('No se puede conectar con el servidor. Asegúrate de que el backend esté corriendo en el puerto 8001.', 10000);
       } else {
-        alert('Error: No se puede conectar con el servidor. Asegúrate de que el backend esté corriendo en el puerto 8001.');
+      alert('Error: No se puede conectar con el servidor. Asegúrate de que el backend esté corriendo en el puerto 8001.');
       }
     } else if (error.message.includes('fetch')) {
       console.error('🌐 Error de conexión');
       if (window.showError) {
         window.showError('Error de conexión: No se puede conectar con el servidor. Verifica que el backend esté corriendo.', 10000);
       } else {
-        alert('Error de conexión: No se puede conectar con el servidor. Verifica que el backend esté corriendo.');
+      alert('Error de conexión: No se puede conectar con el servidor. Verifica que el backend esté corriendo.');
       }
       }
     }
@@ -643,10 +643,10 @@ function logout() {
       }
     );
   } else {
-    if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+  if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
     }
   }
 }
@@ -1223,8 +1223,8 @@ function startDelivery(pedidoId) {
   } else {
     if (window.showError) {
       window.showError('Modal de entrega no disponible. Recarga la página (Ctrl + F5).');
-    } else {
-      alert('Modal de entrega no disponible. Recarga la página (Ctrl + F5).');
+  } else {
+    alert('Modal de entrega no disponible. Recarga la página (Ctrl + F5).');
     }
   }
 }
@@ -1245,8 +1245,8 @@ function cancelPedido(pedidoId) {
       }
     );
   } else {
-    if (confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
-      updatePedidoStatus(pedidoId, 'anulado');
+  if (confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
+    updatePedidoStatus(pedidoId, 'anulado');
     }
   }
 }
@@ -1280,7 +1280,7 @@ async function updatePedidoStatus(pedidoId, newStatus) {
       if (window.showSuccess) {
         window.showSuccess('Pedido cancelado correctamente');
       } else {
-        alert('✅ Pedido cancelado correctamente');
+      alert('✅ Pedido cancelado correctamente');
       }
     }
     
@@ -1292,7 +1292,7 @@ async function updatePedidoStatus(pedidoId, newStatus) {
     if (window.showError) {
       window.showError('Error actualizando el estado del pedido: ' + error.message);
     } else {
-      alert('Error actualizando el estado del pedido: ' + error.message);
+    alert('Error actualizando el estado del pedido: ' + error.message);
     }
   }
 }
@@ -1317,7 +1317,7 @@ function exportPedidos() {
   if (window.showInfo) {
     window.showInfo('Función de exportación en desarrollo');
   } else {
-    alert('Función de exportación en desarrollo');
+  alert('Función de exportación en desarrollo');
   }
 }
 
@@ -1339,7 +1339,7 @@ function showPedidoDetails(pedidoId) {
   if (window.showInfo) {
     window.showInfo('Vista detallada en desarrollo');
   } else {
-    alert('Vista detallada en desarrollo');
+  alert('Vista detallada en desarrollo');
   }
 }
 
@@ -1348,7 +1348,7 @@ function showEditPedidoModal(pedidoId) {
   if (window.showInfo) {
     window.showInfo('Modal de edición en desarrollo');
   } else {
-    alert('Modal de edición en desarrollo');
+  alert('Modal de edición en desarrollo');
   }
 }
 
@@ -1521,14 +1521,14 @@ async function showClientPaymentModal(clienteId) {
         if (window.showSuccess) {
           window.showSuccess('Operación registrada correctamente');
         } else {
-          alert('Operación registrada correctamente');
+        alert('Operación registrada correctamente');
         }
         if (window.loadClientesSection) await window.loadClientesSection();
       } catch (err) {
         if (window.showError) {
           window.showError(err.message || 'Error al registrar');
         } else {
-          alert(err.message || 'Error al registrar');
+        alert(err.message || 'Error al registrar');
         }
       }
     });
@@ -1536,7 +1536,7 @@ async function showClientPaymentModal(clienteId) {
     if (window.showError) {
       window.showError('No se pudo abrir el modal: ' + e.message);
     } else {
-      alert('No se pudo abrir el modal: ' + e.message);
+    alert('No se pudo abrir el modal: ' + e.message);
     }
   }
 }
@@ -2762,7 +2762,7 @@ function editProduct(productId) {
     if (window.showError) {
       window.showError('Producto no encontrado');
     } else {
-      alert('Producto no encontrado');
+    alert('Producto no encontrado');
     }
     return;
   }
@@ -2777,7 +2777,7 @@ function editProduct(productId) {
     if (window.showError) {
       window.showError('Error: Modal no disponible');
     } else {
-      alert('Error: Modal no disponible');
+    alert('Error: Modal no disponible');
     }
   }
 }
@@ -2801,8 +2801,8 @@ async function deleteProduct(productId) {
       return;
     }
   } else {
-    if (!confirm(`¿Estás seguro de que quieres desactivar "${nombreProducto}"?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.`)) {
-      return;
+  if (!confirm(`¿Estás seguro de que quieres desactivar "${nombreProducto}"?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.`)) {
+    return;
     }
   }
 
@@ -3223,8 +3223,8 @@ async function deleteProductInline(productId) {
       return;
     }
   } else {
-    if (!confirm('¿Estás seguro de que quieres desactivar este producto?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.')) {
-      return;
+  if (!confirm('¿Estás seguro de que quieres desactivar este producto?\n\nEl producto se marcará como inactivo y no aparecerá en nuevos pedidos.')) {
+    return;
     }
   }
   
@@ -3271,8 +3271,8 @@ async function activateProductInline(productId) {
       return;
     }
   } else {
-    if (!confirm('¿Estás seguro de que quieres activar este producto?\n\nEl producto volverá a estar disponible para nuevos pedidos.')) {
-      return;
+  if (!confirm('¿Estás seguro de que quieres activar este producto?\n\nEl producto volverá a estar disponible para nuevos pedidos.')) {
+    return;
     }
   }
   
@@ -3520,7 +3520,7 @@ function editClienteInline(clientId) {
       if (window.showError) {
         window.showError('Error: Cliente no encontrado');
       } else {
-        alert('Error: Cliente no encontrado');
+      alert('Error: Cliente no encontrado');
       }
       return;
     }
@@ -3532,7 +3532,7 @@ function editClienteInline(clientId) {
     if (window.showError) {
       window.showError('Error: Modal de clientes no disponible. Por favor recarga la página.');
     } else {
-      alert('Error: Modal de clientes no disponible. Por favor recarga la página.');
+    alert('Error: Modal de clientes no disponible. Por favor recarga la página.');
     }
   }
   
@@ -3570,7 +3570,7 @@ Retornables: ${retornables} ${retornables === 1 ? 'unidad' : 'unidades'}
   if (window.showInfo) {
     window.showInfo(info);
   } else {
-    alert(info);
+  alert(info);
   }
 }
 
@@ -3601,8 +3601,8 @@ async function toggleClienteStatus(clientId) {
       return;
     }
   } else {
-    if (!confirm(`¿Estás seguro de que quieres ${action} este cliente?`)) {
-      return;
+  if (!confirm(`¿Estás seguro de que quieres ${action} este cliente?`)) {
+    return;
     }
   }
   
@@ -3644,8 +3644,8 @@ async function toggleClienteStatus(clientId) {
     } else {
       if (window.showError) {
         window.showError(`Error: ${error.message}`);
-      } else {
-        alert(`Error: ${error.message}`);
+    } else {
+      alert(`Error: ${error.message}`);
       }
     }
   }
@@ -4129,7 +4129,7 @@ function showClientLocation(clientId) {
     if (window.showError) {
       window.showError('Cliente no encontrado');
     } else {
-      alert('Cliente no encontrado');
+    alert('Cliente no encontrado');
     }
     return;
   }
@@ -4138,7 +4138,7 @@ function showClientLocation(clientId) {
     if (window.showWarning) {
       window.showWarning('Este cliente no tiene ubicación GPS registrada.');
     } else {
-      alert('Este cliente no tiene ubicación GPS registrada.');
+    alert('Este cliente no tiene ubicación GPS registrada.');
     }
     return;
   }
@@ -4177,7 +4177,7 @@ function showClientAccount(clientId) {
   if (window.showInfo) {
     window.showInfo(`Cuenta Corriente - ${nombreCompleto}\n\nSaldo en dinero: $${saldoDinero.toFixed(2)}\nRetornables pendientes: ${saldoRetornables} unidades\n\n(Funcionalidad detallada en desarrollo...)`);
   } else {
-    alert(`Cuenta Corriente - ${nombreCompleto}\n\nSaldo en dinero: $${saldoDinero.toFixed(2)}\nRetornables pendientes: ${saldoRetornables} unidades\n\n(Funcionalidad detallada en desarrollo...)`);
+  alert(`Cuenta Corriente - ${nombreCompleto}\n\nSaldo en dinero: $${saldoDinero.toFixed(2)}\nRetornables pendientes: ${saldoRetornables} unidades\n\n(Funcionalidad detallada en desarrollo...)`);
   }
 }
 
@@ -4200,8 +4200,8 @@ async function deleteClient(clientId) {
       return;
     }
   } else {
-    if (!confirm(`¿Estás seguro de que quieres eliminar "${nombreCliente}"?\n\nEsta acción no se puede deshacer.`)) {
-      return;
+  if (!confirm(`¿Estás seguro de que quieres eliminar "${nombreCliente}"?\n\nEsta acción no se puede deshacer.`)) {
+    return;
     }
   }
 

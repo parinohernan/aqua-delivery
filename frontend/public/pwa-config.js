@@ -5,7 +5,7 @@ const PWA_CONFIG = {
   
   // Configuración del Service Worker
   swConfig: {
-    cacheName: 'aqua-delivery-v3',
+    cacheName: 'aqua-delivery-v4',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
   },
   
@@ -21,6 +21,16 @@ const PWA_CONFIG = {
     showUpdatePrompt: true,
   }
 };
+
+// Función para detectar si es Android
+function isAndroid() {
+  return /Android/i.test(navigator.userAgent);
+}
+
+// Función para detectar si es Chrome en Android
+function isChromeAndroid() {
+  return isAndroid() && /Chrome/i.test(navigator.userAgent) && !/Edg/i.test(navigator.userAgent);
+}
 
 // Función para manejar la instalación de la PWA
 function handlePWAInstall() {
@@ -116,6 +126,97 @@ function isPWAInstalled() {
          window.navigator.standalone === true;
 }
 
+// Función para forzar actualización de la PWA (específica para Android)
+async function forcePWAUpdate() {
+  console.log('🔄 Forzando actualización de la PWA...');
+  
+  try {
+    // Limpiar caché del Service Worker
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        // Forzar actualización del Service Worker
+        await registration.update();
+        
+        // Enviar mensaje para limpiar caché
+        if (registration.active) {
+          registration.active.postMessage({ type: 'CLEAR_CACHE' });
+        }
+      }
+    }
+    
+    // Limpiar caché del navegador
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      for (const cacheName of cacheNames) {
+        if (cacheName.includes('aqua-delivery')) {
+          await caches.delete(cacheName);
+          console.log('🗑️ Cache eliminado:', cacheName);
+        }
+      }
+    }
+    
+    // Para Android, usar métodos específicos
+    if (isAndroid()) {
+      // Forzar recarga completa en Android
+      if (window.showSuccess) {
+        window.showSuccess('Actualizando aplicación...', 2000);
+      }
+      
+      // Usar location.reload(true) para forzar recarga desde servidor
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 1500);
+    } else {
+      // Para otros dispositivos
+      window.location.reload(true);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error al actualizar PWA:', error);
+    if (window.showError) {
+      window.showError('Error al actualizar. Intenta recargar manualmente.', 5000);
+    } else {
+      alert('Error al actualizar. Intenta recargar manualmente.');
+    }
+  }
+}
+
+// Función para mostrar botón de actualización
+function showUpdateButton() {
+  // Solo mostrar si la PWA está instalada
+  if (!isPWAInstalled()) return;
+  
+  // Crear botón de actualización si no existe
+  if (!document.getElementById('pwa-update-btn')) {
+    const updateBtn = document.createElement('button');
+    updateBtn.id = 'pwa-update-btn';
+    updateBtn.innerHTML = '🔄 Actualizar';
+    updateBtn.className = 'pwa-update-btn';
+    updateBtn.onclick = forcePWAUpdate;
+    
+    // Agregar estilos
+    updateBtn.style.cssText = `
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 1000;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+      transition: all 0.3s ease;
+      font-size: 0.875rem;
+    `;
+    
+    document.body.appendChild(updateBtn);
+  }
+}
+
 // Función para manejar actualizaciones del Service Worker
 function handleSWUpdate() {
   if ('serviceWorker' in navigator) {
@@ -155,6 +256,16 @@ async function requestNotificationPermission() {
 function initPWA() {
   console.log('🚀 Inicializando PWA...');
   
+  // Log de información del dispositivo
+  if (isAndroid()) {
+    console.log('📱 Dispositivo Android detectado');
+    if (isChromeAndroid()) {
+      console.log('🌐 Chrome en Android - Soporte completo para PWA');
+    } else {
+      console.log('🌐 Navegador Android - Soporte limitado para PWA');
+    }
+  }
+  
   // Manejar instalación
   handlePWAInstall();
   
@@ -164,6 +275,8 @@ function initPWA() {
   // Verificar si ya está instalada
   if (isPWAInstalled()) {
     console.log('📱 PWA ya está instalada');
+    // Mostrar botón de actualización si está instalada
+    showUpdateButton();
   }
   
   // Solicitar permisos de notificación
@@ -174,7 +287,9 @@ function initPWA() {
 window.PWA_CONFIG = PWA_CONFIG;
 window.installPWA = installPWA;
 window.isPWAInstalled = isPWAInstalled;
+window.forcePWAUpdate = forcePWAUpdate;
 window.initPWA = initPWA;
+window.isAndroid = isAndroid;
 
 // Inicializar cuando el DOM esté listo
 if (document.readyState === 'loading') {
