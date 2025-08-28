@@ -3470,7 +3470,11 @@ function editClienteInline(clientId) {
     
     if (!cliente) {
       console.error('❌ Cliente no encontrado:', clientId);
-      alert('Error: Cliente no encontrado');
+      if (window.showError) {
+        window.showError('Error: Cliente no encontrado');
+      } else {
+        alert('Error: Cliente no encontrado');
+      }
       return;
     }
     
@@ -3478,7 +3482,11 @@ function editClienteInline(clientId) {
     window.clientModal.show(cliente);
   } else {
     console.error('❌ ClientModal.js no disponible');
-    alert('Error: Modal de clientes no disponible. Por favor recarga la página.');
+    if (window.showError) {
+      window.showError('Error: Modal de clientes no disponible. Por favor recarga la página.');
+    } else {
+      alert('Error: Modal de clientes no disponible. Por favor recarga la página.');
+    }
   }
   
   return; // Evitar ejecutar el código del modal duplicado
@@ -3512,7 +3520,11 @@ Saldo: $${saldo.toFixed(2)}
 Retornables: ${retornables} ${retornables === 1 ? 'unidad' : 'unidades'}
   `.trim();
   
-  alert(info);
+  if (window.showInfo) {
+    window.showInfo(info);
+  } else {
+    alert(info);
+  }
 }
 
 // Función para cambiar estado del cliente (bloquear/desbloquear)
@@ -3530,8 +3542,21 @@ async function toggleClienteStatus(clientId) {
   const isActive = cliente.activo !== 0;
   const action = isActive ? 'bloquear' : 'desbloquear';
   
-  if (!confirm(`¿Estás seguro de que quieres ${action} este cliente?`)) {
-    return;
+  if (window.showConfirm) {
+    const confirmed = await new Promise((resolve) => {
+      window.showConfirm(
+        `¿Estás seguro de que quieres ${action} este cliente?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) {
+      return;
+    }
+  } else {
+    if (!confirm(`¿Estás seguro de que quieres ${action} este cliente?`)) {
+      return;
+    }
   }
   
   try {
@@ -3570,7 +3595,11 @@ async function toggleClienteStatus(clientId) {
     if (window.clientModal && window.clientModal.showNotification) {
       window.clientModal.showNotification(`Error: ${error.message}`, 'error');
     } else {
-      alert(`Error: ${error.message}`);
+      if (window.showError) {
+        window.showError(`Error: ${error.message}`);
+      } else {
+        alert(`Error: ${error.message}`);
+      }
     }
   }
 }
@@ -4050,12 +4079,20 @@ function showClientLocation(clientId) {
 
   if (!cliente) {
     console.error('❌ Cliente no encontrado:', clientId);
-    alert('Cliente no encontrado');
+    if (window.showError) {
+      window.showError('Cliente no encontrado');
+    } else {
+      alert('Cliente no encontrado');
+    }
     return;
   }
 
   if (!cliente.latitud || !cliente.longitud) {
-    alert('Este cliente no tiene ubicación GPS registrada.');
+    if (window.showWarning) {
+      window.showWarning('Este cliente no tiene ubicación GPS registrada.');
+    } else {
+      alert('Este cliente no tiene ubicación GPS registrada.');
+    }
     return;
   }
 
@@ -4090,7 +4127,11 @@ function showClientAccount(clientId) {
   const saldoRetornables = parseInt(cliente.saldoRetornables || 0);
 
   // TODO: Implementar modal de cuenta corriente detallada
-  alert(`Cuenta Corriente - ${nombreCompleto}\n\nSaldo en dinero: $${saldoDinero.toFixed(2)}\nRetornables pendientes: ${saldoRetornables} unidades\n\n(Funcionalidad detallada en desarrollo...)`);
+  if (window.showInfo) {
+    window.showInfo(`Cuenta Corriente - ${nombreCompleto}\n\nSaldo en dinero: $${saldoDinero.toFixed(2)}\nRetornables pendientes: ${saldoRetornables} unidades\n\n(Funcionalidad detallada en desarrollo...)`);
+  } else {
+    alert(`Cuenta Corriente - ${nombreCompleto}\n\nSaldo en dinero: $${saldoDinero.toFixed(2)}\nRetornables pendientes: ${saldoRetornables} unidades\n\n(Funcionalidad detallada en desarrollo...)`);
+  }
 }
 
 // Eliminar cliente
@@ -4100,8 +4141,21 @@ async function deleteClient(clientId) {
   const cliente = currentClients.find(c => (c.codigo || c.id) == clientId);
   const nombreCliente = cliente ? (cliente.nombreCompleto || `Cliente #${clientId}`) : `Cliente #${clientId}`;
 
-  if (!confirm(`¿Estás seguro de que quieres eliminar "${nombreCliente}"?\n\nEsta acción no se puede deshacer.`)) {
-    return;
+  if (window.showConfirm) {
+    const confirmed = await new Promise((resolve) => {
+      window.showConfirm(
+        `¿Estás seguro de que quieres eliminar "${nombreCliente}"?\n\nEsta acción no se puede deshacer.`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!confirmed) {
+      return;
+    }
+  } else {
+    if (!confirm(`¿Estás seguro de que quieres eliminar "${nombreCliente}"?\n\nEsta acción no se puede deshacer.`)) {
+      return;
+    }
   }
 
   const token = localStorage.getItem('token');
