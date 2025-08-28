@@ -98,12 +98,20 @@ window.generarInforme = async function() {
   console.log('📋 Datos del formulario:', { fechaDesde, fechaHasta, tipoInforme });
 
   if (!fechaDesde || !fechaHasta) {
-    alert('Por favor selecciona ambas fechas');
+    if (window.showWarning) {
+      window.showWarning('Por favor selecciona ambas fechas');
+    } else {
+      alert('Por favor selecciona ambas fechas');
+    }
     return;
   }
 
   if (new Date(fechaDesde) > new Date(fechaHasta)) {
-    alert('La fecha desde no puede ser mayor a la fecha hasta');
+    if (window.showWarning) {
+      window.showWarning('La fecha desde no puede ser mayor a la fecha hasta');
+    } else {
+      alert('La fecha desde no puede ser mayor a la fecha hasta');
+    }
     return;
   }
 
@@ -1213,7 +1221,11 @@ function startDelivery(pedidoId) {
     // Compatibilidad si existe una función global externa
     window.startDelivery(pedidoId);
   } else {
-    alert('Modal de entrega no disponible. Recarga la página (Ctrl + F5).');
+    if (window.showError) {
+      window.showError('Modal de entrega no disponible. Recarga la página (Ctrl + F5).');
+    } else {
+      alert('Modal de entrega no disponible. Recarga la página (Ctrl + F5).');
+    }
   }
 }
 
@@ -1225,8 +1237,17 @@ function completeDelivery(pedidoId) {
 
 function cancelPedido(pedidoId) {
   console.log('❌ Cancelando pedido:', pedidoId);
-  if (confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
-    updatePedidoStatus(pedidoId, 'anulado');
+  if (window.showConfirm) {
+    window.showConfirm(
+      '¿Estás seguro de que quieres cancelar este pedido?',
+      () => {
+        updatePedidoStatus(pedidoId, 'anulado');
+      }
+    );
+  } else {
+    if (confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
+      updatePedidoStatus(pedidoId, 'anulado');
+    }
   }
 }
 
@@ -1256,7 +1277,11 @@ async function updatePedidoStatus(pedidoId, newStatus) {
     
     // Mostrar mensaje de éxito
     if (newStatus === 'anulado') {
-      alert('✅ Pedido cancelado correctamente');
+      if (window.showSuccess) {
+        window.showSuccess('Pedido cancelado correctamente');
+      } else {
+        alert('✅ Pedido cancelado correctamente');
+      }
     }
     
     // Recargar pedidos
@@ -1264,7 +1289,11 @@ async function updatePedidoStatus(pedidoId, newStatus) {
     
   } catch (error) {
     console.error('❌ Error actualizando estado:', error);
-    alert('Error actualizando el estado del pedido: ' + error.message);
+    if (window.showError) {
+      window.showError('Error actualizando el estado del pedido: ' + error.message);
+    } else {
+      alert('Error actualizando el estado del pedido: ' + error.message);
+    }
   }
 }
 
@@ -1285,7 +1314,11 @@ function debounce(func, wait) {
 function exportPedidos() {
   console.log('📊 Exportando pedidos...');
   // Implementar exportación
-  alert('Función de exportación en desarrollo');
+  if (window.showInfo) {
+    window.showInfo('Función de exportación en desarrollo');
+  } else {
+    alert('Función de exportación en desarrollo');
+  }
 }
 
 // Mostrar mapa de entregas (alias para showMapModal)
@@ -1303,12 +1336,20 @@ window.showDeliveryMap = showDeliveryMap;
 // Funciones placeholder para compatibilidad
 function showPedidoDetails(pedidoId) {
   console.log('📋 Mostrando detalles del pedido:', pedidoId);
-  alert('Vista detallada en desarrollo');
+  if (window.showInfo) {
+    window.showInfo('Vista detallada en desarrollo');
+  } else {
+    alert('Vista detallada en desarrollo');
+  }
 }
 
 function showEditPedidoModal(pedidoId) {
   console.log('✏️ Abriendo modal de edición:', pedidoId);
-  alert('Modal de edición en desarrollo');
+  if (window.showInfo) {
+    window.showInfo('Modal de edición en desarrollo');
+  } else {
+    alert('Modal de edición en desarrollo');
+  }
 }
 
 // Modal completo para registrar cobro y devolución de retornables
