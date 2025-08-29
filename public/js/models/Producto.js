@@ -31,9 +31,10 @@ class Producto {
             errors.push('El precio no puede ser negativo');
         }
 
-        if (this.stock < 0) {
-            errors.push('El stock no puede ser negativo');
-        }
+        // Permitir stock negativo para casos donde el stock no está actualizado
+        // if (this.stock < 0) {
+        //     errors.push('El stock no puede ser negativo');
+        // }
 
         if (!Number.isInteger(this.stock)) {
             errors.push('El stock debe ser un número entero');
@@ -83,14 +84,14 @@ class Producto {
         }).format(this.precio);
     }
 
-    // Actualizar stock
+    // Actualizar stock (permite stock negativo)
     updateStock(cantidad, operacion = 'subtract') {
         if (operacion === 'add') {
             this.stock += cantidad;
         } else if (operacion === 'subtract') {
-            this.stock = Math.max(0, this.stock - cantidad);
+            this.stock = this.stock - cantidad; // Permite stock negativo
         } else if (operacion === 'set') {
-            this.stock = Math.max(0, cantidad);
+            this.stock = cantidad; // Permite stock negativo
         }
         
         this.fechaModificacion = new Date().toISOString();

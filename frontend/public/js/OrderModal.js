@@ -541,18 +541,18 @@ class OrderModal {
     }
 
     const availableStock = parseInt(product.stock || 0);
+    // Mostrar advertencia si el stock es insuficiente, pero permitir continuar
     if (quantity > availableStock) {
-      alert(`Stock insuficiente. Disponible: ${availableStock}`);
-      return;
+      console.log(`⚠️ Stock insuficiente. Disponible: ${availableStock}, Solicitado: ${quantity}. Continuando con stock negativo.`);
     }
 
     // Verificar si el producto ya está en el pedido
     const existingItem = this.orderItems.find(item => item.productId == productId);
     if (existingItem) {
       const newQuantity = existingItem.quantity + quantity;
+      // Mostrar advertencia si el stock es insuficiente, pero permitir continuar
       if (newQuantity > availableStock) {
-        alert(`Stock insuficiente. Ya tienes ${existingItem.quantity} en el pedido. Máximo total: ${availableStock}`);
-        return;
+        console.log(`⚠️ Stock insuficiente. Ya tienes ${existingItem.quantity} en el pedido. Total solicitado: ${newQuantity}, Disponible: ${availableStock}. Continuando con stock negativo.`);
       }
       existingItem.quantity = newQuantity;
       existingItem.subtotal = existingItem.price * newQuantity;
@@ -591,9 +591,9 @@ class OrderModal {
       return;
     }
 
+    // Mostrar advertencia si el stock es insuficiente, pero permitir continuar
     if (newQuantity > item.stock) {
-      alert(`Stock insuficiente. Máximo: ${item.stock}`);
-      return;
+      console.log(`⚠️ Stock insuficiente. Máximo disponible: ${item.stock}, Solicitado: ${newQuantity}. Continuando con stock negativo.`);
     }
 
     item.quantity = newQuantity;

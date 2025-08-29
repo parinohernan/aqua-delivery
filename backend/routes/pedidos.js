@@ -143,7 +143,7 @@ router.post('/', verifyToken, async (req, res) => {
 
         const clienteZona = cliente[0].zona;
 
-        // Verificar stock de productos
+        // Verificar que los productos existen (sin validar stock)
         for (const item of productos) {
             const producto = await query(
                 'SELECT codigo, descripcion, precio, stock FROM productos WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1',
@@ -154,10 +154,9 @@ router.post('/', verifyToken, async (req, res) => {
                 return res.status(400).json({ error: `Producto ${item.productoId} no encontrado` });
             }
 
+            // Mostrar advertencia si el stock es insuficiente, pero permitir continuar
             if (producto[0].stock < item.cantidad) {
-                return res.status(400).json({
-                    error: `Stock insuficiente para ${producto[0].descripcion}. Disponible: ${producto[0].stock}, Solicitado: ${item.cantidad}`
-                });
+                console.log(`⚠️ Stock insuficiente para ${producto[0].descripcion}. Disponible: ${producto[0].stock}, Solicitado: ${item.cantidad}. Continuando con stock negativo.`);
             }
         }
 
