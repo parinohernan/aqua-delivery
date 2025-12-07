@@ -43,14 +43,34 @@ const { title } = Astro.props;
     <link rel="stylesheet" href="/clientes.css" />
     <link rel="stylesheet" href="/pedidos.css" />
     <link rel="stylesheet" href="/selectors.css" />
+    <link rel="stylesheet" href="/logout-modal.css" />
+    <link rel="stylesheet" href="/client-modal.css" />
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="/leaflet.css" />
     <title>{title}</title>
     
     <!-- Configuración de la API -->
     <script>
+      // Detectar automáticamente la URL del backend
+      function getBackendUrl() {
+        const hostname = window.location.hostname;
+        
+        // Si estamos en localhost, usar localhost
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          return 'http://localhost:8001';
+        }
+        
+        // Si estamos en una IP de red local, usar esa misma IP para el backend
+        if (hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.')) {
+          return `http://${hostname}:8001`;
+        }
+        
+        // Por defecto, usar localhost
+        return 'http://localhost:8001';
+      }
+
       window.API_CONFIG = {
-        BASE_URL: 'https://back-adm.fly.dev',
+        BASE_URL: getBackendUrl(),
         ENDPOINTS: {
           LOGIN: '/auth/login',
           CLIENTES: '/api/clientes',
@@ -72,12 +92,17 @@ const { title } = Astro.props;
           return this.getUrl(endpoint);
         }
       };
+      
+      console.log('🔧 Backend URL configurada:', window.API_CONFIG.BASE_URL);
     </script>
   </head>
   <body>
     <slot />
     <!-- Leaflet JavaScript -->
     <script src="/leaflet.js" is:inline></script>
+    
+    <!-- Event Bus -->
+    <script src="/js/utils/events.js" is:inline></script>
     
     <!-- Sistema de Notificaciones -->
     <script src="/js/utils/notifications.js" is:inline></script>

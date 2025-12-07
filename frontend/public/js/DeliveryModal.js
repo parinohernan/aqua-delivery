@@ -14,22 +14,22 @@ class DeliveryModal {
     if (aplicaSaldo && typeof aplicaSaldo === 'object' && aplicaSaldo.type === 'Buffer') {
       return aplicaSaldo.data[0] === 1;
     }
-    
+
     // Si es número, comparar con 1
     if (typeof aplicaSaldo === 'number') {
       return aplicaSaldo === 1;
     }
-    
+
     // Si es string, convertir a número
     if (typeof aplicaSaldo === 'string') {
       return parseInt(aplicaSaldo) === 1;
     }
-    
+
     // Si es boolean, retornar directamente
     if (typeof aplicaSaldo === 'boolean') {
       return aplicaSaldo;
     }
-    
+
     // Por defecto, false
     return false;
   }
@@ -43,7 +43,8 @@ class DeliveryModal {
   async loadTiposPago() {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://back-adm.fly.dev/api/tiposdepago', {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/tiposdepago`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -103,20 +104,20 @@ class DeliveryModal {
               <label class="form-label">Retornables</label>
               <div style="padding: 1rem; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 0.375rem; margin-bottom: 1rem;">
                 <p style="margin: 0; font-size: 0.875rem; color: #92400e;">
-                  <strong>🔄 Este pedido incluye <span id="cantidadRetornables">0</span> productos retornables</strong>
+                  <strong>🔄 El pedido tiene <span id="cantidadRetornables">0</span> retornables</strong>
                 </p>
               </div>
               
-              <label class="form-label">¿Cuántos retornables devuelve el cliente?</label>
+              <label class="form-label">¿Cuántos retornables entregó el cliente?</label>
               <div style="display: flex; align-items: center; gap: 1rem;">
                 <input type="number" id="retornablesDevueltos" name="retornablesDevueltos" 
-                       value="0" class="form-input" style="width: 120px;" />
+                       value="0" min="0" class="form-input" style="width: 120px;" />
                 <span style="color: #6b7280; font-size: 0.875rem;">
-                  de <span id="maxRetornables">0</span> retornables
+                  de <span id="maxRetornables">0</span> retornables adeudados
                 </span>
               </div>
               <small style="color: #6b7280; font-size: 0.875rem; margin-top: 0.5rem; display: block;">
-                Los retornables no devueltos se sumarán al saldo del cliente. Puede devolver más de los que debe (entrega por adelantado).
+                Los retornables no entregados quedarán como adeudados en la cuenta del cliente.
               </small>
             </div>
 
@@ -192,35 +193,39 @@ class DeliveryModal {
   async show(pedidoId) {
     const modal = document.getElementById('deliveryModal');
     const title = document.getElementById('deliveryModalTitle');
-    
+
     console.log('🚚 Iniciando proceso de entrega para pedido:', pedidoId);
-    
+
     try {
       // Cargar datos del pedido
       await this.loadPedidoData(pedidoId);
-      
+
       // Cargar items del pedido
       await this.loadPedidoItems(pedidoId);
-      
+
       // Pequeño delay para asegurar que los items se procesen
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Configurar el modal
       this.setupModal();
-      
+
       // Mostrar el modal (respetando estilos globales)
       modal.classList.remove('hidden');
       modal.classList.add('show');
       modal.style.zIndex = '10000';
-      
+
       // Enfocar el primer campo
       setTimeout(() => {
         document.getElementById('tipoPago').focus();
       }, 100);
-      
+
     } catch (error) {
       console.error('❌ Error cargando datos del pedido:', error);
-      alert('Error cargando datos del pedido: ' + error.message);
+      if (window.showError) {
+        window.showError('Error cargando datos del pedido: ' + error.message);
+      } else {
+        alert('Error cargando datos del pedido: ' + error.message);
+      }
     }
   }
 
@@ -261,9 +266,23 @@ class DeliveryModal {
 
   async loadPedidoItems(pedidoId) {
     console.log('📦 Cargando items del pedido:', pedidoId);
-    
+
     try {
-      if (window.getPedidoItems) {
+      // Intentar usar datos locales primero si están disponibles
+      if (this.pedidoData && (this.pedidoData.detalles || this.pedidoData.items || this.pedidoData.productos)) {
+        console.log('📦 Usando items locales del pedido');
+        const items = this.pedidoData.detalles || this.pedidoData.items || this.pedidoData.productos || [];
+
+        this.pedidoItems = items.map(item => ({
+          codigoPedido: pedidoId,
+          codigoProducto: item.producto_id || item.productoId || item.codigoProducto || item.codigo || item.id,
+          cantidad: parseFloat(item.cantidad),
+          nombreProducto: item.descripcion || item.nombre || item.nombreProducto || item.producto_nombre,
+          precioUnitario: parseFloat(item.precio || item.precioUnitario || item.precio_unitario || 0),
+          esRetornable: item.esRetornable,
+          subtotal: parseFloat(item.cantidad) * parseFloat(item.precio || item.precioUnitario || item.precio_unitario || 0)
+        }));
+      } else if (window.getPedidoItems) {
         console.log('🔍 Llamando a window.getPedidoItems...');
         this.pedidoItems = await window.getPedidoItems(pedidoId);
         console.log('📋 Items recibidos:', this.pedidoItems);
@@ -271,24 +290,24 @@ class DeliveryModal {
         console.warn('⚠️ window.getPedidoItems no está disponible');
         this.pedidoItems = [];
       }
-      
+
       // Calcular total de retornables usando ÚNICAMENTE el campo esRetornable de la BD
       this.totalRetornables = this.pedidoItems.reduce((total, item) => {
         // Verificar que el campo esRetornable esté disponible
         if (item.esRetornable === undefined || item.esRetornable === null) {
-          console.error(`❌ Error: Campo esRetornable no disponible para producto ${item.codigoProducto} - ${item.nombreProducto}`);
-          throw new Error(`Campo esRetornable no disponible para producto ${item.nombreProducto}`);
+          console.warn(`⚠️ Advertencia: Campo esRetornable no disponible para producto ${item.codigoProducto} - ${item.nombreProducto}. Asumiendo false.`);
+          // No lanzar error, asumir false
         }
-        
+
         // Usar ÚNICAMENTE el campo esRetornable de la base de datos
         const esRetornable = item.esRetornable === 1 || item.esRetornable === true;
-        
+
         return total + (esRetornable ? item.cantidad : 0);
       }, 0);
-      
+
       console.log('✅ Items cargados:', this.pedidoItems.length, 'items');
       console.log('🔄 Total retornables:', this.totalRetornables);
-      
+
       // Debug: mostrar cada item
       this.pedidoItems.forEach((item, index) => {
         console.log(`📦 Item ${index + 1}:`, {
@@ -299,7 +318,7 @@ class DeliveryModal {
           esRetornable: item.esRetornable
         });
       });
-      
+
     } catch (error) {
       console.error('❌ Error cargando items:', error);
       this.pedidoItems = [];
@@ -310,10 +329,10 @@ class DeliveryModal {
   setupModal() {
     // Mostrar información del pedido
     this.showPedidoInfo();
-    
+
     // Configurar campos según los datos
     this.setupFields();
-    
+
     // Actualizar resumen inicial
     this.updateResumen();
   }
@@ -322,18 +341,18 @@ class DeliveryModal {
     console.log('📋 Mostrando información del pedido...');
     console.log('📦 Items disponibles:', this.pedidoItems);
     console.log('📦 Cantidad de items:', this.pedidoItems.length);
-    
+
     const container = document.getElementById('pedidoInfo');
     if (!container) {
       console.error('❌ Elemento pedidoInfo no encontrado');
       return;
     }
-    
+
     const clienteNombre = this.pedidoData.cliente_nombre || this.pedidoData.nombre || 'Cliente sin nombre';
     const total = parseFloat(this.pedidoData.total || 0);
     const direccion = this.pedidoData.direccion || 'Sin dirección';
     const telefono = this.pedidoData.telefono || 'Sin teléfono';
-    
+
     // Generar lista de items detallada
     let itemsHTML = '';
     if (this.pedidoItems.length > 0) {
@@ -344,7 +363,7 @@ class DeliveryModal {
         const precio = parseFloat(item.precioUnitario || item.precio || 0);
         const subtotal = parseFloat(item.subtotal || (cantidad * precio));
         const esRetornable = item.esRetornable === 1;
-        
+
         itemsHTML += `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; font-size: 0.875rem;">
             <div style="flex: 1;">
@@ -382,7 +401,7 @@ class DeliveryModal {
 
     // Configurar opciones de tipo de pago
     this.setupTiposPago();
-    
+
     // Configurar retornables si hay
     if (this.totalRetornables > 0) {
       document.getElementById('retornablesGroup').classList.remove('hidden');
@@ -449,16 +468,16 @@ class DeliveryModal {
     const montoCobrado = parseFloat(document.getElementById('montoCobrado').value || 0);
     const retornablesDevueltos = parseInt(document.getElementById('retornablesDevueltos').value || 0);
     const totalPedido = parseFloat(this.pedidoData.total || 0);
-    
+
     const container = document.getElementById('resumenContent');
-    
+
     if (!tipoPago) {
       container.innerHTML = '<p style="color: #6b7280; margin: 0;">Selecciona el tipo de pago para ver el resumen</p>';
       return;
     }
-    
+
     let resumenHTML = '';
-    
+
     // Información de pago
     if (tipoPago === 'cuenta_corriente') {
       resumenHTML += `
@@ -475,7 +494,7 @@ class DeliveryModal {
           💰 <strong>Pago:</strong> ${tipoPago} - $${montoCobrado.toFixed(2)}
         </div>
       `;
-      
+
       if (montoCobrado !== totalPedido) {
         const diferencia = totalPedido - montoCobrado;
         resumenHTML += `
@@ -485,7 +504,7 @@ class DeliveryModal {
         `;
       }
     }
-    
+
     // Información de retornables
     if (this.totalRetornables > 0) {
       const retornablesNoDevueltos = this.totalRetornables - retornablesDevueltos;
@@ -494,7 +513,7 @@ class DeliveryModal {
           🔄 <strong>Retornables devueltos:</strong> ${retornablesDevueltos} de ${this.totalRetornables}
         </div>
       `;
-      
+
       if (retornablesNoDevueltos > 0) {
         resumenHTML += `
           <div style="margin-bottom: 0.5rem; color: #f59e0b;">
@@ -503,7 +522,7 @@ class DeliveryModal {
         `;
       }
     }
-    
+
     container.innerHTML = resumenHTML;
   }
 
@@ -511,17 +530,17 @@ class DeliveryModal {
     const modal = document.getElementById('deliveryModal');
     modal.classList.remove('show');
     modal.classList.add('hidden');
-    
+
     // Limpiar datos
     this.pedidoData = null;
     this.pedidoItems = [];
     this.totalRetornables = 0;
-    
+
     // Resetear formulario
     document.getElementById('deliveryForm').reset();
     document.getElementById('montoGroup').classList.add('hidden');
     document.getElementById('retornablesGroup').classList.add('hidden');
-    
+
     console.log('🚚 Modal de entrega cerrado');
   }
 
@@ -572,7 +591,8 @@ class DeliveryModal {
 
       // Usar el endpoint de entrega que maneja retornables
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://back-adm.fly.dev/api/pedidos/${pedidoId}/entregar`, {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/pedidos/${pedidoId}/entregar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -603,21 +623,23 @@ class DeliveryModal {
       }
 
       // Recargar la lista de pedidos (compatibilidad con index.astro)
-      if (typeof loadPedidos === 'function') {
-        await loadPedidos();
+      if (typeof window.loadPedidosData === 'function') {
+        await window.loadPedidosData();
+      } else if (typeof window.loadPedidos === 'function') {
+        await window.loadPedidos();
       }
 
       // Mostrar mensaje de éxito con información de retornables
       let mensaje = 'Pedido entregado correctamente.';
-      
+
       if (aplicaSaldo) {
         mensaje += ' Saldo actualizado en cuenta corriente.';
       }
-      
+
       if (result.retornablesNoDevueltos > 0) {
         mensaje += ` ${result.retornablesNoDevueltos} retornables agregados al saldo del cliente.`;
       }
-      
+
       this.showSuccessMessage(mensaje);
 
     } catch (error) {
@@ -645,9 +667,9 @@ class DeliveryModal {
       font-weight: 500;
     `;
     messageDiv.textContent = message;
-    
+
     document.body.appendChild(messageDiv);
-    
+
     setTimeout(() => {
       messageDiv.remove();
     }, 3000);
@@ -668,9 +690,9 @@ class DeliveryModal {
       font-weight: 500;
     `;
     messageDiv.textContent = `Error: ${errorText}`;
-    
+
     document.body.appendChild(messageDiv);
-    
+
     setTimeout(() => {
       messageDiv.remove();
     }, 5000);
@@ -680,4 +702,4 @@ class DeliveryModal {
 // Crear instancia global
 window.deliveryModal = new DeliveryModal();
 // Función global de conveniencia
-window.startDelivery = function(pedidoId) { window.deliveryModal.show(pedidoId); }
+window.startDelivery = function (pedidoId) { window.deliveryModal.show(pedidoId); }

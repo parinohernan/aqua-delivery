@@ -1,176 +1,251 @@
 ---
-// Componente modular para la sección de productos
+import ProductModal from './modals/ProductModal.astro';
 ---
-
-<div class="productos-section">
-  <div class="productos-header">
-    <div class="header-content">
-      <h2 class="section-title">
-        <span class="icon">📦</span>
-        Gestión de Productos
-      </h2>
-      <p class="section-subtitle">Administra tu catálogo de productos de manera eficiente</p>
-    </div>
-  </div>
-
-  <div class="productos-container">
-    <!-- Panel de acciones -->
-    <div class="actions-panel">
-      <div class="actions-header">
-        <h3>⚡ Acciones Rápidas</h3>
+<div id="productosSection" class="section-content" style="display: none;">
+  <div class="productos-section">
+    <div class="productos-header">
+      <div class="header-content">
+        <h2 class="section-title">
+          <span class="icon">📦</span>
+          Gestión de Productos
+        </h2>
+        <p class="section-subtitle">Administra tu catálogo de productos de manera eficiente</p>
       </div>
-      
-      <div class="actions-content">
-        <button onclick="window.showCreateProductModal()" class="btn-create">
+    </div>
+
+    <div class="productos-container">
+      <!-- Barra de herramientas compacta -->
+      <div class="toolbar">
+        <button onclick="window.showCreateProductModal()" class="btn-new">
           <span class="btn-icon">➕</span>
-          Nuevo Producto
+          <span class="btn-label">Nuevo</span>
         </button>
         
-        <div class="search-group">
-          <div class="search-input-wrapper">
-            <span class="search-icon">🔍</span>
-            <input 
-              type="text" 
-              id="productosSearch" 
-              placeholder="Buscar productos..."
-              class="search-input"
-            >
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            id="productosSearch" 
+            placeholder="Buscar productos..."
+            class="search-input"
+          >
+        </div>
+
+        <select id="filterProductosEstado" class="filter-select">
+          <option value="todos">Todos</option>
+          <option value="activos">Activos</option>
+          <option value="inactivos">Inactivos</option>
+        </select>
+        
+        <button onclick="window.clearProductosFilters()" class="btn-clear" title="Limpiar filtros">
+          <span class="btn-icon">🔄</span>
+        </button>
+      </div>
+
+      <!-- Lista de productos -->
+      <div class="products-area">
+        <div id="productosList" class="products-container">
+          <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <h4>Cargando productos...</h4>
+            <p>Preparando tu catálogo de productos</p>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Panel de filtros -->
-    <div class="filters-panel">
-      <div class="filters-header">
-        <h3>🔍 Filtros</h3>
-      </div>
-      
-      <div class="filters-content">
-        <div class="filter-group">
-          <label for="filterProductosEstado" class="filter-label">
-            <span class="label-icon">📊</span>
-            Estado
-          </label>
-          <select id="filterProductosEstado" class="filter-select">
-            <option value="todos">Todos los productos</option>
-            <option value="activos">Solo activos</option>
-            <option value="inactivos">Solo inactivos</option>
-          </select>
-        </div>
-        
-        <button onclick="window.clearProductosFilters()" class="btn-clear">
-          <span class="btn-icon">🔄</span>
-          Limpiar Filtros
-        </button>
-      </div>
-    </div>
-
-    <!-- Lista de productos -->
-    <div class="products-area">
-      <div id="productosList" class="products-container">
-        <div class="empty-state">
-          <div class="empty-icon">📦</div>
-          <h4>Cargando productos...</h4>
-          <p>Preparando tu catálogo de productos</p>
-        </div>
-      </div>
-    </div>
   </div>
+
+  <!-- Product Modal -->
+  <ProductModal />
 </div>
 
-<!-- Estilos importados desde productos.css -->
-
 <script>
-  // Configurar búsqueda con debounce
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔧 Configurando event listeners de productos...');
+  let currentProducts = [];
+  let currentProductFilters = { search: '', estado: 'todos' };
+  let productSearchTimeout;
+
+  window.initProductosSection = async function() {
+    console.log('📦 Inicializando sección de productos...');
+    setupProductosEventListeners();
+    setupProductModalListener();
+    await loadProductosData();
+  };
+
+  /**
+   * Setup listener for product-saved event
+   * Follows Open/Closed Principle: Modal emits event, section listens
+   */
+  function setupProductModalListener() {
+    document.addEventListener('product-saved', async () => {
+      console.log('✅ Producto guardado, recargando lista...');
+      await loadProductosData();
+    });
+  }
+
+  async function loadProductosData() {
+    console.log('📦 Cargando productos...');
+    const token = localStorage.getItem('token');
     
-    const searchInput = document.getElementById('productosSearch');
-    if (searchInput) {
-      console.log('✅ Input de búsqueda encontrado');
-      let searchTimeout;
+    try {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/productos`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const productos = await response.json();
+      console.log('📦 Productos recibidos del backend:', productos);
+      console.log('📸 Primer producto imageURL:', productos[0]?.imageURL);
+      console.log('📋 Campos del primer producto:', productos[0] ? Object.keys(productos[0]) : 'No hay productos');
       
-      searchInput.addEventListener('input', function(e) {
-        const target = e.target as HTMLInputElement;
-        console.log('🔍 Input de búsqueda detectado:', target.value);
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          console.log('🔍 Ejecutando búsqueda:', target.value);
-          if (window.searchProducts) {
-            window.searchProducts(target.value);
-          } else {
-            console.error('❌ window.searchProducts no está disponible');
-          }
-        }, 300);
-      });
-      console.log('✅ Event listener de búsqueda configurado');
-    } else {
-      console.error('❌ No se encontró el input de búsqueda');
-    }
-
-    // Configurar filtro de estado
-    const estadoFilter = document.getElementById('filterProductosEstado');
-    if (estadoFilter) {
-      console.log('✅ Selector de estado encontrado');
-      estadoFilter.addEventListener('change', function(e) {
-        const target = e.target as HTMLSelectElement;
-        console.log('🔍 Cambio de estado detectado:', target.value);
-        if (window.filterProductosByEstado) {
-          window.filterProductosByEstado();
-        } else {
-          console.error('❌ window.filterProductosByEstado no está disponible');
-        }
-      });
-      console.log('✅ Event listener de filtro de estado configurado');
-    } else {
-      console.error('❌ No se encontró el selector de estado');
-    }
-  });
-
-  // Función para configurar event listeners cuando se carga la sección
-  function setupProductosEventListeners() {
-    console.log('🔧 Configurando event listeners de productos (setupProductosEventListeners)...');
-    
-    // Búsqueda con debounce
-    const searchInput = document.getElementById('productosSearch');
-    if (searchInput) {
-      console.log('✅ Input de búsqueda encontrado en setupProductosEventListeners');
-      let searchTimeout;
+      currentProducts = productos;
       
-      searchInput.addEventListener('input', function(e) {
-        const target = e.target as HTMLInputElement;
-        console.log('🔍 Input de búsqueda detectado:', target.value);
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          console.log('🔍 Ejecutando búsqueda:', target.value);
-          if (window.searchProducts) {
-            window.searchProducts(target.value);
-          } else {
-            console.error('❌ window.searchProducts no está disponible');
-          }
-        }, 300);
-      });
-      console.log('✅ Event listener de búsqueda configurado');
-    }
-
-    // Filtro de estado
-    const estadoFilter = document.getElementById('filterProductosEstado');
-    if (estadoFilter) {
-      console.log('✅ Selector de estado encontrado en setupProductosEventListeners');
-      estadoFilter.addEventListener('change', function(e) {
-        const target = e.target as HTMLSelectElement;
-        console.log('🔍 Cambio de estado detectado:', target.value);
-        if (window.filterProductosByEstado) {
-          window.filterProductosByEstado();
-        } else {
-          console.error('❌ window.filterProductosByEstado no está disponible');
-        }
-      });
-      console.log('✅ Event listener de filtro de estado configurado');
+      await applyProductFilters();
+      
+    } catch (error) {
+      console.error('Error cargando productos:', error);
+      document.getElementById('productosList').innerHTML = `<div class="empty-state"><h4>Error</h4><p>${error.message}</p></div>`;
     }
   }
 
-  // Hacer la función disponible globalmente
-  (window as any).setupProductosEventListeners = setupProductosEventListeners;
+  function setupProductosEventListeners() {
+    const searchInput = document.getElementById('productosSearch');
+    if (searchInput) {
+      const newInput = searchInput.cloneNode(true);
+      searchInput.parentNode.replaceChild(newInput, searchInput);
+      
+      newInput.addEventListener('input', (e) => {
+        clearTimeout(productSearchTimeout);
+        productSearchTimeout = setTimeout(() => {
+          currentProductFilters.search = e.target.value;
+          applyProductFilters();
+        }, 300);
+      });
+    }
+
+    const estadoFilter = document.getElementById('filterProductosEstado');
+    if (estadoFilter) {
+      estadoFilter.addEventListener('change', (e) => {
+        currentProductFilters.estado = e.target.value;
+        applyProductFilters();
+      });
+    }
+  }
+
+  async function applyProductFilters() {
+    let filtered = [...currentProducts];
+
+    if (currentProductFilters.search) {
+      const term = currentProductFilters.search.toLowerCase();
+      filtered = filtered.filter(p => 
+        (p.descripcion || p.nombre || '').toLowerCase().includes(term)
+      );
+    }
+
+    if (currentProductFilters.estado !== 'todos') {
+      const isActive = currentProductFilters.estado === 'activos';
+      filtered = filtered.filter(p => !!p.activo === isActive);
+    }
+
+    renderProductsList(filtered);
+  }
+
+  function renderProductsList(productos) {
+    const container = document.getElementById('productosList');
+    if (!container) return;
+
+    if (productos.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <h4>No hay productos</h4>
+          <p>Intenta con otros filtros</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `<div class="products-list">
+      ${productos.map(p => {
+        const imageUrl = p.imageURL || 'https://res.cloudinary.com/drgs7xuag/image/upload/v1764287946/aqua_product_generic_nwadej.png';
+        return `
+          <div class="product-card">
+            <div class="product-image">
+              <img src="${imageUrl}" alt="${p.descripcion || p.nombre}" onerror="this.src='https://res.cloudinary.com/drgs7xuag/image/upload/v1764287946/aqua_product_generic_nwadej.png'" />
+            </div>
+            <div class="product-content">
+              <div class="product-header">
+                <h4 class="product-title">${p.descripcion || p.nombre}</h4>
+                <span class="product-badge ${p.activo ? 'badge-active' : 'badge-inactive'}">
+                  ${p.activo ? '✓' : '✕'}
+                </span>
+              </div>
+              <div class="product-info">
+                <div class="info-item">
+                  <span class="info-icon">💰</span>
+                  <span class="info-value">$${parseFloat(p.precio || 0).toFixed(2)}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-icon">📦</span>
+                  <span class="info-value">${p.stock || 0} unidades</span>
+                </div>
+              </div>
+              <div class="product-actions">
+                <button onclick="window.editProduct(${p.id || p.codigo})" class="btn-action btn-edit" title="Editar producto">
+                  <span class="btn-icon">✏️</span>
+                  <span class="btn-text">Editar</span>
+                </button>
+                <button onclick="window.deleteProduct(${p.id || p.codigo})" class="btn-action btn-delete" title="Eliminar producto">
+                  <span class="btn-icon">🗑️</span>
+                  <span class="btn-text">Eliminar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>`;
+  }
+
+  window.clearProductosFilters = function() {
+    currentProductFilters = { search: '', estado: 'todos' };
+    const searchInput = document.getElementById('productosSearch');
+    if (searchInput) searchInput.value = '';
+    const estadoFilter = document.getElementById('filterProductosEstado');
+    if (estadoFilter) estadoFilter.value = 'todos';
+    applyProductFilters();
+  };
+
+  window.showCreateProductModal = function() {
+    if (window.productModal) {
+      window.productModal.show();
+    } else {
+      alert('Modal no disponible. Recarga la página.');
+    }
+  };
+
+  window.editProduct = function(id) {
+    const product = currentProducts.find(p => (p.id || p.codigo) == id);
+    if (!product) {
+      alert('Producto no encontrado');
+      return;
+    }
+    
+    console.log('🔍 Producto a editar:', product);
+    console.log('📸 imageURL del producto:', product.imageURL);
+    
+    if (window.productModal) {
+      window.productModal.show(product);
+    } else {
+      alert('Modal no disponible. Recarga la página.');
+    }
+  };
+
+  window.deleteProduct = async function(id) {
+    if (!confirm('¿Desactivar producto?')) return;
+    // Implement delete logic
+    alert('Funcionalidad en desarrollo');
+  };
 </script>
+

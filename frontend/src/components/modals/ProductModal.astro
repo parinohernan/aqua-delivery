@@ -1,0 +1,363 @@
+---
+/**
+ * ProductModal Component
+ * 
+ * Responsibility: Handle product creation and editing
+ * Follows Single Responsibility Principle (SRP)
+ * Communicates via events (Open/Closed Principle)
+ */
+---
+
+<div id="productModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 id="productModalTitle" class="modal-title">Nuevo Producto</h3>
+      <button type="button" class="btn-close" onclick="window.productModal?.hide()">×</button>
+    </div>
+
+    <form id="productForm" class="modal-form">
+      <input type="hidden" id="productId" />
+
+      <div class="form-group">
+        <label for="productDescripcion" class="form-label">
+          Descripción <span class="required">*</span>
+        </label>
+        <input 
+          type="text" 
+          id="productDescripcion" 
+          class="form-input" 
+          required 
+          placeholder="Ej: Bidón de agua 20L"
+        />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="productPrecio" class="form-label">
+            Precio <span class="required">*</span>
+          </label>
+          <input 
+            type="number" 
+            id="productPrecio" 
+            class="form-input" 
+            required 
+            step="0.01" 
+            min="0"
+            placeholder="0.00"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="productStock" class="form-label">
+            Stock <span class="required">*</span>
+          </label>
+          <input 
+            type="number" 
+            id="productStock" 
+            class="form-input" 
+            required 
+            min="0"
+            placeholder="0"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="productImagen" class="form-label">
+          URL de Imagen
+        </label>
+        <input 
+          type="url" 
+          id="productImagen" 
+          class="form-input" 
+          placeholder="https://ejemplo.com/imagen.jpg"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          <input 
+            type="checkbox" 
+            id="productRetornable" 
+            class="form-checkbox"
+          />
+          Es retornable
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          <input 
+            type="checkbox" 
+            id="productActivo" 
+            class="form-checkbox"
+            checked
+          />
+          Producto activo
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="window.productModal?.hide()">
+          Cancelar
+        </button>
+        <button type="submit" class="btn-primary">
+          💾 Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  /**
+   * ProductModal Class
+   * Encapsulates all modal behavior
+   * Follows SRP: Only handles product form UI and submission
+   */
+  class ProductModal {
+    private modalElement: HTMLElement;
+    private formElement: HTMLFormElement;
+    private titleElement: HTMLElement;
+    private currentProductId: string | null = null;
+
+    constructor() {
+      this.modalElement = document.getElementById('productModal') as HTMLElement;
+      this.formElement = document.getElementById('productForm') as HTMLFormElement;
+      this.titleElement = document.getElementById('productModalTitle') as HTMLElement;
+      
+      this.initializeEventListeners();
+    }
+
+    /**
+     * Initialize form submission handler
+     * Dependency Inversion: Emits events instead of directly calling parent methods
+     */
+    private initializeEventListeners(): void {
+      this.formElement.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleSubmit();
+      });
+
+      // Close on overlay click
+      this.modalElement.addEventListener('click', (e) => {
+        if (e.target === this.modalElement) {
+          this.hide();
+        }
+      });
+    }
+
+    /**
+     * Show modal for creating a new product
+     */
+    public show(product?: any): void {
+      this.currentProductId = product?.codigo || product?.id || null;
+      
+      if (product) {
+        this.titleElement.textContent = 'Editar Producto';
+        this.populateForm(product);
+      } else {
+        this.titleElement.textContent = 'Nuevo Producto';
+        this.clearForm();
+      }
+
+      this.modalElement.style.display = 'flex';
+      setTimeout(() => {
+        this.modalElement.classList.add('show');
+      }, 10);
+    }
+
+    /**
+     * Hide modal
+     */
+    public hide(): void {
+      this.modalElement.classList.remove('show');
+      setTimeout(() => {
+        this.modalElement.style.display = 'none';
+        this.clearForm();
+      }, 300);
+    }
+
+    /**
+     * Populate form with product data (for editing)
+     */
+    private populateForm(product: any): void {
+      console.log('📝 Poblando formulario con producto:', product);
+      console.log('📸 imageURL recibido:', product.imageURL);
+      
+      (document.getElementById('productId') as HTMLInputElement).value = product.codigo || product.id || '';
+      (document.getElementById('productDescripcion') as HTMLInputElement).value = product.descripcion || '';
+      (document.getElementById('productPrecio') as HTMLInputElement).value = product.precio || '';
+      (document.getElementById('productStock') as HTMLInputElement).value = product.stock || '';
+      (document.getElementById('productImagen') as HTMLInputElement).value = product.imageURL || '';
+      (document.getElementById('productRetornable') as HTMLInputElement).checked = !!product.esRetornable;
+      (document.getElementById('productActivo') as HTMLInputElement).checked = product.activo !== 0;
+      
+      console.log('✅ Campo imagen poblado con:', (document.getElementById('productImagen') as HTMLInputElement).value);
+    }
+
+    /**
+     * Clear form fields
+     */
+    private clearForm(): void {
+      this.formElement.reset();
+      this.currentProductId = null;
+      (document.getElementById('productActivo') as HTMLInputElement).checked = true;
+    }
+
+    /**
+     * Handle form submission
+     * Single Responsibility: Only handles API call and validation
+     */
+    private async handleSubmit(): Promise<void> {
+      const formData = this.getFormData();
+      
+      if (!this.validateFormData(formData)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No se encontró token de autenticación');
+        }
+
+        const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+        const url = this.currentProductId 
+          ? `${apiUrl}/api/productos/${this.currentProductId}`
+          : `${apiUrl}/api/productos`;
+        
+        const method = this.currentProductId ? 'PUT' : 'POST';
+
+        console.log('📤 Enviando datos al backend:', formData);
+        console.log('📤 URL:', url);
+        console.log('📤 Method:', method);
+
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Error al guardar el producto');
+        }
+
+        // Emit event for parent component to refresh list
+        // Open/Closed Principle: Parent can listen without modifying this class
+        this.emitProductSavedEvent();
+        
+        this.showSuccessMessage(
+          this.currentProductId ? 'Producto actualizado correctamente' : 'Producto creado correctamente'
+        );
+        
+        this.hide();
+        
+      } catch (error) {
+        console.error('Error guardando producto:', error);
+        this.showErrorMessage(error instanceof Error ? error.message : 'Error desconocido');
+      }
+    }
+
+    /**
+     * Extract form data
+     */
+    private getFormData(): any {
+      return {
+        descripcion: (document.getElementById('productDescripcion') as HTMLInputElement).value.trim(),
+        precio: parseFloat((document.getElementById('productPrecio') as HTMLInputElement).value),
+        stock: parseInt((document.getElementById('productStock') as HTMLInputElement).value),
+        imageURL: (document.getElementById('productImagen') as HTMLInputElement).value.trim() || null,
+        esRetornable: (document.getElementById('productRetornable') as HTMLInputElement).checked ? 1 : 0,
+        activo: (document.getElementById('productActivo') as HTMLInputElement).checked ? 1 : 0
+      };
+    }
+
+    /**
+     * Validate form data
+     */
+    private validateFormData(data: any): boolean {
+      if (!data.descripcion) {
+        this.showErrorMessage('La descripción es obligatoria');
+        return false;
+      }
+
+      if (isNaN(data.precio) || data.precio < 0) {
+        this.showErrorMessage('El precio debe ser un número válido mayor o igual a 0');
+        return false;
+      }
+
+      if (isNaN(data.stock) || data.stock < 0) {
+        this.showErrorMessage('El stock debe ser un número válido mayor o igual a 0');
+        return false;
+      }
+
+      return true;
+    }
+
+    /**
+     * Emit custom event when product is saved
+     * Allows loose coupling with parent component
+     */
+    private emitProductSavedEvent(): void {
+      const event = new CustomEvent('product-saved', {
+        bubbles: true,
+        detail: { productId: this.currentProductId }
+      });
+      document.dispatchEvent(event);
+    }
+
+    /**
+     * Show success message
+     */
+    private showSuccessMessage(message: string): void {
+      if (window.showSuccess) {
+        window.showSuccess(message);
+      } else {
+        alert(message);
+      }
+    }
+
+    /**
+     * Show error message
+     */
+    private showErrorMessage(message: string): void {
+      if (window.showError) {
+        window.showError(message);
+      } else {
+        alert(message);
+      }
+    }
+  }
+
+  // Initialize modal instance and expose globally
+  if (typeof window !== 'undefined') {
+    window.productModal = new ProductModal();
+  }
+</script>
+
+<style>
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .required {
+    color: #ef4444;
+  }
+
+  .form-checkbox {
+    margin-right: 0.5rem;
+  }
+
+  @media (max-width: 640px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

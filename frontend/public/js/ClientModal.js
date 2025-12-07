@@ -21,7 +21,8 @@ class ClientModal {
   async loadZonas() {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://back-adm.fly.dev/api/zonas', {
+      const baseUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${baseUrl}/api/zonas`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -95,13 +96,11 @@ class ClientModal {
 
             <div class="form-group">
               <label class="form-label">Ubicación en el Mapa</label>
-              <div style="margin-bottom: 0.5rem;">
-                <button type="button" onclick="clientModal.getCurrentLocation()"
-                        style="padding: 0.5rem 1rem; background: #059669; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; margin-right: 0.5rem;">
+              <div style="margin-bottom: 0.5rem; display: flex; gap: 0.5rem;">
+                <button type="button" onclick="clientModal.getCurrentLocation()" class="btn-location">
                   📍 Usar Mi Ubicación
                 </button>
-                <button type="button" onclick="clientModal.clearLocation()"
-                        style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+                <button type="button" onclick="clientModal.clearLocation()" class="btn-location-clear">
                   🗑️ Limpiar
                 </button>
               </div>
@@ -144,9 +143,6 @@ class ClientModal {
             </div>
             
             <div class="modal-buttons">
-              <button type="button" onclick="clientModal.close()" class="btn-secondary">
-                Cancelar
-              </button>
               <button type="submit" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
                 <span id="clientSubmitButtonText">Guardar Cliente</span>
               </button>
@@ -168,10 +164,10 @@ class ClientModal {
     if (form) {
       // Remover event listeners previos para evitar duplicados
       form.removeEventListener('submit', this.boundHandleSubmit);
-      
+
       // Crear una función bound para poder removerla después
       this.boundHandleSubmit = (e) => this.handleSubmit(e);
-      
+
       console.log('🔧 Configurando event listener en ClientModal.handleSubmit');
       form.addEventListener('submit', this.boundHandleSubmit, { capture: true });
     } else {
@@ -181,24 +177,24 @@ class ClientModal {
     // Event listeners para actualizar el mapa cuando se cambien las coordenadas manualmente
     const latInput = document.getElementById('clientLatitude');
     const lngInput = document.getElementById('clientLongitude');
-    
+
     if (latInput && lngInput) {
       const updateMapFromCoordinates = () => {
         const lat = parseFloat(latInput.value);
         const lng = parseFloat(lngInput.value);
-        
+
         if (!isNaN(lat) && !isNaN(lng) && this.map) {
           console.log('📍 Actualizando mapa desde coordenadas manuales:', lat, lng);
-          
+
           // Actualizar vista del mapa
           this.map.setView([lat, lng], 15);
-          
+
           // Actualizar marcador
           if (this.marker) {
             this.marker.setLatLng([lat, lng]);
           } else {
             this.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
-            
+
             // Event listener para cuando se mueva el marcador
             this.marker.on('dragend', (e) => {
               const position = e.target.getLatLng();
@@ -208,7 +204,7 @@ class ClientModal {
           }
         }
       };
-      
+
       latInput.addEventListener('input', updateMapFromCoordinates);
       lngInput.addEventListener('input', updateMapFromCoordinates);
     }
@@ -239,13 +235,17 @@ class ClientModal {
       const clientId = clientData.id || clientData.codigo;
       this.editingClientId = clientId;
       console.log('🔧 ClientModal - Editando cliente ID:', this.editingClientId);
-      
+
       if (!this.editingClientId) {
         console.error('❌ Error: No se puede determinar el ID del cliente');
-        alert('Error: No se puede determinar el ID del cliente para editar');
+        if (window.showError) {
+          window.showError('Error: No se puede determinar el ID del cliente para editar');
+        } else {
+          alert('Error: No se puede determinar el ID del cliente para editar');
+        }
         return;
       }
-      
+
       title.textContent = 'Editar Cliente';
 
       // Llenar el formulario con los datos existentes (scoped al modal para evitar IDs duplicados)
@@ -285,7 +285,7 @@ class ClientModal {
 
     // Configurar event listeners cada vez que se abre (importante para asegurar prioridad)
     this.attachEventListeners();
-    
+
     // Inicializar el mapa después de que el modal sea visible
     setTimeout(() => {
       this.initMap(clientData);
@@ -323,7 +323,7 @@ class ClientModal {
         mapContainer._leaflet_id = null;
       }
       mapContainer.className = (mapContainer.className || '').replace(/leaflet-\S+/g, '').trim();
-    } catch (_) {}
+    } catch (_) { }
 
     // Determinar la ubicación inicial del mapa
     const modal = document.getElementById('clientModal');
@@ -333,7 +333,7 @@ class ClientModal {
     if (savedLat && savedLng) {
       // Si el cliente tiene coordenadas guardadas, usar esas
       console.log('📍 Usando ubicación guardada del cliente:', savedLat, savedLng);
-              await this.createMapAtLocation(savedLat, savedLng, 15, true);
+      await this.createMapAtLocation(savedLat, savedLng, 15, true);
     } else if (clientData && !savedLat && !savedLng) {
       // Si estamos editando pero no hay coordenadas, intentar obtener ubicación actual
       console.log('🎯 Cliente sin ubicación, intentando obtener ubicación actual...');
@@ -359,7 +359,7 @@ class ClientModal {
           }
           this.map = null;
         }
-        
+
         // Limpiar contenedor
         const container = document.getElementById('clientModalMap');
         if (container) {
@@ -377,13 +377,13 @@ class ClientModal {
           container.innerHTML = '';
           container.className = container.className.replace(/leaflet-\S+/g, '').trim();
         }
-        
+
         // Inicializar mapa con configuración PWA (esperar resultado)
         this.map = await initMapPWA('clientModalMap', {
           center: [lat, lng],
           zoom: zoom
         });
-        
+
         if (!this.map) {
           console.error('❌ No se pudo inicializar el mapa');
           return;
@@ -503,7 +503,11 @@ class ClientModal {
 
   getCurrentLocation() {
     if (!navigator.geolocation) {
-      alert('La geolocalización no está soportada por este navegador.');
+      if (window.showError) {
+        window.showError('La geolocalización no está soportada por este navegador.');
+      } else {
+        alert('La geolocalización no está soportada por este navegador.');
+      }
       return;
     }
 
@@ -538,7 +542,7 @@ class ClientModal {
         console.error('Error obteniendo ubicación:', error);
 
         let errorMessage = 'No se pudo obtener la ubicación actual.';
-        switch(error.code) {
+        switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = 'Permisos de ubicación denegados. Habilita la geolocalización en tu navegador.';
             break;
@@ -550,7 +554,11 @@ class ClientModal {
             break;
         }
 
-        alert(errorMessage);
+        if (window.showError) {
+          window.showError(errorMessage);
+        } else {
+          alert(errorMessage);
+        }
 
         // Restaurar botón
         button.innerHTML = originalText;
@@ -581,7 +589,7 @@ class ClientModal {
 
   close() {
     console.log('🗺️ Cerrando ClientModal...');
-    
+
     const modal = document.getElementById('clientModal');
     // Ocultar modal respetando los estilos globales
     modal.classList.remove('show');
@@ -599,12 +607,12 @@ class ClientModal {
       this.map = null;
       this.marker = null;
     }
-    
+
     // Limpiar contenedor de Leaflet
     const container = document.getElementById('clientModalMap');
     if (container) {
       console.log('🧹 Limpiando contenedor en ClientModal...');
-      
+
       if (container._leaflet_id) {
         try {
           const leafletMap = L.DomUtil.get(container._leaflet_id);
@@ -616,7 +624,7 @@ class ClientModal {
         }
         container._leaflet_id = null;
       }
-      
+
       // Limpiar contenido y clases
       container.innerHTML = '';
       container.className = container.className.replace(/leaflet-\S+/g, '').trim();
@@ -624,7 +632,7 @@ class ClientModal {
 
     // Limpiar formulario
     document.getElementById('clientForm').reset();
-    
+
     console.log('🗺️ ClientModal cerrado y limpiado completamente');
   }
 
@@ -632,19 +640,19 @@ class ClientModal {
     e.preventDefault();
     e.stopPropagation(); // Evitar que se ejecuten otros handlers
     e.stopImmediatePropagation(); // Evitar que se ejecuten otros handlers en el mismo elemento
-    
+
     console.log('📝 ClientModal.handleSubmit ejecutándose');
     console.log('🔍 Formulario:', e.target.id);
     console.log('🔍 editingClientId (ClientModal):', this.editingClientId);
-    
+
     const submitButton = e.target.querySelector('button[type="submit"]');
     const submitButtonText = document.getElementById('clientSubmitButtonText');
     const originalText = submitButtonText.textContent;
-    
+
     // Mostrar loading
     submitButton.disabled = true;
     submitButtonText.textContent = 'Guardando...';
-    
+
     try {
       const formData = new FormData(e.target);
       const clientData = {
@@ -679,7 +687,8 @@ class ClientModal {
       if (this.editingClientId) {
         // Actualizar cliente existente
         console.log('🔄 Actualizando cliente ID:', this.editingClientId);
-        response = await fetch(`https://back-adm.fly.dev/api/clientes/${this.editingClientId}`, {
+        const baseUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+        response = await fetch(`${baseUrl}/api/clientes/${this.editingClientId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -689,7 +698,8 @@ class ClientModal {
         });
       } else {
         // Crear nuevo cliente
-        response = await fetch('https://back-adm.fly.dev/api/clientes', {
+        const baseUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+        response = await fetch(`${baseUrl}/api/clientes`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -706,6 +716,26 @@ class ClientModal {
 
       // Éxito: cerrar y refrescar sección reactiva
       this.close();
+
+      // Emitir evento para notificar a otros componentes que se creó/actualizó un cliente
+      if (window.eventBus && window.EVENTS) {
+        const result = await response.json();
+        if (this.editingClientId) {
+          // Cliente actualizado
+          window.eventBus.emit(window.EVENTS.CLIENTE_UPDATED, {
+            id: this.editingClientId,
+            cliente: result
+          });
+        } else {
+          // Cliente creado
+          window.eventBus.emit(window.EVENTS.CLIENTE_CREATED, {
+            id: result.id || result.codigo,
+            cliente: result
+          });
+        }
+        console.log('📡 Evento emitido:', this.editingClientId ? 'CLIENTE_UPDATED' : 'CLIENTE_CREATED');
+      }
+
       try {
         if (window.loadClientesSection) {
           await window.loadClientesSection();
@@ -721,10 +751,10 @@ class ClientModal {
       } catch (e) {
         console.warn('⚠️ Error intentando refrescar sección de clientes:', e);
       }
-      
+
       // Mostrar mensaje de éxito
       this.showSuccessMessage(this.editingClientId ? 'actualizado' : 'creado');
-      
+
     } catch (error) {
       console.error('Error:', error);
       this.showErrorMessage(error.message);
@@ -750,9 +780,9 @@ class ClientModal {
       font-weight: 500;
     `;
     message.textContent = `Cliente ${action} correctamente`;
-    
+
     document.body.appendChild(message);
-    
+
     setTimeout(() => {
       message.remove();
     }, 3000);
@@ -773,9 +803,9 @@ class ClientModal {
       font-weight: 500;
     `;
     message.textContent = `Error: ${errorText}`;
-    
+
     document.body.appendChild(message);
-    
+
     setTimeout(() => {
       message.remove();
     }, 5000);
@@ -814,14 +844,14 @@ class ClientModal {
   showSuccessMessage(action) {
     const message = `Cliente ${action} exitosamente`;
     console.log('✅', message);
-    
+
     // Mostrar notificación visual
     this.showNotification(message, 'success');
   }
 
   showErrorMessage(message) {
     console.error('❌ Error:', message);
-    
+
     // Mostrar notificación visual
     this.showNotification(message, 'error');
   }
@@ -842,7 +872,7 @@ class ClientModal {
       max-width: 300px;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     `;
-    
+
     // Colores según el tipo
     switch (type) {
       case 'success':
@@ -857,7 +887,7 @@ class ClientModal {
         notification.style.backgroundColor = '#3b82f6';
         notification.innerHTML = `ℹ️ ${message}`;
     }
-    
+
     // Agregar estilos de animación
     const style = document.createElement('style');
     style.textContent = `
@@ -882,14 +912,14 @@ class ClientModal {
         }
       }
     `;
-    
+
     if (!document.querySelector('#notification-styles')) {
       style.id = 'notification-styles';
       document.head.appendChild(style);
     }
-    
+
     document.body.appendChild(notification);
-    
+
     // Remover después de 3 segundos
     setTimeout(() => {
       notification.style.animation = 'slideOut 0.3s ease-out';

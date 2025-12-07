@@ -96,7 +96,7 @@ import Layout from '../layouts/Layout.astro';
 
       try {
         console.log('Enviando petición de login...');
-        const loginUrl = 'https://back-adm.fly.dev/auth/login';
+        const loginUrl = `${window.API_CONFIG?.BASE_URL || 'http://localhost:8001'}/auth/login`;
         console.log('URL de login:', loginUrl);
         
         const response = await fetch(loginUrl, {

@@ -1,0 +1,366 @@
+/* ===== MODAL DE CLIENTE ===== */
+
+/* Overlay del modal */
+#clientModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#clientModal.show {
+    opacity: 1;
+}
+
+/* Contenedor del modal */
+#clientModal .modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#clientModal.show .modal-content {
+    transform: scale(1);
+}
+
+/* Título del modal */
+#clientModalTitle {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+/* Formulario */
+#clientForm {
+    margin-top: 1.5rem;
+}
+
+/* Grupos de formulario */
+#clientForm .form-group {
+    margin-bottom: 1.25rem;
+}
+
+#clientForm .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+/* Inputs */
+#clientForm .form-input,
+#clientForm input[type="text"],
+#clientForm input[type="tel"],
+#clientForm input[type="number"],
+#clientForm textarea,
+#clientForm select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #111827;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+#clientForm .form-input:focus,
+#clientForm input:focus,
+#clientForm textarea:focus,
+#clientForm select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#clientForm .form-input::placeholder,
+#clientForm input::placeholder,
+#clientForm textarea::placeholder {
+    color: #9ca3af;
+}
+
+/* Grid de 2 columnas */
+#clientForm .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Textarea */
+#clientForm textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Select */
+#clientForm select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
+#clientForm select option {
+    color: #111827;
+    background: white;
+}
+
+/* Contenedor del mapa */
+#clientModalMap {
+    height: 300px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+/* Botones de ubicación */
+.btn-location {
+    padding: 0.625rem 1rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-location:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+    background: linear-gradient(135deg, #059669, #047857);
+}
+
+.btn-location:active {
+    transform: translateY(0);
+}
+
+.btn-location:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-location-clear {
+    padding: 0.625rem 1rem;
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-location-clear:hover {
+    background: #e5e7eb;
+    color: #111827;
+    transform: translateY(-1px);
+}
+
+.btn-location-clear:active {
+    transform: translateY(0);
+}
+
+/* Inputs de coordenadas */
+#clientLatitude,
+#clientLongitude {
+    font-size: 0.875rem !important;
+    padding: 0.5rem 0.75rem !important;
+}
+
+/* Texto de ayuda */
+#clientForm p {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0.5rem 0 0 0;
+    line-height: 1.4;
+}
+
+/* Botones del modal */
+.modal-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn-secondary {
+    padding: 0.75rem 1.5rem;
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-secondary:hover {
+    background-color: #e5e7eb;
+    color: #111827;
+    transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+    background-color: #d1d5db;
+}
+
+.btn-primary {
+    padding: 0.75rem 1.5rem !important;
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
+    width: auto !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35) !important;
+}
+
+.btn-primary:disabled {
+    background: #9ca3af !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Botón de cerrar */
+#clientModal button[onclick*="close()"] {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+#clientModal button[onclick*="close()"]:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #clientModal {
+        padding: 0.5rem;
+    }
+
+    #clientModal .modal-content {
+        padding: 1.5rem;
+        max-height: 95vh;
+    }
+
+    #clientModalTitle {
+        font-size: 1.5rem;
+    }
+
+    #clientForm .grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-buttons {
+        flex-direction: column-reverse;
+    }
+
+    .modal-buttons button {
+        width: 100%;
+    }
+
+    #clientModalMap {
+        height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    #clientModal .modal-content {
+        padding: 1rem;
+    }
+
+    #clientModalTitle {
+        font-size: 1.25rem;
+    }
+
+    #clientForm .form-input,
+    #clientForm input,
+    #clientForm textarea,
+    #clientForm select {
+        font-size: 0.9rem;
+        padding: 0.625rem 0.875rem;
+    }
+
+    #clientModalMap {
+        height: 200px;
+    }
+}
+
+/* Animación de entrada */
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+#clientModal.show .modal-content {
+    animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

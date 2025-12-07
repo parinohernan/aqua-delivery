@@ -11,24 +11,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function checkAuth() {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
-  
+
   if (!token || !userStr) {
     redirectToLogin();
     return;
   }
-  
+
   try {
     // Verificar que el token sea válido
-    const response = await fetch('https://back-adm.fly.dev/api/pedidos', {
+    const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+    const response = await fetch(`${apiUrl}/api/pedidos`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
-    
+
     if (!response.ok) {
       throw new Error('Token inválido');
     }
-    
+
     currentUser = JSON.parse(userStr);
     showMainApp();
     loadRoute(currentRoute);
@@ -73,16 +74,16 @@ document.addEventListener('click', (e) => {
 
 function navigateTo(route) {
   currentRoute = route;
-  
+
   // Actualizar botones activos
   document.querySelectorAll('.nav-button, .mobile-nav-button').forEach(btn => {
     btn.classList.remove('active');
   });
-  
+
   document.querySelectorAll(`[data-route="${route}"]`).forEach(btn => {
     btn.classList.add('active');
   });
-  
+
   loadRoute(route);
 }
 
@@ -90,7 +91,7 @@ function navigateTo(route) {
 async function loadRoute(route) {
   const contentArea = document.getElementById('contentArea');
   contentArea.innerHTML = '<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
-  
+
   try {
     switch (route) {
       case 'pedidos':
@@ -117,23 +118,24 @@ async function loadRoute(route) {
 // Cargar pedidos
 async function loadPedidos() {
   const token = localStorage.getItem('token');
-  const response = await fetch('https://back-adm.fly.dev/api/pedidos', {
+  const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+  const response = await fetch(`${apiUrl}/api/pedidos`, {
     headers: {
       'Authorization': `Bearer ${token}`
     }
   });
-  
+
   if (!response.ok) {
     throw new Error('Error cargando pedidos');
   }
-  
+
   const pedidos = await response.json();
   renderPedidos(pedidos);
 }
 
 function renderPedidos(pedidos) {
   const contentArea = document.getElementById('contentArea');
-  
+
   const html = `
     <div class="bg-white shadow rounded-lg">
       <div class="px-4 py-5 sm:p-6">
@@ -170,7 +172,7 @@ function renderPedidos(pedidos) {
       </div>
     </div>
   `;
-  
+
   contentArea.innerHTML = html;
 }
 
@@ -190,23 +192,24 @@ function getStatusColor(estado) {
 // Cargar clientes
 async function loadClientes() {
   const token = localStorage.getItem('token');
-  const response = await fetch('https://back-adm.fly.dev/api/clientes', {
+  const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+  const response = await fetch(`${apiUrl}/api/clientes`, {
     headers: {
       'Authorization': `Bearer ${token}`
     }
   });
-  
+
   if (!response.ok) {
     throw new Error('Error cargando clientes');
   }
-  
+
   const clientes = await response.json();
   renderClientes(clientes);
 }
 
 function renderClientes(clientes) {
   const contentArea = document.getElementById('contentArea');
-  
+
   const html = `
     <div class="bg-white shadow rounded-lg">
       <div class="px-4 py-5 sm:p-6">
@@ -226,30 +229,31 @@ function renderClientes(clientes) {
       </div>
     </div>
   `;
-  
+
   contentArea.innerHTML = html;
 }
 
 // Cargar productos
 async function loadProductos() {
   const token = localStorage.getItem('token');
-  const response = await fetch('https://back-adm.fly.dev/api/productos', {
+  const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+  const response = await fetch(`${apiUrl}/api/productos`, {
     headers: {
       'Authorization': `Bearer ${token}`
     }
   });
-  
+
   if (!response.ok) {
     throw new Error('Error cargando productos');
   }
-  
+
   const productos = await response.json();
   renderProductos(productos);
 }
 
 function renderProductos(productos) {
   const contentArea = document.getElementById('contentArea');
-  
+
   const html = `
     <div class="bg-white shadow rounded-lg">
       <div class="px-4 py-5 sm:p-6">
@@ -269,14 +273,14 @@ function renderProductos(productos) {
       </div>
     </div>
   `;
-  
+
   contentArea.innerHTML = html;
 }
 
 // Cargar pagos
 async function loadPagos() {
   const contentArea = document.getElementById('contentArea');
-  
+
   const html = `
     <div class="bg-white shadow rounded-lg">
       <div class="px-4 py-5 sm:p-6">
@@ -287,6 +291,6 @@ async function loadPagos() {
       </div>
     </div>
   `;
-  
+
   contentArea.innerHTML = html;
 }

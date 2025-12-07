@@ -32,7 +32,8 @@ class OrderModal {
   async loadProducts() {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('https://back-adm.fly.dev/api/productos', {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/productos`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -47,12 +48,20 @@ class OrderModal {
   async loadClients() {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('https://back-adm.fly.dev/api/clientes', {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/clientes`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         this.availableClients = await response.json();
         console.log('👥 Clientes cargados:', this.availableClients.length);
+
+        // Si el dropdown está visible, actualizarlo con los nuevos datos
+        const dropdown = document.getElementById('clientDropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+          console.log('🔄 Actualizando dropdown de clientes con nuevos datos...');
+          this.refreshClientDropdown();
+        }
       }
     } catch (error) {
       console.error('Error cargando clientes:', error);
@@ -62,7 +71,8 @@ class OrderModal {
   async loadZonas() {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('https://back-adm.fly.dev/api/zonas', {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/zonas`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -179,6 +189,49 @@ class OrderModal {
   }
 
   attachEventListeners() {
+    // Event listeners para productos
+    if (window.eventBus && window.EVENTS) {
+      // Escuchar cuando se crea un producto
+      window.eventBus.on(window.EVENTS.PRODUCTO_CREATED, (data) => {
+        console.log('📦 Nuevo producto creado, actualizando lista de productos en OrderModal...', data);
+        this.loadProducts();
+      });
+
+      // Escuchar cuando se actualiza un producto
+      window.eventBus.on(window.EVENTS.PRODUCTO_UPDATED, (data) => {
+        console.log('📦 Producto actualizado, actualizando lista de productos en OrderModal...', data);
+        this.loadProducts();
+      });
+
+      // Escuchar cuando se activa un producto
+      window.eventBus.on(window.EVENTS.PRODUCTO_ACTIVATED, (data) => {
+        console.log('📦 Producto activado, actualizando lista de productos en OrderModal...', data);
+        this.loadProducts();
+      });
+
+      // Escuchar cuando se entrega un pedido (para actualizar stock)
+      window.eventBus.on(window.EVENTS.PEDIDO_UPDATED, (data) => {
+        if (data.estado === 'entregado') {
+          console.log('📦 Pedido entregado, actualizando stock de productos en OrderModal...', data);
+          this.loadProducts();
+        }
+      });
+
+      // Escuchar cuando se crea un cliente
+      window.eventBus.on(window.EVENTS.CLIENTE_CREATED, (data) => {
+        console.log('👥 Nuevo cliente creado, actualizando lista de clientes en OrderModal...', data);
+        this.loadClients();
+      });
+
+      // Escuchar cuando se actualiza un cliente
+      window.eventBus.on(window.EVENTS.CLIENTE_UPDATED, (data) => {
+        console.log('👥 Cliente actualizado, actualizando lista de clientes en OrderModal...', data);
+        this.loadClients();
+      });
+
+      console.log('✅ Event listeners de productos configurados en OrderModal');
+    }
+
     const form = document.getElementById('orderForm');
     if (form) {
       form.addEventListener('submit', (e) => this.handleSubmit(e));
@@ -212,75 +265,121 @@ class OrderModal {
         this.close();
       }
     });
-
-    // Event listeners para actualización de productos
-    if (window.eventBus && window.EVENTS) {
-      // Escuchar cuando se crea un producto
-      window.eventBus.on(window.EVENTS.PRODUCTO_CREATED, (data) => {
-        console.log('📦 Nuevo producto creado, actualizando lista de productos en OrderModal...', data);
-        this.loadProducts().then(() => {
-          this.populateProductSelect();
-        });
-      });
-
-      // Escuchar cuando se actualiza un producto
-      window.eventBus.on(window.EVENTS.PRODUCTO_UPDATED, (data) => {
-        console.log('📦 Producto actualizado, actualizando lista de productos en OrderModal...', data);
-        this.loadProducts().then(() => {
-          this.populateProductSelect();
-        });
-      });
-
-      // Escuchar cuando se activa un producto
-      window.eventBus.on(window.EVENTS.PRODUCTO_ACTIVATED, (data) => {
-        console.log('📦 Producto activado, actualizando lista de productos en OrderModal...', data);
-        this.loadProducts().then(() => {
-          this.populateProductSelect();
-        });
-      });
-
-      console.log('✅ Event listeners de productos configurados en OrderModal');
-    }
   }
 
   show(orderData = null) {
     const modal = document.getElementById('orderModal');
     const title = document.getElementById('orderModalTitle');
-    
+
     console.log('📦 Abriendo modal de pedido:', orderData ? 'edición' : 'nuevo');
-    
+
     if (orderData) {
-      // Modo edición (por implementar)
-      this.editingOrderId = orderData.id;
-      title.textContent = 'Editar Pedido';
-      console.log('📝 Modo edición para pedido:', orderData.id);
+      // Modo edición / visualización
+      this.editingOrderId = orderData.codigo || orderData.id;
+      title.textContent = 'Detalles del Pedido';
+      console.log('📝 Visualizando pedido:', this.editingOrderId, orderData);
+
+      // 1. Cargar Cliente
+      // Intentar encontrar el cliente en la lista disponible
+      const clienteId = orderData.cliente_id || orderData.codigoCliente || (orderData.cliente ? orderData.cliente.codigo : null);
+      let client = null;
+
+      if (clienteId) {
+        client = this.availableClients.find(c => c.codigo == clienteId);
+      }
+
+      // Si no se encuentra por ID, intentar construirlo con los datos del pedido
+      if (!client) {
+        console.warn('⚠️ Cliente no encontrado en lista local, usando datos del pedido');
+        const c = orderData.cliente || {};
+        client = {
+          codigo: clienteId,
+          nombre: c.nombre || orderData.cliente_nombre || orderData.nombre || '',
+          apellido: c.apellido || orderData.cliente_apellido || orderData.apellido || '',
+          telefono: c.telefono || orderData.telefono || orderData.cliente_telefono || '',
+          direccion: c.direccion || orderData.direccion || orderData.cliente_direccion || '',
+          zona: c.zona || orderData.zona || ''
+        };
+      }
+
+      if (client) {
+        this.selectedClient = client;
+        this.showSelectedClient();
+
+        // Asegurar que el dropdown y el input estén ocultos
+        const dropdown = document.getElementById('clientDropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+
+        const searchInput = document.getElementById('clientSearch');
+        if (searchInput) searchInput.style.display = 'none';
+      }
+
+      // 2. Cargar Productos
+      this.orderItems = [];
+      const productos = orderData.productos || orderData.items || orderData.detalles || [];
+
+      if (productos && productos.length > 0) {
+        this.orderItems = productos.map(p => {
+          // Normalizar datos del producto
+          const productId = p.producto_id || p.productoId || p.codigo || p.id;
+          const cantidad = parseFloat(p.cantidad || 1);
+          const precio = parseFloat(p.precio || p.precio_unitario || 0);
+          const nombre = p.descripcion || p.nombre || p.producto_nombre || `Producto #${productId}`;
+
+          // Buscar stock real si es posible
+          const realProduct = this.availableProducts.find(prod => prod.codigo == productId);
+          const stock = realProduct ? parseInt(realProduct.stock || 0) : 999;
+
+          return {
+            productId: productId,
+            name: nombre,
+            price: precio,
+            quantity: cantidad,
+            subtotal: precio * cantidad,
+            stock: stock
+          };
+        });
+      }
+
+      this.updateOrderItemsList();
+      this.updateTotal();
+
+      // Cambiar texto del botón
+      const submitBtn = document.getElementById('orderSubmitButtonText');
+      if (submitBtn) submitBtn.textContent = 'Guardar Cambios';
+
     } else {
       // Modo creación - limpiar completamente
       this.editingOrderId = null;
       title.textContent = 'Nuevo Pedido';
       console.log('🆕 Modo creación - limpiando formulario');
-      
+
       // Limpiar inmediatamente antes de mostrar el modal
       this.resetForm();
+
+      const submitBtn = document.getElementById('orderSubmitButtonText');
+      if (submitBtn) submitBtn.textContent = 'Crear Pedido';
     }
-    
+
     // Mostrar el modal
     modal.classList.remove('hidden');
     modal.classList.add('show');
-    
+
     // Poblar select de productos después de mostrar el modal
     this.populateProductSelect();
-    
-    // Enfocar el primer campo
-    setTimeout(() => {
-      const clientSearch = document.getElementById('clientSearch');
-      if (clientSearch) {
-        clientSearch.focus();
-      }
-    }, 100);
-    
+
+    // Enfocar el primer campo SOLO si es nuevo pedido
+    if (!orderData) {
+      setTimeout(() => {
+        const clientSearch = document.getElementById('clientSearch');
+        if (clientSearch) {
+          clientSearch.focus();
+        }
+      }, 100);
+    }
+
     console.log('📦 Modal de pedido abierto correctamente');
-    
+
     // Debug del estado final
     this.debugState();
   }
@@ -292,7 +391,7 @@ class OrderModal {
     console.log('   📦 orderItems.length:', this.orderItems.length);
     console.log('   👤 selectedClient:', this.selectedClient);
     console.log('   📝 editingOrderId:', this.editingOrderId);
-    
+
     const container = document.getElementById('orderItemsList');
     if (container) {
       console.log('   🎨 Contenedor HTML:', container.innerHTML.substring(0, 100) + '...');
@@ -303,30 +402,30 @@ class OrderModal {
 
   resetForm() {
     console.log('🔄 Iniciando reset del formulario de pedido...');
-    
+
     // Limpiar formulario
     const form = document.getElementById('orderForm');
     if (form) {
       form.reset();
     }
-    
+
     // Limpiar estado interno
     this.selectedClient = null;
     this.orderItems = [];
     this.editingOrderId = null;
-    
+
     console.log('🔄 Estado interno limpiado, orderItems:', this.orderItems.length);
-    
+
     // Limpiar UI
     this.hideSelectedClient();
     this.hideClientDropdown();
-    
+
     // Limpiar campo de búsqueda de cliente
     const clientSearch = document.getElementById('clientSearch');
     if (clientSearch) {
       clientSearch.value = '';
     }
-    
+
     // Forzar limpieza visual inmediata del contenedor de items
     const container = document.getElementById('orderItemsList');
     if (container) {
@@ -338,10 +437,10 @@ class OrderModal {
         </div>
       `;
     }
-    
+
     // Actualizar total
     this.updateTotal();
-    
+
     console.log('🔄 Formulario de pedido reseteado completamente');
   }
 
@@ -450,7 +549,8 @@ class OrderModal {
     try {
       // Actualizar la zona del cliente en el backend
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://back-adm.fly.dev/api/clientes/${this.selectedClient.codigo}`, {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/clientes/${this.selectedClient.codigo}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -491,11 +591,36 @@ class OrderModal {
   }
 
   showClientDropdown() {
-    document.getElementById('clientDropdown').classList.remove('hidden');
+    const dropdown = document.getElementById('clientDropdown');
+    if (!dropdown) return;
+
+    // Si hay un término de búsqueda, mostrar resultados filtrados
+    const clientSearch = document.getElementById('clientSearch');
+    if (clientSearch && clientSearch.value.trim()) {
+      this.searchClients(clientSearch.value);
+    } else {
+      // Si no hay término de búsqueda, mostrar todos los clientes
+      this.renderClientDropdown(this.availableClients);
+    }
+
+    dropdown.classList.remove('hidden');
   }
 
   hideClientDropdown() {
-    document.getElementById('clientDropdown').classList.add('hidden');
+    const dropdown = document.getElementById('clientDropdown');
+    if (dropdown) {
+      dropdown.classList.add('hidden');
+    }
+  }
+
+  // Función para refrescar el dropdown con los datos más recientes
+  refreshClientDropdown() {
+    const clientSearch = document.getElementById('clientSearch');
+    if (clientSearch && clientSearch.value.trim()) {
+      this.searchClients(clientSearch.value);
+    } else {
+      this.renderClientDropdown(this.availableClients);
+    }
   }
 
   // ========== MANEJO DE PRODUCTOS ==========
@@ -530,13 +655,21 @@ class OrderModal {
     const quantity = parseInt(quantityInput.value) || 1;
 
     if (!productId) {
-      alert('Selecciona un producto');
+      if (window.showError) {
+        window.showError('Selecciona un producto');
+      } else {
+        alert('Selecciona un producto');
+      }
       return;
     }
 
     const product = this.availableProducts.find(p => p.codigo == productId);
     if (!product) {
-      alert('Producto no encontrado');
+      if (window.showError) {
+        window.showError('Producto no encontrado');
+      } else {
+        alert('Producto no encontrado');
+      }
       return;
     }
 
@@ -689,12 +822,20 @@ class OrderModal {
     e.preventDefault();
 
     if (!this.selectedClient) {
-      alert('Selecciona un cliente para el pedido');
+      if (window.showError) {
+        window.showError('Selecciona un cliente para el pedido');
+      } else {
+        alert('Selecciona un cliente para el pedido');
+      }
       return;
     }
 
     if (this.orderItems.length === 0) {
-      alert('Agrega al menos un producto al pedido');
+      if (window.showError) {
+        window.showError('Agrega al menos un producto al pedido');
+      } else {
+        alert('Agrega al menos un producto al pedido');
+      }
       return;
     }
 
@@ -720,7 +861,8 @@ class OrderModal {
       console.log('📦 Creando pedido:', orderData);
 
       const token = localStorage.getItem('token');
-      const response = await fetch('https://back-adm.fly.dev/api/pedidos', {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/pedidos`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -756,8 +898,10 @@ class OrderModal {
       }
 
       // Recargar la lista de pedidos (compatibilidad con index.astro)
-      if (typeof loadPedidos === 'function') {
-        await loadPedidos();
+      if (typeof window.loadPedidosData === 'function') {
+        await window.loadPedidosData();
+      } else if (typeof window.loadPedidos === 'function') {
+        await window.loadPedidos();
       }
 
       // Mostrar mensaje de éxito
@@ -848,3 +992,14 @@ class OrderModal {
 
 // Crear instancia global
 window.orderModal = new OrderModal();
+
+// Exponer función global para compatibilidad
+window.showCreateOrderModal = function () {
+  if (window.orderModal) {
+    window.orderModal.show();
+  } else {
+    console.error('❌ OrderModal no está disponible');
+  }
+};
+
+console.log('✅ OrderModal loaded and ready');

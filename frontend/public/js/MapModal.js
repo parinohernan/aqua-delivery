@@ -111,7 +111,7 @@ class MapModal {
     const modal = document.getElementById('mapModal');
     console.log('🗺️ Abriendo mapa de pedidos pendientes...');
     console.log('🔍 Modal element encontrado:', !!modal);
-    
+
     // Verificar si el modal ya está abierto
     if (modal && modal.classList.contains('show')) {
       console.log('⚠️ Modal ya está abierto, cerrando primero...');
@@ -119,13 +119,13 @@ class MapModal {
       // Esperar un momento para que se complete el cierre
       await new Promise(resolve => setTimeout(resolve, 300));
     }
-    
+
     if (modal) {
       modal.classList.remove('hidden');
       modal.classList.add('show');
-      
+
       console.log('🔍 Clases del modal después de show:', modal.className);
-      
+
       // Verificar estilos computados
       setTimeout(() => {
         const styles = window.getComputedStyle(modal);
@@ -141,23 +141,23 @@ class MapModal {
       console.error('❌ Modal element no encontrado');
       return;
     }
-    
+
     try {
       // Cargar pedidos pendientes con datos de clientes
       await this.loadPedidosPendientes();
-      
+
       // Esperar un momento para que el modal sea visible antes de inicializar el mapa
       await new Promise(resolve => setTimeout(resolve, 200));
-      
+
       // Inicializar el mapa
       await this.initializeMap();
-      
+
       // Agregar marcadores
       this.addMarkers();
-      
+
       // Mostrar estadísticas
       this.showStats();
-      
+
       // Forzar que Leaflet recalcule el tamaño del mapa
       if (this.map) {
         setTimeout(() => {
@@ -165,7 +165,7 @@ class MapModal {
           console.log('🗺️ Tamaño del mapa recalculado');
         }, 100);
       }
-      
+
     } catch (error) {
       console.error('❌ Error cargando mapa:', error);
       this.showError('Error cargando el mapa: ' + error.message);
@@ -175,19 +175,20 @@ class MapModal {
   async loadPedidosPendientes() {
     console.log('📋 Cargando pedidos pendientes...');
     const token = localStorage.getItem('token');
-    
+
     try {
-      const response = await fetch('https://back-adm.fly.dev/api/pedidos?estado=pendient', {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/pedidos?estado=pendient`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${await response.text()}`);
       }
-      
+
       this.pedidosPendientes = await response.json();
       console.log('✅ Pedidos pendientes cargados:', this.pedidosPendientes.length);
-      
+
     } catch (error) {
       console.error('❌ Error cargando pedidos:', error);
       throw error;
@@ -196,7 +197,7 @@ class MapModal {
 
   async initializeMap() {
     console.log('🗺️ Inicializando mapa...');
-    
+
     // Limpiar mapa existente si existe
     if (this.map) {
       console.log('🧹 Limpiando mapa existente...');
@@ -207,16 +208,16 @@ class MapModal {
       }
       this.map = null;
     }
-    
+
     // Verificar que el contenedor esté disponible
     const container = document.getElementById('mapContainer');
     if (!container) {
       throw new Error('Contenedor del mapa no encontrado');
     }
-    
+
     // Limpieza más robusta del contenedor
     console.log('🧹 Limpiando contenedor del mapa...');
-    
+
     // Destruir cualquier instancia de Leaflet
     if (container._leaflet_id) {
       console.log('🗑️ Destruyendo instancia Leaflet anterior...');
@@ -231,29 +232,29 @@ class MapModal {
       }
       container._leaflet_id = null;
     }
-    
+
     // Limpiar completamente el contenido del contenedor
     container.innerHTML = '';
-    
+
     // Remover cualquier clase de Leaflet que pueda quedar
     container.className = container.className.replace(/leaflet-\S+/g, '').trim();
-    
+
     // Agregar clase base para el contenedor
     container.className += ' map-container';
-    
+
     // Esperar un momento para asegurar que la limpieza se complete
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // Ubicación por defecto (Buenos Aires)
     const defaultLocation = [-34.6037, -58.3816];
-    
+
     try {
       // Inicializar mapa con configuración PWA (esperar resultado)
       this.map = await initMapPWA('mapContainer', {
         center: defaultLocation,
         zoom: 12
       });
-      
+
       if (!this.map) {
         console.error('❌ No se pudo inicializar el mapa');
         return;
@@ -262,10 +263,10 @@ class MapModal {
       console.error('💥 Error inicializando mapa:', error);
       return;
     }
-    
+
     // Intentar obtener ubicación del usuario
     this.addUserLocation();
-    
+
     console.log('✅ Mapa inicializado');
   }
 
@@ -275,12 +276,12 @@ class MapModal {
         (position) => {
           const userLat = position.coords.latitude;
           const userLng = position.coords.longitude;
-          
+
           console.log('📍 Ubicación del usuario obtenida:', userLat, userLng);
-          
+
           // Guardar ubicación del usuario para la ruta optimizada
           this.userLocation = { lat: userLat, lng: userLng };
-          
+
           // Agregar marcador del usuario
           const userIcon = L.divIcon({
             html: `
@@ -298,7 +299,7 @@ class MapModal {
             iconSize: [20, 20],
             iconAnchor: [10, 10]
           });
-          
+
           this.userMarker = L.marker([userLat, userLng], { icon: userIcon })
             .addTo(this.map)
             .bindPopup(`
@@ -307,7 +308,7 @@ class MapModal {
                 <small>${userLat.toFixed(6)}, ${userLng.toFixed(6)}</small>
               </div>
             `);
-          
+
           // Centrar el mapa en la ubicación del usuario si no hay pedidos
           if (this.pedidosPendientes.length === 0) {
             this.map.setView([userLat, userLng], 15);
@@ -323,14 +324,14 @@ class MapModal {
 
   addMarkers() {
     console.log('📍 Agregando marcadores de clientes...');
-    
+
     // Limpiar marcadores anteriores
     this.markers.forEach(marker => this.map.removeLayer(marker));
     this.markers = [];
-    
+
     const clientesConGeo = [];
     const clientesSinGeo = [];
-    
+
     this.pedidosPendientes.forEach(pedido => {
       const cliente = {
         nombre: pedido.cliente_nombre || pedido.nombre || 'Cliente sin nombre',
@@ -341,14 +342,14 @@ class MapModal {
         pedidoId: pedido.id || pedido.codigo,
         total: parseFloat(pedido.total || 0)
       };
-      
+
       if (cliente.lat && cliente.lng && !isNaN(cliente.lat) && !isNaN(cliente.lng)) {
         clientesConGeo.push(cliente);
       } else {
         clientesSinGeo.push(cliente);
       }
     });
-    
+
     // Agregar marcadores para clientes con geolocalización
     clientesConGeo.forEach(cliente => {
       const icon = L.divIcon({
@@ -366,7 +367,7 @@ class MapModal {
         iconSize: [16, 16],
         iconAnchor: [8, 8]
       });
-      
+
       const marker = L.marker([cliente.lat, cliente.lng], { icon })
         .addTo(this.map)
         .bindPopup(`
@@ -379,18 +380,18 @@ class MapModal {
             <small style="color: #6b7280;">📍 ${cliente.lat.toFixed(6)}, ${cliente.lng.toFixed(6)}</small>
           </div>
         `);
-      
+
       this.markers.push(marker);
     });
-    
+
     // Mostrar clientes sin geolocalización
     this.showClientesSinGeo(clientesSinGeo);
-    
+
     // Ajustar vista para mostrar todos los marcadores
     if (clientesConGeo.length > 0) {
       this.fitAllMarkers();
     }
-    
+
     console.log(`✅ Marcadores agregados: ${clientesConGeo.length} con geo, ${clientesSinGeo.length} sin geo`);
   }
 
@@ -398,10 +399,10 @@ class MapModal {
     const container = document.getElementById('clientesSinGeo');
     const count = document.getElementById('countSinGeo');
     const lista = document.getElementById('listaSinGeo');
-    
+
     if (clientesSinGeo.length > 0) {
       count.textContent = clientesSinGeo.length;
-      
+
       lista.innerHTML = clientesSinGeo.map(cliente => `
         <div style="padding: 0.75rem; border: 1px solid #f3f4f6; border-radius: 0.375rem; margin-bottom: 0.5rem; background: white;">
           <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -418,7 +419,7 @@ class MapModal {
           </div>
         </div>
       `).join('');
-      
+
       container.style.display = 'block';
     } else {
       container.style.display = 'none';
@@ -431,7 +432,7 @@ class MapModal {
     const totalMonto = this.pedidosPendientes.reduce((sum, p) => sum + parseFloat(p.total || 0), 0);
     const conGeo = this.markers.length;
     const sinGeo = totalPedidos - conGeo;
-    
+
     container.innerHTML = `
       <div style="padding: 1rem; background: white; border: 1px solid #e5e7eb; border-radius: 0.375rem; text-align: center;">
         <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;">${totalPedidos}</div>
@@ -460,7 +461,11 @@ class MapModal {
       this.map.setView(this.userMarker.getLatLng(), 15);
       this.userMarker.openPopup();
     } else {
-      alert('No se pudo obtener tu ubicación');
+      if (window.showError) {
+        window.showError('No se pudo obtener tu ubicación');
+      } else {
+        alert('No se pudo obtener tu ubicación');
+      }
     }
   }
 
@@ -487,13 +492,13 @@ class MapModal {
 
   close() {
     console.log('🗺️ Cerrando mapa...');
-    
+
     const modal = document.getElementById('mapModal');
     if (modal) {
       modal.classList.remove('show');
       modal.classList.add('hidden');
     }
-    
+
     // Limpiar el mapa completamente
     if (this.map) {
       console.log('🧹 Limpiando mapa al cerrar...');
@@ -504,12 +509,12 @@ class MapModal {
       }
       this.map = null;
     }
-    
+
     // Limpiar el contenedor de Leaflet de forma más robusta
     const container = document.getElementById('mapContainer');
     if (container) {
       console.log('🧹 Limpiando contenedor...');
-      
+
       // Destruir cualquier instancia de Leaflet
       if (container._leaflet_id) {
         try {
@@ -522,11 +527,11 @@ class MapModal {
         }
         container._leaflet_id = null;
       }
-      
+
       // Limpiar contenido y clases
       container.innerHTML = '';
       container.className = container.className.replace(/leaflet-\S+/g, '').trim();
-      
+
       // Restaurar el contenido original del contenedor
       container.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280;">
@@ -537,16 +542,16 @@ class MapModal {
         </div>
       `;
     }
-    
+
     // Limpiar marcadores y datos
     this.markers = [];
     this.pedidosPendientes = [];
     this.userMarker = null;
     this.userLocation = null;
-    
+
     // Limpiar ruta si existe
     this.clearRoute();
-    
+
     console.log('🗺️ Mapa cerrado y limpiado completamente');
   }
 
@@ -554,14 +559,22 @@ class MapModal {
 
   async generateOptimizedRoute() {
     console.log('🛣️ Generando ruta optimizada...');
-    
+
     if (!this.userLocation) {
-      alert('❌ Necesitamos tu ubicación actual para generar la ruta optimizada');
+      if (window.showError) {
+        window.showError('Necesitamos tu ubicación actual para generar la ruta optimizada');
+      } else {
+        alert('❌ Necesitamos tu ubicación actual para generar la ruta optimizada');
+      }
       return;
     }
 
     if (this.markers.length === 0) {
-      alert('❌ No hay pedidos pendientes para generar una ruta');
+      if (window.showError) {
+        window.showError('No hay pedidos pendientes para generar una ruta');
+      } else {
+        alert('❌ No hay pedidos pendientes para generar una ruta');
+      }
       return;
     }
 
@@ -579,7 +592,7 @@ class MapModal {
 
       // Generar ruta optimizada usando algoritmo del viajante
       const optimizedOrder = this.solveTSP(points);
-      
+
       // Crear la ruta con OSRM
       await this.createRouteWithOSRM(optimizedOrder);
 
@@ -591,20 +604,20 @@ class MapModal {
 
   solveTSP(points) {
     console.log('🧮 Resolviendo problema del viajante...');
-    
+
     // Algoritmo simple: Nearest Neighbor (Vecino más cercano)
     const unvisited = [...points];
     const route = [];
-    
+
     // Empezar desde la ubicación del usuario
     let current = unvisited.shift(); // Tu ubicación
     route.push(current);
-    
+
     while (unvisited.length > 0) {
       // Encontrar el punto más cercano
       let nearestIndex = 0;
       let minDistance = this.calculateDistance(current, unvisited[0]);
-      
+
       for (let i = 1; i < unvisited.length; i++) {
         const distance = this.calculateDistance(current, unvisited[i]);
         if (distance < minDistance) {
@@ -612,12 +625,12 @@ class MapModal {
           nearestIndex = i;
         }
       }
-      
+
       // Agregar el punto más cercano a la ruta
       current = unvisited.splice(nearestIndex, 1)[0];
       route.push(current);
     }
-    
+
     console.log('✅ Ruta optimizada generada:', route.length, 'puntos');
     return route;
   }
@@ -627,47 +640,47 @@ class MapModal {
     const R = 6371; // Radio de la Tierra en km
     const dLat = (point2.lat - point1.lat) * Math.PI / 180;
     const dLon = (point2.lng - point1.lng) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 
   async createRouteWithOSRM(optimizedOrder) {
     console.log('🗺️ Creando ruta con OSRM...');
-    
+
     try {
       // Limpiar ruta anterior
       this.clearRoute();
-      
+
       // Crear waypoints para OSRM
       const waypoints = optimizedOrder.map(point => `${point.lng},${point.lat}`).join(';');
       const url = `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`;
-      
+
       console.log('🌐 URL OSRM:', url);
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Error OSRM: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
-        
+
         // Dibujar la ruta en el mapa
         this.drawRoute(route.geometry, optimizedOrder);
-        
+
         // Mostrar información de la ruta
         this.showRouteInfo(route);
-        
+
         console.log('✅ Ruta creada exitosamente');
       } else {
         throw new Error('No se pudo generar la ruta');
       }
-      
+
     } catch (error) {
       console.error('💥 Error creando ruta con OSRM:', error);
       this.showRouteError('Error conectando con el servicio de rutas');
@@ -676,7 +689,7 @@ class MapModal {
 
   drawRoute(geometry, optimizedOrder) {
     console.log('🎨 Dibujando ruta en el mapa...');
-    
+
     // Crear capa de ruta
     this.routeLayer = L.geoJSON(geometry, {
       style: {
@@ -685,7 +698,7 @@ class MapModal {
         opacity: 0.8
       }
     }).addTo(this.map);
-    
+
     // Crear marcadores numerados para la ruta
     this.routeMarkers = optimizedOrder.map((point, index) => {
       const isStart = index === 0;
@@ -712,18 +725,18 @@ class MapModal {
         iconSize: [24, 24],
         iconAnchor: [12, 12]
       });
-      
+
       const marker = L.marker(point, { icon: icon }).addTo(this.map);
-      
+
       // Popup con información
-      const popupContent = isStart ? 
+      const popupContent = isStart ?
         '<strong>📍 Tu ubicación</strong><br><small>Punto de inicio</small>' :
         `<strong>📦 Pedido #${index}</strong><br><small>Parada ${index}</small>`;
-      
+
       marker.bindPopup(popupContent);
       return marker;
     });
-    
+
     // Ajustar vista para mostrar toda la ruta
     if (this.routeLayer) {
       this.map.fitBounds(this.routeLayer.getBounds().pad(0.1));
@@ -733,7 +746,7 @@ class MapModal {
   showRouteInfo(route) {
     const duration = Math.round(route.duration / 60); // minutos
     const distance = Math.round(route.distance / 1000 * 10) / 10; // km
-    
+
     // Crear o actualizar panel de información
     let infoPanel = document.getElementById('routeInfo');
     if (!infoPanel) {
@@ -753,7 +766,7 @@ class MapModal {
       `;
       document.getElementById('mapContainer').appendChild(infoPanel);
     }
-    
+
     infoPanel.innerHTML = `
       <div style="font-weight: bold; margin-bottom: 10px; color: #f59e0b;">
         🛣️ Ruta Optimizada
@@ -810,38 +823,42 @@ class MapModal {
     if (loadingDiv) {
       loadingDiv.remove();
     }
-    
+
     // Mostrar error
-    alert(`❌ ${message}`);
+    if (window.showError) {
+      window.showError(message);
+    } else {
+      alert(`❌ ${message}`);
+    }
   }
 
   clearRoute() {
     console.log('🗑️ Limpiando ruta...');
-    
+
     // Remover capa de ruta
     if (this.routeLayer) {
       this.map.removeLayer(this.routeLayer);
       this.routeLayer = null;
     }
-    
+
     // Remover marcadores de ruta
     this.routeMarkers.forEach(marker => {
       this.map.removeLayer(marker);
     });
     this.routeMarkers = [];
-    
+
     // Remover panel de información
     const infoPanel = document.getElementById('routeInfo');
     if (infoPanel) {
       infoPanel.remove();
     }
-    
+
     // Remover indicador de carga
     const loadingDiv = document.getElementById('routeLoading');
     if (loadingDiv) {
       loadingDiv.remove();
     }
-    
+
     console.log('✅ Ruta limpiada');
   }
 }

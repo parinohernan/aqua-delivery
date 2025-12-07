@@ -7,13 +7,17 @@ const PORT = process.env.PORT || 8001;
 
 // Middlewares
 app.use(cors({
-  origin: function(origin, callback) {
-    // Permitir cualquier origen localhost o netlify.app
-    if (!origin || 
-        origin.startsWith('http://localhost:') || 
-        origin.startsWith('http://127.0.0.1:') ||
-        origin.endsWith('.netlify.app') ||
-        origin === 'https://aquadeliverymanager.netlify.app') {
+  origin: function (origin, callback) {
+    // Permitir cualquier origen localhost, IPs locales, netlify.app o koyeb.app
+    if (!origin ||
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:') ||
+      origin.startsWith('http://192.168.') ||
+      origin.startsWith('http://10.') ||
+      origin.startsWith('http://172.') ||
+      origin.endsWith('.netlify.app') ||
+      origin.endsWith('.koyeb.app') ||
+      origin === 'https://aquadeliverymanager.netlify.app') {
       callback(null, true);
     } else {
       console.log('CORS bloqueado para origen:', origin);
@@ -38,9 +42,11 @@ app.use('/api/informes', require('./routes/informes'));
 
 // Health check
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', message: 'API Backend funcionando correctamente' });
+  res.json({ status: 'OK', message: 'API Backend funcionando correctamente' });
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 API Backend corriendo en http://localhost:${PORT}`);
+// Escuchar en todas las interfaces de red (0.0.0.0) para permitir acceso desde la red local
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 API Backend corriendo en http://localhost:${PORT}`);
+  console.log(`📱 Accesible desde la red en http://192.168.1.109:${PORT}`);
 });

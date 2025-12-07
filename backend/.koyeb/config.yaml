@@ -1,0 +1,44 @@
+name: aqua-delivery-backend
+type: web
+
+# Build configuration
+build:
+  buildpack: nodejs
+  
+# Runtime configuration
+instance:
+  type: nano # Free tier
+
+# Port configuration
+ports:
+  - port: 8001
+    protocol: http
+
+# Health check
+health_check:
+  http:
+    path: /health
+    port: 8001
+  grace_period: 30
+  interval: 60
+  restart_limit: 3
+  timeout: 10
+
+# Environment variables (configure these in Koyeb dashboard)
+env:
+  - name: NODE_ENV
+    value: production
+  - name: PORT
+    value: "8001"
+  # DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, JWT_SECRET
+  # These should be set as secrets in Koyeb dashboard
+
+# Scaling
+scaling:
+  min: 1
+  max: 1
+
+# Region (choose closest to your Google Cloud VM)
+regions:
+  - fra # Frankfurt (Europe)
+  # Other options: was (Washington), sin (Singapore)

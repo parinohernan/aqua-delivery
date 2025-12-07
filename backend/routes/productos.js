@@ -16,6 +16,7 @@ router.get('/', verifyToken, async (req, res) => {
                 stock,
                 esRetornable,
                 activo,
+                imageURL,
                 codigoEmpresa
             FROM productos
             WHERE codigoEmpresa = ?
@@ -28,17 +29,18 @@ router.get('/', verifyToken, async (req, res) => {
         }
 
         sql += ' ORDER BY activo DESC, descripcion';
-        
+
         const productos = await query(sql, params);
 
         console.log('✅ Productos encontrados:', productos.length);
         if (productos.length > 0) {
             console.log('📋 Columnas disponibles:', Object.keys(productos[0]));
-            console.log('📋 Primer producto:', productos[0]);
+            console.log('📸 imageURL del primer producto:', productos[0].imageURL);
+            console.log('📋 Primer producto completo:', productos[0]);
         }
 
         res.json(productos);
-        
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -47,22 +49,22 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear producto
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { descripcion, precio, stock, esRetornable, activo } = req.body;
+        const { descripcion, precio, stock, esRetornable, activo, imageURL } = req.body;
 
-        console.log('📝 Creando producto:', { descripcion, precio, stock, esRetornable, activo });
+        console.log('📝 Creando producto:', { descripcion, precio, stock, esRetornable, activo, imageURL });
 
         const result = await query(
-            'INSERT INTO productos (descripcion, precio, stock, esRetornable, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?)',
-            [descripcion, precio, stock, esRetornable, req.user.codigoEmpresa, activo || 1]
+            'INSERT INTO productos (descripcion, precio, stock, esRetornable, imageURL, codigoEmpresa, activo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [descripcion, precio, stock, esRetornable, imageURL || null, req.user.codigoEmpresa, activo || 1]
         );
-        
+
         const producto = await query(
             'SELECT * FROM productos WHERE codigo = ? AND codigoEmpresa = ?',
             [result.insertId, req.user.codigoEmpresa]
         );
-        
+
         res.json(producto[0]);
-        
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -71,22 +73,22 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar producto
 router.put('/:id', verifyToken, async (req, res) => {
     try {
-        const { descripcion, precio, stock, esRetornable, activo } = req.body;
+        const { descripcion, precio, stock, esRetornable, activo, imageURL } = req.body;
 
-        console.log('📝 Actualizando producto:', req.params.id, { descripcion, precio, stock, esRetornable, activo });
+        console.log('📝 Actualizando producto:', req.params.id, { descripcion, precio, stock, esRetornable, activo, imageURL });
 
         await query(
-            'UPDATE productos SET descripcion = ?, precio = ?, stock = ?, esRetornable = ?, activo = ? WHERE codigo = ? AND codigoEmpresa = ?',
-            [descripcion, precio, stock, esRetornable, activo, req.params.id, req.user.codigoEmpresa]
+            'UPDATE productos SET descripcion = ?, precio = ?, stock = ?, esRetornable = ?, activo = ?, imageURL = ? WHERE codigo = ? AND codigoEmpresa = ?',
+            [descripcion, precio, stock, esRetornable, activo, imageURL || null, req.params.id, req.user.codigoEmpresa]
         );
-        
+
         const producto = await query(
             'SELECT * FROM productos WHERE codigo = ? AND codigoEmpresa = ?',
             [req.params.id, req.user.codigoEmpresa]
         );
-        
+
         res.json(producto[0]);
-        
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

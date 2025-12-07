@@ -1,0 +1,21 @@
+# 🤖 Dependencias para el Agente de Demo de AquaDelivery
+# =====================================================
+
+# Automatización web
+selenium==4.15.2
+webdriver-manager==4.0.1
+
+# Para grabación de video (opcional)
+opencv-python==4.8.1.78
+Pillow==10.1.0
+
+# Para procesamiento de datos
+pandas==2.1.4
+numpy==1.25.2
+
+# Para logging y debugging
+colorama==0.4.6
+
+
+
+

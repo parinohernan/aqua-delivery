@@ -1,0 +1,131 @@
+---
+---
+<div id="informesSection" class="section-content" style="display: none;">
+  <div class="informes-section">
+    <div class="informes-header">
+      <div class="header-content">
+        <h2 class="section-title">
+          <span class="icon">📊</span>
+          Informes y Estadísticas
+        </h2>
+        <p class="section-subtitle">Analiza el rendimiento de tu negocio</p>
+      </div>
+    </div>
+
+    <div class="informes-container">
+      <div class="filters-panel">
+        <div class="filters-content">
+          <div class="filter-group">
+            <label class="filter-label">Fecha Desde</label>
+            <input type="date" id="fechaDesde" class="filter-input">
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Fecha Hasta</label>
+            <input type="date" id="fechaHasta" class="filter-input">
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Tipo de Informe</label>
+            <select id="tipoInforme" class="filter-select">
+              <option value="resumen">Resumen General</option>
+              <option value="detallado">Detalle por Cliente</option>
+            </select>
+          </div>
+          
+          <button onclick="window.generarInforme()" class="btn-create">
+            Generar Informe
+          </button>
+        </div>
+      </div>
+
+      <div id="informeResultados" class="informe-resultados">
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <h4>Genera tu primer informe</h4>
+          <p>Selecciona un rango de fechas y el tipo de informe para comenzar</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.initInformesSection = function() {
+    console.log('📊 Inicializando sección de informes...');
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    const firstDay = new Date();
+    firstDay.setDate(1);
+    const firstDayStr = firstDay.toISOString().split('T')[0];
+    
+    const fDesde = document.getElementById('fechaDesde');
+    const fHasta = document.getElementById('fechaHasta');
+    
+    if (fDesde && !fDesde.value) fDesde.value = firstDayStr;
+    if (fHasta && !fHasta.value) fHasta.value = today;
+  };
+
+  window.generarInforme = async function() {
+    const fechaDesde = document.getElementById('fechaDesde')?.value;
+    const fechaHasta = document.getElementById('fechaHasta')?.value;
+    const tipoInforme = document.getElementById('tipoInforme')?.value;
+    const resultadosDiv = document.getElementById('informeResultados');
+
+    if (!fechaDesde || !fechaHasta) {
+      alert('Selecciona ambas fechas');
+      return;
+    }
+
+    try {
+      resultadosDiv.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Generando...</p></div>';
+      
+      const token = localStorage.getItem('token');
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/informes/ventas?fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}&tipo=${tipoInforme}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Error generando informe');
+
+      const datos = await response.json();
+      
+      if (tipoInforme === 'resumen') {
+        mostrarResumen(datos, resultadosDiv);
+      } else {
+        mostrarDetalle(datos, resultadosDiv);
+      }
+      
+    } catch (error) {
+      resultadosDiv.innerHTML = `<div class="error-state"><p>${error.message}</p></div>`;
+    }
+  };
+
+  function mostrarResumen(datos, container) {
+    container.innerHTML = `
+      <div class="informe-card">
+        <h4>📈 Resumen de Ventas</h4>
+        <div class="resumen-stats">
+          <div class="stat-item">
+            <div class="stat-value">${datos.totalPedidos || 0}</div>
+            <div class="stat-label">Pedidos</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">$${(datos.totalVentas || 0).toLocaleString('es-AR')}</div>
+            <div class="stat-label">Ventas</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function mostrarDetalle(datos, container) {
+    container.innerHTML = `
+      <div class="informe-card">
+        <h4>📋 Detalle por Cliente</h4>
+        <p>Se encontraron ${datos.clientes?.length || 0} clientes en el período.</p>
+        <!-- Aquí iría la tabla detallada -->
+      </div>
+    `;
+  }
+</script>

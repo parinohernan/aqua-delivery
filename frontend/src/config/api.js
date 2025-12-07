@@ -1,30 +1,26 @@
 // Configuración de la API para el frontend
 const API_CONFIG = {
-  // URL base del backend
-  BASE_URL: 'https://back-adm.fly.dev',
-  
+  // URL base del backend - CAMBIAR A PRODUCCIÓN ANTES DE DEPLOY
+  BASE_URL: 'http://localhost:8001', // Usar 'https://back-adm.fly.dev' para producción
+
   // Endpoints
   ENDPOINTS: {
-    LOGIN: '/auth/login',
-    CLIENTES: '/api/clientes',
+    AUTH: '/auth',
     PRODUCTOS: '/api/productos',
-    PEDIDOS: '/api/pedidos',
-    PAGOS: '/api/pagos',
-    ZONAS: '/api/zonas',
-    TIPOS_PAGO: '/api/tiposdepago',
-    INFORMES: '/api/informes'
+    CLIENTES: '/api/clientes',
+    PEDIDOS: '/api/pedidos'
   },
-  
+
   // Función para obtener URL completa
-  getUrl: function(endpoint) {
+  getUrl: function (endpoint) {
     return this.BASE_URL + endpoint;
   },
-  
+
   // Función para obtener URL de endpoint específico
-  getEndpointUrl: function(endpointName) {
+  getEndpointUrl: function (endpointName) {
     const endpoint = this.ENDPOINTS[endpointName];
     if (!endpoint) {
-      throw new Error(`Endpoint no encontrado: ${endpointName}`);
+      throw new Error(`Endpoint no encontrado: ${endpointName} `);
     }
     return this.getUrl(endpoint);
   }

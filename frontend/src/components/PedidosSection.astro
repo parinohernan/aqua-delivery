@@ -1,366 +1,588 @@
 ---
-// Componente para la gestión de pedidos
 ---
-
-<div id="pedidosSection">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-    <h3 class="content-title" style="margin-bottom: 0;">Pedidos</h3>
-    <button onclick="showCreatePedidoModal()" class="btn-primary" style="width: auto; padding: 0.5rem 1rem;">
-      + Nuevo Pedido
-    </button>
-  </div>
-  
-  <div style="margin-bottom: 1.5rem;">
-    <!-- Filtros principales -->
-    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem;">
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <label style="font-weight: 500; color: #374151; font-size: 0.875rem;">Estado:</label>
-        <select id="filterEstado" onchange="filterPedidos()" class="form-input" style="width: auto; min-width: 140px;">
-          <option value="">Todos los estados</option>
-          <option value="pendient" selected>📦 Pendientes</option>
-          <option value="proceso">🔄 En Proceso</option>
-          <option value="entregad">✅ Entregados</option>
-          <option value="anulado">❌ Anulados</option>
-        </select>
+<div id="pedidosSection" class="section-content" style="display: none;">
+  <div class="pedidos-section">
+    <!-- Header de la sección -->
+    <div class="pedidos-header">
+      <div class="header-content">
+        <h1 class="section-title">
+          <span class="icon">📦</span>
+          Pedidos
+        </h1>
       </div>
-      
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <label style="font-weight: 500; color: #374151; font-size: 0.875rem;">Fecha:</label>
-        <input 
-          type="date" 
-          id="filterFecha" 
-          onchange="filterPedidos()" 
-          class="form-input" 
-          style="width: auto;"
-        />
-      </div>
-      
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <label style="font-weight: 500; color: #374151; font-size: 0.875rem;">Cliente:</label>
-        <input 
-          type="text" 
-          id="filterCliente" 
-          placeholder="Buscar por cliente..."
-          onkeyup="filterPedidos()" 
-          class="form-input" 
-          style="width: auto; min-width: 200px;"
-        />
-      </div>
-      
-      <button 
-        onclick="clearPedidosFilters()" 
-        class="btn-secondary" 
-        style="padding: 0.5rem 1rem; font-size: 0.875rem;"
-      >
-        🗑️ Limpiar filtros
-      </button>
     </div>
-    
-    <!-- Información de resultados -->
-    <div id="pedidosInfo" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; font-size: 0.875rem; color: #6b7280;">
-      <span id="pedidosCount">Cargando pedidos...</span>
-      <span id="pedidosFilters">Filtros: Pendientes por defecto</span>
-    </div>
-  </div>
-  
-  <div id="pedidosList" style="display: grid; gap: 1rem;">
-    <!-- Los pedidos se cargarán aquí dinámicamente -->
-  </div>
-</div>
 
-<!-- Modal de detalle de pedido -->
-<div id="pedidoDetailModal" class="hidden modal-overlay">
-  <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h4 class="modal-title" style="margin: 0;">Detalle de Pedido</h4>
-      <button onclick="closePedidoDetailModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
-    </div>
-    <div id="pedidoDetailContent"></div>
-    <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
-      <button onclick="closePedidoDetailModal()" class="btn-secondary">Cerrar</button>
-    </div>
-  </div>
-  
-</div>
-
-<script>
-// Variables globales para pedidos
-let currentPedidos: any[] = [];
-let allPedidos: any[] = [];
-
-// Cargar pedidos
-async function loadPedidos() {
-  console.log('📦 Cargando pedidos...');
-  const token = localStorage.getItem('token');
-  
-  try {
-    const response = await fetch('/api/pedidos', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error ${response.status}: ${errorText}`);
-    }
-    
-    const pedidos = await response.json();
-    console.log('✅ Pedidos cargados:', pedidos.length, 'pedidos');
-    allPedidos = pedidos;
-    
-    // Aplicar filtro por defecto (pendientes)
-    if (pedidos.length > 0) {
-      // Configurar filtro por defecto
-      const estadoSelect = document.getElementById('filterEstado') as HTMLSelectElement;
-      if (estadoSelect) {
-        estadoSelect.value = 'pendient';
-      }
-      
-      // Aplicar filtros iniciales
-      filterPedidos();
-    } else {
-      // No hay pedidos en absoluto - mostrar mensaje inicial
-      const pedidosList = document.getElementById('pedidosList');
-      if (pedidosList) {
-        pedidosList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">No hay pedidos registrados</div>';
-      }
-      
-      // Actualizar información
-      updatePedidosInfo([], '', '', '');
-    }
-  } catch (error) {
-    console.error('💥 Error cargando pedidos:', error);
-    const pedidosList = document.getElementById('pedidosList');
-    if (pedidosList) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      pedidosList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #dc2626;">Error cargando pedidos: ' + errorMessage + '</div>';
-    }
-  }
-}
-
-function renderPedidosList(pedidos) {
-  const pedidosList = document.getElementById('pedidosList');
-  if (!pedidosList) return;
-
-  pedidosList.innerHTML = pedidos.map(pedido => {
-    const id = pedido.id;
-    const nombreCompleto = pedido.cliente_nombre || `${pedido.nombre || ''} ${pedido.apellido || ''}`.trim();
-    const direccion = pedido.direccion || '';
-    return `
-      <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: white;">
-        <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
-          <div style="flex: 1;">
-            <h4 style="font-weight: 700; color: #111827; margin: 0 0 0.25rem 0;">#${id}</h4>
-            <p style="font-size: 0.95rem; color: #111827; margin: 0 0 0.25rem 0;">${nombreCompleto || 'Cliente'}</p>
-            <p style="font-size: 0.875rem; color: #4b5563; margin: 0;">${direccion}</p>
+    <!-- Contenedor principal -->
+    <div class="pedidos-container">
+      <!-- Panel de acciones -->
+      <div class="actions-panel">
+        <div class="actions-header">
+          <h3>🎯 Acciones Rápidas</h3>
+        </div>
+        <div class="actions-content">
+          <!-- Campo de búsqueda -->
+          <div class="search-group">
+            <div class="search-input-wrapper">
+              <span class="search-icon">🔍</span>
+              <input 
+                type="text" 
+                id="pedidoClienteFilter" 
+                class="search-input"
+                placeholder="Buscar cliente..."
+              />
+            </div>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 0.25rem; min-width: 220px; align-items: flex-end;">
-            <button onclick="viewPedido(${id})" class="btn-small" style="background: #374151; color: white;">Ver detalle</button>
-            <button onclick="cancelPedido(${id})" class="btn-small" style="background: #ef4444; color: white;">Anular</button>
-            <button onclick="(window.startDelivery ? window.startDelivery(${id}) : (window.deliveryModal ? window.deliveryModal.show(${id}) : alert('Modal de entrega no disponible')))" class="btn-small" style="background: #10b981; color: white;">Entregar</button>
+
+          <div class="action-buttons">
+            <button onclick="window.showCreateOrderModal()" class="btn-create">
+              ➕ Nuevo Pedido
+            </button>
+
+            <button onclick="window.showDeliveryMap()" class="btn-export">
+              🗺️ Mapa de Entregas
+            </button>
           </div>
         </div>
       </div>
-    `;
-  }).join('');
-}
 
-function getStatusColor(estado) {
-  switch (estado) {
-    case 'pendient':
-      return 'background-color: #fef3c7; color: #92400e;';
-    case 'proceso':
-      return 'background-color: #dbeafe; color: #1e40af;';
-    case 'entregad':
-      return 'background-color: #d1fae5; color: #065f46;';
-    case 'anulado':
-      return 'background-color: #fee2e2; color: #991b1b;';
-    default:
-      return 'background-color: #f3f4f6; color: #374151;';
+      <!-- Panel de Tracking GPS -->
+      <div class="tracking-panel">
+        <div class="tracking-header">
+          <h3>📍 Tracking GPS de Entregas</h3>
+        </div>
+        <div class="tracking-content">
+          <!-- Botón principal de tracking -->
+          <button id="toggleTrackingBtn" class="btn-tracking" onclick="window.toggleTracking()">
+            <span class="tracking-icon">📍</span>
+            <span class="tracking-text">Iniciar Tracking GPS</span>
+          </button>
+
+          <div class="tracking-controls">
+            <!-- Configuración de distancia -->
+            <div class="distance-config">
+              <label for="proximityDistance" class="distance-label">Distancia de alerta:</label>
+              <select id="proximityDistance" class="distance-select" onchange="window.updateProximityDistance(this.value)">
+                <option value="300">300 metros</option>
+                <option value="500" selected>500 metros</option>
+                <option value="1000">1 kilómetro</option>
+                <option value="2000">2 kilómetros</option>
+              </select>
+            </div>
+
+            <!-- Búsqueda manual de pedidos cercanos -->
+            <button id="findNearestBtn" class="btn-find-nearest" onclick="window.findNearestDeliveries()">
+              <span class="btn-icon">🎯</span>
+              <span class="btn-text">Encontrar Más Cercanos</span>
+            </button>
+          </div>
+
+          <!-- Estado del tracking -->
+          <div id="trackingStatus" class="tracking-status hidden">
+            <div class="status-indicator active"></div>
+            <span>Tracking activo - Calculando...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón para mostrar/ocultar filtros -->
+      <div class="filters-toggle">
+        <button onclick="toggleAdvancedFilters()" class="btn-toggle-filters" id="toggleFiltersBtn">
+          ▼ Mostrar Filtros
+        </button>
+      </div>
+
+      <!-- Panel de filtros (oculto por defecto) -->
+      <div class="filters-panel" id="advancedFiltersPanel" style="display: none;">
+        <div class="filters-header">
+          <h3>🔍 Filtros Avanzados</h3>
+        </div>
+        <div class="filters-content">
+          <div class="filter-group">
+            <label class="filter-label">Estado del Pedido</label>
+            <select id="pedidoEstadoFilter" class="filter-select">
+              <option value="">Todos los estados</option>
+              <option value="pendient" selected>📦 Pendientes</option>
+              <option value="proceso">🔄 En Proceso</option>
+              <option value="entregad">✅ Entregados</option>
+              <option value="anulado">❌ Anulados</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Fecha de Entrega</label>
+            <input 
+              type="date" 
+              id="pedidoFechaFilter" 
+              class="filter-input"
+              placeholder="Seleccionar fecha..."
+            />
+          </div>
+          
+          <div class="filter-group">
+            <label class="filter-label">Zona de Entrega</label>
+            <select id="pedidoZonaFilter" class="filter-select">
+              <option value="">Todas las zonas</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="filter-actions">
+          <button onclick="applyPedidoFilters()" class="btn-filter">
+            🔍 Aplicar Filtros
+          </button>
+          <button onclick="clearPedidoFilters()" class="btn-clear-filters">
+            🗑️ Limpiar Filtros
+          </button>
+        </div>
+      </div>
+
+      <!-- Contador de pedidos -->
+      <div class="pedidos-counter">
+        <div class="counter-content">
+          <span class="counter-label">📊 Pedidos Encontrados</span>
+          <span class="counter-value" id="pedidosCounter">Cargando...</span>
+        </div>
+      </div>
+
+      <!-- Lista de pedidos -->
+      <div class="pedidos-list">
+        <div class="list-header">
+          <h3>📋 Lista de Pedidos</h3>
+        </div>
+        <div class="pedidos-grid" id="pedidosGrid">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Cargando pedidos...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Variables globales para pedidos
+  let currentPedidoFilters = {
+    estado: 'pendient',
+    fecha: '',
+    zona: '',
+    search: ''
+  };
+  
+  let allPedidos = [];
+  let currentPedidos = [];
+  let pedidosSearchTimeout;
+
+  // Exponer variables globalmente
+  window.allPedidos = allPedidos;
+  window.currentPedidos = currentPedidos;
+
+  // Función principal para inicializar la sección
+  window.initPedidosSection = async function() {
+    console.log('🚀 Inicializando sección de pedidos...');
+    await loadPedidosData();
+    setupPedidosEventListeners();
+  };
+
+  // Cargar datos de pedidos
+  async function loadPedidosData() {
+    console.log('📦 Cargando datos de pedidos...');
+    const token = localStorage.getItem('token');
+
+    try {
+      // Cargar zonas primero si es necesario
+      if (window.loadZonas) await window.loadZonas();
+      
+      const params = new URLSearchParams();
+      // Aplicar filtros actuales
+      Object.keys(currentPedidoFilters).forEach(key => {
+        if (currentPedidoFilters[key] && currentPedidoFilters[key].trim() !== '') {
+          params.append(key, currentPedidoFilters[key]);
+        }
+      });
+      
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/pedidos?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${await response.text()}`);
+      }
+
+      const pedidos = await response.json();
+      console.log('✅ Pedidos cargados:', pedidos.length);
+      
+      // Actualizar variables
+      allPedidos = pedidos;
+      currentPedidos = pedidos;
+      window.allPedidos = pedidos;
+      window.currentPedidos = pedidos;
+      
+      // Actualizar UI
+      updatePedidosCounter(pedidos.length);
+      renderPedidosGrid(pedidos);
+      
+    } catch (error) {
+      console.error('❌ Error cargando pedidos:', error);
+      showPedidosError(error);
+    }
   }
-}
 
-function getStatusText(estado) {
-  switch (estado) {
-    case 'pendient':
-      return 'Pendiente';
-    case 'proceso':
-      return 'En Proceso';
-    case 'entregad':
-      return 'Entregado';
-    case 'anulado':
-      return 'Anulado';
-    default:
-      return estado;
-  }
-}
-
-// Filtrar pedidos
-function filterPedidos() {
-  const estadoFilter = (document.getElementById('filterEstado') as HTMLSelectElement)?.value || '';
-  const fechaFilter = (document.getElementById('filterFecha') as HTMLInputElement)?.value || '';
-  const clienteFilter = (document.getElementById('filterCliente') as HTMLInputElement)?.value || '';
-
-  let filteredPedidos = allPedidos;
-
-  if (estadoFilter) {
-    filteredPedidos = filteredPedidos.filter((pedido: any) => pedido.estado === estadoFilter);
-  }
-
-  if (fechaFilter) {
-    filteredPedidos = filteredPedidos.filter((pedido: any) => {
-      const pedidoFecha = new Date(pedido.fecha_pedido).toISOString().split('T')[0];
-      return pedidoFecha === fechaFilter;
+  // Configurar event listeners
+  function setupPedidosEventListeners() {
+    console.log('🎧 Configurando event listeners para pedidos...');
+    
+    const clienteFilter = document.getElementById('pedidoClienteFilter');
+    if (clienteFilter) {
+      // Remover listeners anteriores para evitar duplicados
+      const newFilter = clienteFilter.cloneNode(true);
+      clienteFilter.parentNode.replaceChild(newFilter, clienteFilter);
+      
+      newFilter.addEventListener('input', debounce(() => {
+        applyPedidoFilters();
+      }, 300));
+    }
+    
+    // Configurar otros filtros...
+    ['pedidoEstadoFilter', 'pedidoFechaFilter', 'pedidoZonaFilter'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', () => applyPedidoFilters());
+      }
     });
+
+    // Escuchar eventos globales
+    if (window.eventBus && window.EVENTS) {
+      window.eventBus.on(window.EVENTS.PEDIDO_CREATED, () => {
+        console.log('✨ Evento PEDIDO_CREATED recibido, recargando lista...');
+        loadPedidosData();
+      });
+    }
   }
 
-  if (clienteFilter) {
-    filteredPedidos = filteredPedidos.filter((pedido: any) => 
-      pedido.cliente_nombre.toLowerCase().includes(clienteFilter.toLowerCase())
-    );
+  // Aplicar filtros
+  window.applyPedidoFilters = async function() {
+    const estadoFilter = document.getElementById('pedidoEstadoFilter');
+    const fechaFilter = document.getElementById('pedidoFechaFilter');
+    const zonaFilter = document.getElementById('pedidoZonaFilter');
+    const clienteFilter = document.getElementById('pedidoClienteFilter');
+    
+    currentPedidoFilters = {
+      estado: estadoFilter ? estadoFilter.value : '',
+      fecha: fechaFilter ? fechaFilter.value : '',
+      zona: zonaFilter ? zonaFilter.value : '',
+      search: clienteFilter ? clienteFilter.value : ''
+    };
+    
+    console.log('🔍 Aplicando filtros:', currentPedidoFilters);
+    await loadPedidosData();
+  };
+
+  // Limpiar filtros
+  window.clearPedidoFilters = function() {
+    console.log('🗑️ Limpiando filtros de pedidos...');
+    
+    currentPedidoFilters = {
+      estado: '',
+      fecha: '',
+      zona: '',
+      search: ''
+    };
+    
+    // Resetear inputs
+    const inputs = ['pedidoEstadoFilter', 'pedidoFechaFilter', 'pedidoZonaFilter', 'pedidoClienteFilter'];
+    inputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    
+    loadPedidosData();
+  };
+
+  // Toggle filtros avanzados
+  window.toggleAdvancedFilters = function() {
+    const filtersPanel = document.getElementById('advancedFiltersPanel');
+    const toggleBtn = document.getElementById('toggleFiltersBtn');
+    
+    if (!filtersPanel || !toggleBtn) return;
+    
+    const isHidden = filtersPanel.style.display === 'none' || !filtersPanel.style.display;
+    
+    if (isHidden) {
+      filtersPanel.style.display = 'block';
+      filtersPanel.style.maxHeight = '0px';
+      filtersPanel.style.opacity = '0';
+      filtersPanel.offsetHeight; // Force reflow
+      filtersPanel.style.maxHeight = '1000px';
+      filtersPanel.style.opacity = '1';
+      toggleBtn.innerHTML = '▲ Ocultar Filtros';
+      toggleBtn.classList.add('active');
+    } else {
+      filtersPanel.style.maxHeight = '0px';
+      filtersPanel.style.opacity = '0';
+      setTimeout(() => {
+        filtersPanel.style.display = 'none';
+      }, 300);
+      toggleBtn.innerHTML = '▼ Mostrar Filtros';
+      toggleBtn.classList.remove('active');
+    }
+  };
+
+  // Actualizar contador
+  function updatePedidosCounter(count) {
+    const counter = document.getElementById('pedidosCounter');
+    if (counter) {
+      counter.textContent = `${count} pedido${count !== 1 ? 's' : ''}`;
+    }
   }
 
-  currentPedidos = filteredPedidos;
-  renderPedidosList(filteredPedidos);
+  // Renderizar grid
+  function renderPedidosGrid(pedidos) {
+    const grid = document.getElementById('pedidosGrid');
+    if (!grid) return;
 
-  // Actualizar información de resultados
-  updatePedidosInfo(filteredPedidos, estadoFilter, fechaFilter, clienteFilter);
+    if (pedidos.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <h4>No se encontraron pedidos</h4>
+          <p>No hay pedidos que coincidan con los filtros aplicados.</p>
+        </div>
+      `;
+      return;
+    }
 
-  // Mostrar mensaje si no hay resultados pero mantener los filtros
-  if (filteredPedidos.length === 0) {
-    const container = document.getElementById('pedidosList');
-    if (container) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 2rem; color: #6b7280;">
-          <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No se encontraron pedidos</p>
-          <p style="font-size: 0.875rem;">Intenta cambiar los filtros para ver más resultados</p>
+    grid.innerHTML = pedidos.map(pedido => {
+      // DEBUG: Ver estructura del pedido
+      if (pedidos.indexOf(pedido) === 0) console.log('🔍 Estructura del primer pedido:', pedido);
+      
+      const id = pedido.codigo || pedido.id;
+      const nombreCompleto = (pedido.cliente_nombre || `${pedido.nombre || ''} ${pedido.apellido || ''}`).trim();
+      const direccion = pedido.direccion || 'Sin dirección';
+      const telefono = pedido.telefono || 'Sin teléfono';
+      const total = parseFloat(pedido.total || 0).toFixed(2);
+      
+      // Formatear items para preview
+      let itemsPreview = 'Sin productos';
+      const items = pedido.productos || pedido.items || pedido.detalles || [];
+      
+      if (items.length > 0) {
+        itemsPreview = items.map(p => 
+          `${parseInt(p.cantidad)}x ${p.descripcion || p.nombre || p.nombreProducto || 'Producto'}`
+        ).join(', ');
+      }
+
+      return `
+        <div class="pedido-card">
+          <div class="pedido-header">
+            <span class="pedido-number">#${id}</span>
+            <span class="pedido-status ${pedido.estado}">${getStatusText(pedido.estado)}</span>
+          </div>
+          
+          <div class="pedido-body">
+            <div class="client-info">
+              <span class="client-name">${nombreCompleto || 'Cliente sin nombre'}</span>
+              <div class="client-details">
+                <span>📍 ${direccion}</span>
+              </div>
+              <div class="client-details">
+                <span>📞 ${telefono}</span>
+              </div>
+            </div>
+            
+            <div class="items-preview">
+              ${itemsPreview}
+            </div>
+          </div>
+          
+          <div class="pedido-footer">
+            <div class="total-section">
+              <span class="total-label">Total del pedido</span>
+              <span class="total-amount">$${total}</span>
+            </div>
+            
+            <div class="pedido-actions">
+              ${pedido.estado === 'pendient' ? `
+                <button onclick="startDelivery(${id})" class="btn-action btn-deliver">
+                  🚚 ENTREGAR
+                </button>
+                <button onclick="cancelPedido(${id})" class="btn-action btn-cancel">
+                  ❌ ANULAR
+                </button>
+              ` : ''}
+              
+              ${pedido.estado === 'entregad' ? `
+                <button class="btn-action btn-deliver" disabled style="opacity: 0.7; grid-column: span 2;">
+                  ✅ ENTREGADO
+                </button>
+              ` : ''}
+              
+              ${pedido.estado === 'anulado' ? `
+                <button class="btn-action btn-cancel" disabled style="opacity: 0.7; grid-column: span 2;">
+                  ❌ ANULADO
+                </button>
+              ` : ''}
+              
+              <button onclick="window.showOrderDetails(${id})" class="btn-action btn-view">
+                👁️ VER DETALLES
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Helpers de estado
+  function getStatusText(estado) {
+    switch (estado) {
+      case 'pendient': return 'PENDIENTE';
+      case 'proceso': return 'EN PROCESO';
+      case 'entregad': return 'ENTREGADO';
+      case 'anulado': return 'ANULADO';
+      default: return 'DESCONOCIDO';
+    }
+  }
+
+  function showPedidosError(error) {
+    const grid = document.getElementById('pedidosGrid');
+    if (grid) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">❌</div>
+          <h4>Error cargando pedidos</h4>
+          <p>${error.message || 'Ocurrió un error inesperado'}</p>
+          <button onclick="loadPedidosData()" class="btn-create" style="margin-top: 1rem;">
+            🔄 Reintentar
+          </button>
         </div>
       `;
     }
   }
-}
 
-// Actualizar información de resultados
-function updatePedidosInfo(filteredPedidos, estadoFilter, fechaFilter, clienteFilter) {
-  const pedidosCount = document.getElementById('pedidosCount');
-  const pedidosFilters = document.getElementById('pedidosFilters');
-  
-  if (pedidosCount) {
-    pedidosCount.textContent = `${filteredPedidos.length} pedido(s)`;
+  // Debounce helper
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
   }
-  
-  if (pedidosFilters) {
-    const filters: string[] = [];
-    if (estadoFilter) filters.push(`Estado: ${getStatusText(estadoFilter)}`);
-    if (fechaFilter) filters.push(`Fecha: ${fechaFilter}`);
-    if (clienteFilter) filters.push(`Cliente: "${clienteFilter}"`);
-    
-    const filterText = filters.length > 0 ? filters.join(', ') : 'Todos los pedidos';
-    pedidosFilters.textContent = `Filtros: ${filterText}`;
-  }
-}
 
-// Limpiar filtros
-function clearPedidosFilters() {
-  const estadoSelect = document.getElementById('filterEstado') as HTMLSelectElement;
-  const fechaInput = document.getElementById('filterFecha') as HTMLInputElement;
-  const clienteInput = document.getElementById('filterCliente') as HTMLInputElement;
-  
-  if (estadoSelect) estadoSelect.value = '';
-  if (fechaInput) fechaInput.value = '';
-  if (clienteInput) clienteInput.value = '';
-  
-  filterPedidos(); // Re-apply filters to show all
-}
-
-// Ver detalles del pedido
-function viewPedido(pedidoId: number) {
-  const pedido = currentPedidos.find((p: any) => p.id == pedidoId);
-  if (!pedido) return;
-
-  const modal = document.getElementById('pedidoDetailModal');
-  const content = document.getElementById('pedidoDetailContent');
-  if (!modal || !content) return;
-
-  const nombre = pedido.cliente_nombre || `${pedido.nombre || ''} ${pedido.apellido || ''}`.trim();
-  const fecha = new Date(pedido.fecha_pedido).toLocaleString();
-
-  const items = (pedido.detalles || []).map((it: any) => `
-    <tr>
-      <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${it.descripcion || it.nombreProducto}</td>
-      <td style="padding: 6px 8px; border-bottom: 1px solid #eee; text-align: right;">${it.cantidad}</td>
-      <td style="padding: 6px 8px; border-bottom: 1px solid #eee; text-align: right;">$${parseFloat(it.precioUnitario || it.precio || 0).toFixed(2)}</td>
-      <td style="padding: 6px 8px; border-bottom: 1px solid #eee; text-align: right;">$${parseFloat(it.subtotal || (it.cantidad * (it.precioUnitario || it.precio || 0))).toFixed(2)}</td>
-    </tr>
-  `).join('');
-
-  content.innerHTML = `
-    <div style="display:grid; gap: 8px;">
-      <div><strong>Pedido:</strong> #${pedido.id}</div>
-      <div><strong>Cliente:</strong> ${nombre}</div>
-      <div><strong>Dirección:</strong> ${pedido.direccion || ''}</div>
-      <div><strong>Teléfono:</strong> ${pedido.telefono || ''}</div>
-      <div><strong>Fecha:</strong> ${fecha}</div>
-      <div><strong>Estado:</strong> ${getStatusText(pedido.estado)}</div>
-      <div><strong>Total:</strong> $${parseFloat(pedido.total).toFixed(2)}</div>
-    </div>
-    <div style="margin-top:12px;">
-      <h5 style="margin: 0 0 6px 0;">Items</h5>
-      <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
-        <thead>
-          <tr>
-            <th style="text-align:left; padding: 6px 8px; border-bottom: 1px solid #ddd;">Producto</th>
-            <th style="text-align:right; padding: 6px 8px; border-bottom: 1px solid #ddd;">Cant.</th>
-            <th style="text-align:right; padding: 6px 8px; border-bottom: 1px solid #ddd;">Precio</th>
-            <th style="text-align:right; padding: 6px 8px; border-bottom: 1px solid #ddd;">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${items || ''}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  modal.classList.remove('hidden');
-  modal.classList.add('show');
-}
-
-// Editar pedido
-function editPedido(pedidoId: number) {
-  alert('Funcionalidad de edición en desarrollo...');
-}
-
-// Crear nuevo pedido
-function showCreatePedidoModal() {
-  alert('Funcionalidad de creación en desarrollo...');
-}
-
-function closePedidoDetailModal() {
-  const modal = document.getElementById('pedidoDetailModal');
-  if (modal) {
-    modal.classList.remove('show');
-    modal.classList.add('hidden');
-  }
-}
-
-async function cancelPedido(pedidoId: number) {
-  if (!confirm('¿Seguro que quieres anular este pedido?')) return;
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api/pedidos/${pedidoId}/estado`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ estado: 'anulado' })
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Error ${res.status}: ${errorText}`);
+  // Acciones de pedido
+  window.startDelivery = function(pedidoId) {
+    console.log('🚚 Iniciando entrega:', pedidoId);
+    if (window.deliveryModal && typeof window.deliveryModal.show === 'function') {
+      window.deliveryModal.show(pedidoId);
+    } else {
+      alert('Modal de entrega no disponible. Recarga la página.');
     }
-    await loadPedidos();
-  } catch (e) {
-    alert(`Error anulando pedido: ${e.message}`);
+  };
+
+  window.cancelPedido = function(pedidoId) {
+    if (confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
+      updatePedidoStatus(pedidoId, 'anulado');
+    }
+  };
+
+  window.showOrderDetails = function(pedidoId) {
+    const pedido = window.allPedidos.find(p => (p.codigo || p.id) == pedidoId);
+    if (pedido && window.orderModal) {
+      // Por ahora usamos el modal de edición para ver detalles
+      // Idealmente el modal debería tener un modo "solo lectura"
+      window.orderModal.show(pedido);
+    } else {
+      console.error('Pedido no encontrado o modal no disponible');
+    }
+  };
+
+  async function updatePedidoStatus(pedidoId, newStatus) {
+    const token = localStorage.getItem('token');
+    try {
+      const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/api/pedidos/${pedidoId}/estado`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ estado: newStatus })
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+
+      if (newStatus === 'anulado') alert('✅ Pedido cancelado correctamente');
+      await loadPedidosData();
+      
+    } catch (error) {
+      alert('Error actualizando el estado: ' + error.message);
+    }
   }
-}
+
+  // Exponer funciones necesarias
+  window.loadPedidosData = loadPedidosData;
+  window.setupPedidosEventListeners = setupPedidosEventListeners;
+</script>
+
+<!-- Módulos de Tracking GPS -->
+<script src="/js/utils/GeolocationPermissions.js" is:inline></script>
+<script src="/js/utils/GeoUtils.js" is:inline></script>
+<script src="/js/delivery/ProximityTracker.js" is:inline></script>
+<script src="/js/delivery/NearbyDeliveryFinder.js" is:inline></script>
+
+<!-- Modal de Pedidos -->
+<script src="/js/OrderModal.js" is:inline></script>
+<!-- Modal de Entrega -->
+<script src="/js/DeliveryModal.js" is:inline></script>
+
+<script>
+  // Funciones globales de control de tracking
+  window.toggleTracking = async function() {
+    if (!window.proximityTracker) {
+      console.error('❌ ProximityTracker no disponible');
+      return;
+    }
+
+    if (window.proximityTracker.isTracking) {
+      window.proximityTracker.stopTracking();
+    } else {
+      await window.proximityTracker.startTracking();
+    }
+  };
+
+  window.updateProximityDistance = function(distance) {
+    if (!window.proximityTracker) {
+      console.error('❌ ProximityTracker no disponible');
+      return;
+    }
+
+    const meters = parseInt(distance);
+    window.proximityTracker.setProximityThreshold(meters);
+    
+    if (window.showNotification) {
+      window.showNotification(`Distancia de alerta actualizada: ${meters}m`, 'success');
+    }
+  };
+
+  window.findNearestDeliveries = async function() {
+    if (!window.nearbyDeliveryFinder) {
+      console.error('❌ NearbyDeliveryFinder no disponible');
+      return;
+    }
+
+    try {
+      // Obtener distancia configurada
+      const distanceSelect = document.getElementById('proximityDistance');
+      const maxDistance = distanceSelect ? parseInt(distanceSelect.value) : null;
+      
+      await window.nearbyDeliveryFinder.findNearbyDeliveries(maxDistance);
+    } catch (error) {
+      console.error('❌ Error en búsqueda de pedidos cercanos:', error);
+    }
+  };
+
+  console.log('✅ Tracking GPS functions loaded');
 </script>
