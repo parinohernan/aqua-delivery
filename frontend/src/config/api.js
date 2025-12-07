@@ -1,19 +1,26 @@
 // Configuración de la API para el frontend
-const API_CONFIG = {
-  // URL base del backend - Auto-detecta entorno
-  // En desarrollo: localhost
-  // En producción: Koyeb backend
-  BASE_URL: (() => {
-    // Si estamos en el navegador
-    if (typeof window !== 'undefined') {
-      // Producción: cualquier dominio que NO sea localhost
-      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return 'https://dull-benny-hernanpa-b7cac3cd.koyeb.app'; // ✅ Backend en Koyeb
-      }
+// Usa variables de entorno de Astro (PUBLIC_API_URL)
+
+// Obtener URL del backend desde variable de entorno o usar fallback
+const getBackendUrl = () => {
+  // En build time (Astro), usar import.meta.env
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const envUrl = import.meta.env.PUBLIC_API_URL;
+    if (envUrl) {
+      console.log('✅ Usando backend desde PUBLIC_API_URL:', envUrl);
+      return envUrl;
     }
-    // Desarrollo: localhost
-    return 'http://localhost:8001';
-  })(),
+  }
+
+  // Fallback para desarrollo
+  const fallbackUrl = 'http://localhost:8001';
+  console.log('⚠️ PUBLIC_API_URL no definida, usando fallback:', fallbackUrl);
+  return fallbackUrl;
+};
+
+const API_CONFIG = {
+  // URL base del backend desde variable de entorno
+  BASE_URL: getBackendUrl(),
 
   // Endpoints
   ENDPOINTS: {

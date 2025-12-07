@@ -50,27 +50,10 @@ const { title } = Astro.props;
     <title>{title}</title>
     
     <!-- Configuración de la API -->
-    <script>
-      // Detectar automáticamente la URL del backend
-      function getBackendUrl() {
-        const hostname = window.location.hostname;
-        
-        // Si estamos en localhost, usar localhost
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          return 'http://localhost:8001';
-        }
-        
-        // Si estamos en una IP de red local, usar esa misma IP para el backend
-        if (hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.')) {
-          return `http://${hostname}:8001`;
-        }
-        
-        // Por defecto, usar localhost
-        return 'http://localhost:8001';
-      }
-
+    <script define:vars={{ apiUrl: import.meta.env.PUBLIC_API_URL || 'http://localhost:8001' }}>
+      // Configuración de la API usando variable de entorno
       window.API_CONFIG = {
-        BASE_URL: getBackendUrl(),
+        BASE_URL: apiUrl,
         ENDPOINTS: {
           LOGIN: '/auth/login',
           CLIENTES: '/api/clientes',
@@ -94,6 +77,7 @@ const { title } = Astro.props;
       };
       
       console.log('🔧 Backend URL configurada:', window.API_CONFIG.BASE_URL);
+      console.log('📍 Entorno:', apiUrl.includes('localhost') ? 'Desarrollo' : 'Producción');
     </script>
   </head>
   <body>
