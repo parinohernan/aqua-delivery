@@ -1,14 +1,30 @@
 // Configuración de la API para el frontend
 const API_CONFIG = {
-  // URL base del backend - CAMBIAR A PRODUCCIÓN ANTES DE DEPLOY
-  BASE_URL: 'http://localhost:8001', // Usar 'https://back-adm.fly.dev' para producción
+  // URL base del backend - Auto-detecta entorno
+  // En desarrollo: localhost
+  // En producción: Koyeb backend
+  BASE_URL: (() => {
+    // Si estamos en el navegador
+    if (typeof window !== 'undefined') {
+      // Producción: cualquier dominio que NO sea localhost
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return 'https://dull-benny-hernanpa-b7cac3cd.koyeb.app'; // ✅ Backend en Koyeb
+      }
+    }
+    // Desarrollo: localhost
+    return 'http://localhost:8001';
+  })(),
 
   // Endpoints
   ENDPOINTS: {
     AUTH: '/auth',
     PRODUCTOS: '/api/productos',
     CLIENTES: '/api/clientes',
-    PEDIDOS: '/api/pedidos'
+    PEDIDOS: '/api/pedidos',
+    PAGOS: '/api/pagos',
+    ZONAS: '/api/zonas',
+    TIPOSDEPAGO: '/api/tiposdepago',
+    INFORMES: '/api/informes'
   },
 
   // Función para obtener URL completa
@@ -23,6 +39,14 @@ const API_CONFIG = {
       throw new Error(`Endpoint no encontrado: ${endpointName} `);
     }
     return this.getUrl(endpoint);
+  },
+
+  // Helper para debug
+  isProduction: function () {
+    if (typeof window !== 'undefined') {
+      return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    }
+    return false;
   }
 };
 
