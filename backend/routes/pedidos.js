@@ -116,6 +116,141 @@ router.get('/', verifyToken, async (req, res) => {
     }
 });
 
+// Obtener pedido completo por ID (con cliente e items)
+router.get('/:id', verifyToken, async (req, res) => {
+    try {
+        const pedidoId = req.params.id;
+
+        console.log('📦 Obteniendo pedido completo:', pedidoId);
+
+        // 1. Obtener datos del pedido con cliente
+        const pedido = await query(`
+            SELECT 
+                p.codigo as id,
+                p.codigo as codigo,
+                p.codigoCliente,
+                p.fechaPedido as fecha_pedido,
+                p.total,
+                p.estado,
+                p.zona,
+                c.codigo as cliente_codigo,
+                c.nombre as cliente_nombre,
+                c.apellido as cliente_apellido,
+                c.telefono as cliente_telefono,
+                c.direccion as cliente_direccion,
+                c.zona as cliente_zona
+            FROM pedidos p
+            JOIN clientes c ON p.codigoCliente = c.codigo
+            WHERE p.codigo = ? AND p.codigoEmpresa = ?
+        `, [pedidoId, req.user.codigoEmpresa]);
+
+        if (pedido.length === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+
+        const pedidoData = pedido[0];
+
+        // 2. Obtener items del pedido con detalles de productos
+        const items = await query(`
+            SELECT 
+                pi.codigoProducto as productoId,
+                pi.codigoProducto as codigoProducto,
+                pi.cantidad,
+                pi.precioTotal as precio_total,
+                CASE 
+                    WHEN pi.cantidad > 0 THEN (pi.precioTotal / pi.cantidad)
+                    ELSE 0
+                END as precio,
+                pr.descripcion as producto_nombre,
+                pr.descripcion,
+                pr.esRetornable
+            FROM pedidositems pi
+            JOIN productos pr ON pi.codigoProducto = pr.codigo
+            WHERE pi.codigoPedido = ? AND pr.codigoEmpresa = ?
+            ORDER BY pr.descripcion
+        `, [pedidoId, req.user.codigoEmpresa]);
+
+        // 3. Formatear respuesta
+        const response = {
+            codigo: pedidoData.codigo,
+            id: pedidoData.id,
+            codigoCliente: pedidoData.codigoCliente,
+            cliente_id: pedidoData.codigoCliente,
+            fecha_pedido: pedidoData.fecha_pedido,
+            total: pedidoData.total,
+            estado: pedidoData.estado,
+            zona: pedidoData.zona,
+            cliente: {
+                codigo: pedidoData.cliente_codigo,
+                nombre: pedidoData.cliente_nombre,
+                apellido: pedidoData.cliente_apellido,
+                telefono: pedidoData.cliente_telefono,
+                direccion: pedidoData.cliente_direccion,
+                zona: pedidoData.cliente_zona
+            },
+            // Campos adicionales para compatibilidad
+            cliente_nombre: pedidoData.cliente_nombre,
+            cliente_apellido: pedidoData.cliente_apellido,
+            telefono: pedidoData.cliente_telefono,
+            direccion: pedidoData.cliente_direccion,
+            productos: items.map(item => ({
+                productoId: item.productoId,
+                codigoProducto: item.codigoProducto,
+                codigo: item.codigoProducto,
+                producto_id: item.productoId,
+                cantidad: parseFloat(item.cantidad),
+                precio: parseFloat(item.precio),
+                precio_unitario: parseFloat(item.precio),
+                precioTotal: parseFloat(item.precio_total),
+                descripcion: item.descripcion,
+                nombre: item.producto_nombre,
+                producto_nombre: item.producto_nombre,
+                esRetornable: item.esRetornable === 1 || item.esRetornable === true
+            })),
+            items: items.map(item => ({
+                productoId: item.productoId,
+                codigoProducto: item.codigoProducto,
+                codigo: item.codigoProducto,
+                producto_id: item.productoId,
+                cantidad: parseFloat(item.cantidad),
+                precio: parseFloat(item.precio),
+                precio_unitario: parseFloat(item.precio),
+                precioTotal: parseFloat(item.precio_total),
+                descripcion: item.descripcion,
+                nombre: item.producto_nombre,
+                producto_nombre: item.producto_nombre,
+                esRetornable: item.esRetornable === 1 || item.esRetornable === true
+            })),
+            detalles: items.map(item => ({
+                productoId: item.productoId,
+                codigoProducto: item.codigoProducto,
+                codigo: item.codigoProducto,
+                producto_id: item.productoId,
+                cantidad: parseFloat(item.cantidad),
+                precio: parseFloat(item.precio),
+                precio_unitario: parseFloat(item.precio),
+                precioTotal: parseFloat(item.precio_total),
+                descripcion: item.descripcion,
+                nombre: item.producto_nombre,
+                producto_nombre: item.producto_nombre,
+                esRetornable: item.esRetornable === 1 || item.esRetornable === true
+            }))
+        };
+
+        console.log('✅ Pedido completo obtenido:', {
+            id: response.codigo,
+            cliente: response.cliente.nombre,
+            items: response.productos.length
+        });
+
+        res.json(response);
+
+    } catch (error) {
+        console.error('❌ Error obteniendo pedido completo:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Crear pedido
 router.post('/', verifyToken, async (req, res) => {
     try {
@@ -211,6 +346,137 @@ router.post('/', verifyToken, async (req, res) => {
 
     } catch (error) {
         console.error('❌ Error creando pedido:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Actualizar pedido completo
+router.put('/:id', verifyToken, async (req, res) => {
+    try {
+        const pedidoId = req.params.id;
+        const { clienteId, productos, total } = req.body;
+
+        console.log('📝 Actualizando pedido:', { pedidoId, clienteId, productos: productos?.length, total });
+
+        // Validaciones
+        if (!productos || productos.length === 0) {
+            return res.status(400).json({ error: 'Debe agregar al menos un producto' });
+        }
+
+        // Verificar que el pedido existe y pertenece a la empresa
+        const pedidoExistente = await query(
+            'SELECT codigo, estado, codigoCliente FROM pedidos WHERE codigo = ? AND codigoEmpresa = ?',
+            [pedidoId, req.user.codigoEmpresa]
+        );
+
+        if (pedidoExistente.length === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+
+        const pedidoActual = pedidoExistente[0];
+
+        // Solo permitir actualizar pedidos pendientes
+        if (pedidoActual.estado !== 'pendient') {
+            return res.status(400).json({ error: 'Solo se pueden actualizar pedidos pendientes' });
+        }
+
+        // Si no se envía clienteId, usar el cliente actual del pedido
+        const clienteIdToUse = clienteId || pedidoActual.codigoCliente;
+        
+        if (!clienteIdToUse) {
+            return res.status(400).json({ error: 'Cliente es requerido' });
+        }
+
+        // Verificar que el cliente existe y obtener su zona
+        const cliente = await query(
+            'SELECT codigo, zona FROM clientes WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1',
+            [clienteIdToUse, req.user.codigoEmpresa]
+        );
+
+        if (cliente.length === 0) {
+            return res.status(400).json({ error: 'Cliente no encontrado' });
+        }
+
+        const clienteZona = cliente[0].zona;
+
+        // Verificar que los productos existen
+        for (const item of productos) {
+            const producto = await query(
+                'SELECT codigo, descripcion, precio, stock FROM productos WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1',
+                [item.productoId, req.user.codigoEmpresa]
+            );
+
+            if (producto.length === 0) {
+                return res.status(400).json({ error: `Producto ${item.productoId} no encontrado` });
+            }
+        }
+
+        // Usar transacción para asegurar consistencia
+        await transaction(async (query) => {
+            // 1. Obtener items actuales del pedido para restaurar stock
+            const itemsActuales = await query(
+                'SELECT codigoProducto, cantidad FROM pedidositems WHERE codigoPedido = ?',
+                [pedidoId]
+            );
+
+            // 2. Restaurar stock de productos anteriores
+            for (const item of itemsActuales) {
+                await query(
+                    'UPDATE productos SET stock = stock + ? WHERE codigo = ? AND codigoEmpresa = ?',
+                    [item.cantidad, item.codigoProducto, req.user.codigoEmpresa]
+                );
+                console.log(`📦 Stock restaurado para producto ${item.codigoProducto}: +${item.cantidad} unidades`);
+            }
+
+            // 3. Eliminar items antiguos
+            await query('DELETE FROM pedidositems WHERE codigoPedido = ?', [pedidoId]);
+            console.log('🗑️ Items antiguos eliminados');
+
+            // 4. Actualizar pedido (cliente, total, zona)
+            await query(
+                'UPDATE pedidos SET codigoCliente = ?, total = ?, zona = ? WHERE codigo = ? AND codigoEmpresa = ?',
+                [clienteIdToUse, total, clienteZona, pedidoId, req.user.codigoEmpresa]
+            );
+            console.log('✅ Pedido actualizado');
+
+            // 5. Agregar nuevos productos al pedido y actualizar stock
+            for (const item of productos) {
+                const precioTotal = item.precio * item.cantidad;
+
+                // Insertar en pedidositems
+                await query(
+                    'INSERT INTO pedidositems (codigoPedido, codigoProducto, cantidad, precioTotal) VALUES (?, ?, ?, ?)',
+                    [pedidoId, item.productoId, item.cantidad, precioTotal]
+                );
+                console.log(`📋 Item agregado: Producto ${item.productoId}, Cantidad ${item.cantidad}, Precio Total: $${precioTotal}`);
+
+                // Actualizar stock del producto
+                await query(
+                    'UPDATE productos SET stock = stock - ? WHERE codigo = ? AND codigoEmpresa = ?',
+                    [item.cantidad, item.productoId, req.user.codigoEmpresa]
+                );
+                console.log(`📦 Stock actualizado para producto ${item.productoId}: -${item.cantidad} unidades`);
+            }
+        });
+
+        // Obtener el pedido actualizado con datos del cliente
+        const pedidoActualizado = await query(`
+            SELECT p.*, c.nombre, c.apellido, c.direccion, c.telefono
+            FROM pedidos p
+            JOIN clientes c ON p.codigoCliente = c.codigo
+            WHERE p.codigo = ? AND p.codigoEmpresa = ?
+        `, [pedidoId, req.user.codigoEmpresa]);
+
+        console.log('✅ PEDIDO ACTUALIZADO EXITOSAMENTE:');
+        console.log(`   📋 Código: ${pedidoId}`);
+        console.log(`   👤 Cliente: ${pedidoActualizado[0].nombre} ${pedidoActualizado[0].apellido || ''}`);
+        console.log(`   💰 Total: $${total}`);
+        console.log(`   📦 Productos: ${productos.length} items`);
+
+        res.json(pedidoActualizado[0]);
+
+    } catch (error) {
+        console.error('❌ Error actualizando pedido:', error);
         res.status(500).json({ error: error.message });
     }
 });

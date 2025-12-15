@@ -3,10 +3,13 @@ class OrderModal {
   constructor() {
     this.editingOrderId = null;
     this.selectedClient = null;
+    this.originalClientId = null; // Guardar cliente original del pedido al editar
     this.orderItems = [];
     this.availableProducts = [];
     this.availableClients = [];
     this.availableZonas = [];
+    this.searchClientsTimeout = null; // Para debounce de búsqueda
+    this.currentOrderEstado = null; // Estado actual del pedido (pendient, entregad, anulado)
     this.init();
   }
 
@@ -143,7 +146,7 @@ class OrderModal {
               </div>
 
               <!-- Lista de Productos Agregados -->
-              <div id="orderItemsList" style="border: 1px solid #e5e7eb; border-radius: 0.375rem; min-height: 100px;">
+              <div id="orderItemsList" style="border: 1px solid #e5e7eb; border-radius: 0.5rem; min-height: 100px; background: #fafafa;">
                 <div id="emptyOrderItems" style="padding: 2rem; text-align: center; color: #6b7280;">
                   <p>No hay productos agregados al pedido</p>
                   <p style="font-size: 0.875rem;">Selecciona productos arriba para agregarlos</p>
@@ -151,10 +154,10 @@ class OrderModal {
               </div>
 
               <!-- Total del Pedido -->
-              <div style="margin-top: 1rem; padding: 1rem; background: #f9fafb; border-radius: 0.375rem;">
-                <div style="display: flex; justify-content: between; align-items: center;">
-                  <span style="font-weight: 600; font-size: 1.125rem;">Total del Pedido:</span>
-                  <span id="orderTotal" style="font-weight: 700; font-size: 1.25rem; color: #059669;">$0.00</span>
+              <div style="margin-top: 1rem; padding: 1rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-weight: 600; font-size: 1.125rem; color: #111827;">Total del Pedido:</span>
+                  <span id="orderTotal" style="font-weight: 700; font-size: 1.5rem; color: #059669;">$0.00</span>
                 </div>
               </div>
             </div>
@@ -237,10 +240,19 @@ class OrderModal {
       form.addEventListener('submit', (e) => this.handleSubmit(e));
     }
 
-    // Búsqueda de clientes
+    // Búsqueda de clientes con debounce
     const clientSearch = document.getElementById('clientSearch');
     if (clientSearch) {
-      clientSearch.addEventListener('input', (e) => this.searchClients(e.target.value));
+      clientSearch.addEventListener('input', (e) => {
+        // Limpiar timeout anterior
+        if (this.searchClientsTimeout) {
+          clearTimeout(this.searchClientsTimeout);
+        }
+        // Aplicar debounce de 200ms
+        this.searchClientsTimeout = setTimeout(() => {
+          this.searchClients(e.target.value);
+        }, 200);
+      });
       clientSearch.addEventListener('focus', () => this.showClientDropdown());
     }
 
@@ -267,7 +279,7 @@ class OrderModal {
     });
   }
 
-  show(orderData = null) {
+  async show(orderData = null) {
     const modal = document.getElementById('orderModal');
     const title = document.getElementById('orderModalTitle');
 
@@ -275,13 +287,46 @@ class OrderModal {
 
     if (orderData) {
       // Modo edición / visualización
-      this.editingOrderId = orderData.codigo || orderData.id;
+      const pedidoId = orderData.codigo || orderData.id;
+      this.editingOrderId = pedidoId;
       title.textContent = 'Detalles del Pedido';
       console.log('📝 Visualizando pedido:', this.editingOrderId, orderData);
+
+      // Cargar datos completos del pedido desde el backend
+      try {
+        console.log('🔄 Cargando datos completos del pedido desde el backend...');
+        const token = localStorage.getItem('token');
+        const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
+        const response = await fetch(`${apiUrl}/api/pedidos/${pedidoId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al cargar datos del pedido');
+        }
+
+        orderData = await response.json();
+        console.log('✅ Datos completos del pedido cargados:', orderData);
+        // Guardar el estado del pedido
+        this.currentOrderEstado = orderData.estado || null;
+      } catch (error) {
+        console.error('❌ Error cargando datos del pedido:', error);
+        if (window.showError) {
+          window.showError('Error al cargar los datos del pedido. Usando datos locales.');
+        } else {
+          alert('Error al cargar los datos del pedido. Usando datos locales.');
+        }
+        // Continuar con los datos locales si falla la carga
+        this.currentOrderEstado = orderData?.estado || null;
+      }
 
       // 1. Cargar Cliente
       // Intentar encontrar el cliente en la lista disponible
       const clienteId = orderData.cliente_id || orderData.codigoCliente || (orderData.cliente ? orderData.cliente.codigo : null);
+      // Guardar el cliente original del pedido
+      this.originalClientId = clienteId;
       let client = null;
 
       if (clienteId) {
@@ -320,15 +365,24 @@ class OrderModal {
 
       if (productos && productos.length > 0) {
         this.orderItems = productos.map(p => {
-          // Normalizar datos del producto
-          const productId = p.producto_id || p.productoId || p.codigo || p.id;
+          // Normalizar datos del producto - usar los códigos reales del backend
+          const productId = p.productoId || p.codigoProducto || p.producto_id || p.codigo || p.id;
           const cantidad = parseFloat(p.cantidad || 1);
+          // El precio debe venir del pedido (precio_unitario o precio), no del producto actual
           const precio = parseFloat(p.precio || p.precio_unitario || 0);
           const nombre = p.descripcion || p.nombre || p.producto_nombre || `Producto #${productId}`;
 
           // Buscar stock real si es posible
           const realProduct = this.availableProducts.find(prod => prod.codigo == productId);
           const stock = realProduct ? parseInt(realProduct.stock || 0) : 999;
+
+          console.log('📦 Item cargado:', {
+            productId,
+            nombre,
+            cantidad,
+            precio,
+            subtotal: precio * cantidad
+          });
 
           return {
             productId: productId,
@@ -339,6 +393,8 @@ class OrderModal {
             stock: stock
           };
         });
+      } else {
+        console.warn('⚠️ No se encontraron productos en el pedido');
       }
 
       this.updateOrderItemsList();
@@ -348,9 +404,18 @@ class OrderModal {
       const submitBtn = document.getElementById('orderSubmitButtonText');
       if (submitBtn) submitBtn.textContent = 'Guardar Cambios';
 
+      // Ocultar controles de agregar producto si el pedido ya está entregado o anulado
+      const addProductControls = document.querySelector('.form-group > div[style*="display: flex"]');
+      if (addProductControls && this.currentOrderEstado && this.currentOrderEstado !== 'pendient') {
+        addProductControls.style.display = 'none';
+      } else if (addProductControls && this.currentOrderEstado === 'pendient') {
+        addProductControls.style.display = 'flex';
+      }
+
     } else {
       // Modo creación - limpiar completamente
       this.editingOrderId = null;
+      this.originalClientId = null;
       title.textContent = 'Nuevo Pedido';
       console.log('🆕 Modo creación - limpiando formulario');
 
@@ -403,6 +468,12 @@ class OrderModal {
   resetForm() {
     console.log('🔄 Iniciando reset del formulario de pedido...');
 
+    // Limpiar timeout de búsqueda
+    if (this.searchClientsTimeout) {
+      clearTimeout(this.searchClientsTimeout);
+      this.searchClientsTimeout = null;
+    }
+
     // Limpiar formulario
     const form = document.getElementById('orderForm');
     if (form) {
@@ -413,6 +484,8 @@ class OrderModal {
     this.selectedClient = null;
     this.orderItems = [];
     this.editingOrderId = null;
+    this.originalClientId = null;
+    this.currentOrderEstado = null;
 
     console.log('🔄 Estado interno limpiado, orderItems:', this.orderItems.length);
 
@@ -449,6 +522,11 @@ class OrderModal {
     modal.classList.remove('show');
     modal.classList.add('hidden');
     this.editingOrderId = null;
+    // Limpiar timeout de búsqueda
+    if (this.searchClientsTimeout) {
+      clearTimeout(this.searchClientsTimeout);
+      this.searchClientsTimeout = null;
+    }
     this.resetForm();
   }
 
@@ -456,8 +534,9 @@ class OrderModal {
 
   searchClients(searchTerm) {
     const dropdown = document.getElementById('clientDropdown');
+    if (!dropdown) return;
 
-    if (!searchTerm.trim()) {
+    if (!searchTerm || !searchTerm.trim()) {
       this.hideClientDropdown();
       return;
     }
@@ -471,7 +550,8 @@ class OrderModal {
     });
 
     this.renderClientDropdown(filteredClients);
-    this.showClientDropdown();
+    // Solo mostrar el dropdown, no llamar a showClientDropdown() para evitar bucle infinito
+    dropdown.classList.remove('hidden');
   }
 
   renderClientDropdown(clients) {
@@ -594,10 +674,18 @@ class OrderModal {
     const dropdown = document.getElementById('clientDropdown');
     if (!dropdown) return;
 
-    // Si hay un término de búsqueda, mostrar resultados filtrados
+    // Si hay un término de búsqueda, mostrar resultados filtrados sin llamar a searchClients
+    // para evitar bucle infinito
     const clientSearch = document.getElementById('clientSearch');
     if (clientSearch && clientSearch.value.trim()) {
-      this.searchClients(clientSearch.value);
+      const searchTerm = clientSearch.value.trim();
+      const filteredClients = this.availableClients.filter(client => {
+        const fullName = `${client.nombre || ''} ${client.apellido || ''}`.toLowerCase();
+        const phone = (client.telefono || '').toLowerCase();
+        const search = searchTerm.toLowerCase();
+        return fullName.includes(search) || phone.includes(search);
+      });
+      this.renderClientDropdown(filteredClients);
     } else {
       // Si no hay término de búsqueda, mostrar todos los clientes
       this.renderClientDropdown(this.availableClients);
@@ -766,35 +854,44 @@ class OrderModal {
       emptyState.style.display = 'none';
     }
 
+    // Solo permitir edición si el pedido está pendiente
+    const canEdit = !!this.editingOrderId && this.currentOrderEstado === 'pendient';
     const itemsHTML = this.orderItems.map(item => `
-      <div style="padding: 1rem; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;">
-        <div style="flex: 1;">
-          <div style="font-weight: 600; color: #111827;">${item.name}</div>
-          <div style="font-size: 0.875rem; color: #6b7280;">$${item.price.toFixed(2)} c/u</div>
+      <div style="padding: 1rem; border-bottom: 1px solid #e5e7eb; background: white;">
+        <!-- Línea 1: Descripción y Precio Unitario -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <div style="font-weight: 600; color: #111827; font-size: 1rem; flex: 1;">${item.name}</div>
+          <div style="font-size: 0.875rem; color: #6b7280; margin-left: 1rem;">$${item.price.toFixed(2)} c/u</div>
         </div>
-
-        <div style="display: flex; align-items: center; gap: 1rem;">
+        
+        <!-- Línea 2: Cantidad y Total -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
+            ${canEdit ? `
+            ${item.quantity === 1 ? `
+            <button onclick="orderModal.removeProduct(${item.productId})"
+                    style="width: 28px; height: 28px; background: #ef4444; color: white; border: none; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.125rem; font-weight: 600;"
+                    title="Eliminar producto">
+              ×
+            </button>
+            ` : `
             <button onclick="orderModal.updateProductQuantity(${item.productId}, ${item.quantity - 1})"
-                    style="width: 24px; height: 24px; border: 1px solid #d1d5db; background: white; border-radius: 0.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    style="width: 28px; height: 28px; border: 1px solid #d1d5db; background: white; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; color: #374151;">
               -
             </button>
-            <span style="min-width: 30px; text-align: center; font-weight: 600;">${item.quantity}</span>
+            `}
+            <span style="min-width: 40px; text-align: center; font-weight: 600; font-size: 1rem; color: #111827;">${item.quantity}</span>
             <button onclick="orderModal.updateProductQuantity(${item.productId}, ${item.quantity + 1})"
-                    style="width: 24px; height: 24px; border: 1px solid #d1d5db; background: white; border-radius: 0.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    style="width: 28px; height: 28px; border: 1px solid #d1d5db; background: white; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; color: #374151;">
               +
             </button>
+            ` : `
+            <span style="min-width: 40px; text-align: center; font-weight: 600; font-size: 1rem; color: #111827; padding: 0.375rem 0.5rem; background: #f3f4f6; border-radius: 0.25rem;">${item.quantity}</span>
+            `}
           </div>
-
-          <div style="min-width: 80px; text-align: right; font-weight: 600; color: #059669;">
+          <div style="font-weight: 700; font-size: 1.125rem; color: #059669;">
             $${item.subtotal.toFixed(2)}
           </div>
-
-          <button onclick="orderModal.removeProduct(${item.productId})"
-                  style="width: 24px; height: 24px; background: #ef4444; color: white; border: none; border-radius: 0.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center;"
-                  title="Eliminar producto">
-            ×
-          </button>
         </div>
       </div>
     `).join('');
@@ -821,7 +918,19 @@ class OrderModal {
   async handleSubmit(e) {
     e.preventDefault();
 
-    if (!this.selectedClient) {
+    const isEditing = !!this.editingOrderId;
+    
+    // Si estamos editando y no hay cliente seleccionado, usar el cliente original
+    let clienteIdToUse = null;
+    if (isEditing && !this.selectedClient && this.originalClientId) {
+      clienteIdToUse = this.originalClientId;
+      console.log('📝 Usando cliente original del pedido:', clienteIdToUse);
+    } else if (this.selectedClient) {
+      clienteIdToUse = this.selectedClient.codigo;
+    }
+
+    // Validar cliente solo si no estamos editando o si no hay cliente original
+    if (!clienteIdToUse) {
       if (window.showError) {
         window.showError('Selecciona un cliente para el pedido');
       } else {
@@ -845,11 +954,11 @@ class OrderModal {
 
     // Mostrar loading
     submitButton.disabled = true;
-    submitButtonText.textContent = 'Creando pedido...';
+    submitButtonText.textContent = isEditing ? 'Actualizando pedido...' : 'Creando pedido...';
 
     try {
       const orderData = {
-        clienteId: this.selectedClient.codigo,
+        clienteId: clienteIdToUse,
         productos: this.orderItems.map(item => ({
           productoId: item.productId,
           cantidad: item.quantity,
@@ -858,12 +967,21 @@ class OrderModal {
         total: this.orderItems.reduce((sum, item) => sum + item.subtotal, 0)
       };
 
-      console.log('📦 Creando pedido:', orderData);
-
       const token = localStorage.getItem('token');
       const apiUrl = window.API_CONFIG?.BASE_URL || 'http://localhost:8001';
-      const response = await fetch(`${apiUrl}/api/pedidos`, {
-        method: 'POST',
+      
+      // Determinar URL y método según si es edición o creación
+      const url = isEditing 
+        ? `${apiUrl}/api/pedidos/${this.editingOrderId}`
+        : `${apiUrl}/api/pedidos`;
+      const method = isEditing ? 'PUT' : 'POST';
+
+      console.log(isEditing ? '📝 Actualizando pedido:' : '📦 Creando pedido:', orderData);
+      console.log('🔗 URL:', url);
+      console.log('📤 Método:', method);
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -873,14 +991,14 @@ class OrderModal {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error creando pedido');
+        throw new Error(errorData.error || (isEditing ? 'Error actualizando pedido' : 'Error creando pedido'));
       }
 
       const result = await response.json();
-      console.log('✅ Pedido creado:', result);
+      console.log(isEditing ? '✅ Pedido actualizado:' : '✅ Pedido creado:', result);
 
       // Guardar datos antes de cerrar el modal (porque close() los limpia)
-      const clienteInfo = this.selectedClient ? { ...this.selectedClient } : null;
+      const clienteInfo = this.selectedClient ? { ...this.selectedClient } : (isEditing && this.originalClientId ? { codigo: this.originalClientId } : null);
       const productosInfo = [...this.orderItems];
       const clientName = clienteInfo ? clienteInfo.nombre || 'Cliente' : 'Cliente';
       const productCount = productosInfo.length;
@@ -888,13 +1006,22 @@ class OrderModal {
       // Éxito
       this.close();
 
-      // Emitir evento de pedido creado para actualización reactiva
+      // Emitir evento según si es creación o actualización
       if (window.eventBus && window.EVENTS) {
-        window.eventBus.emit(window.EVENTS.PEDIDO_CREATED, {
-          pedido: result,
-          cliente: clienteInfo,
-          productos: productosInfo
-        });
+        if (isEditing) {
+          window.eventBus.emit(window.EVENTS.PEDIDO_UPDATED, {
+            pedido: result,
+            pedidoId: this.editingOrderId,
+            cliente: clienteInfo,
+            productos: productosInfo
+          });
+        } else {
+          window.eventBus.emit(window.EVENTS.PEDIDO_CREATED, {
+            pedido: result,
+            cliente: clienteInfo,
+            productos: productosInfo
+          });
+        }
       }
 
       // Recargar la lista de pedidos (compatibilidad con index.astro)
@@ -905,7 +1032,10 @@ class OrderModal {
       }
 
       // Mostrar mensaje de éxito
-      this.showSuccessMessage(`Pedido creado para ${clientName} con ${productCount} producto${productCount > 1 ? 's' : ''}`);
+      const successMessage = isEditing 
+        ? `Pedido actualizado correctamente`
+        : `Pedido creado correctamente para ${clientName} con ${productCount} producto${productCount !== 1 ? 's' : ''}`;
+      this.showSuccessMessage(successMessage);
 
     } catch (error) {
       console.error('Error:', error);

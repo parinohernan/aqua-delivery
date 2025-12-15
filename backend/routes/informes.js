@@ -108,7 +108,12 @@ async function generarInformeDetallado(codigoEmpresa, fechaDesde, fechaHasta) {
   // Para cada cliente, obtener los productos que compró
   const clientesConProductos = [];
   
-  for (const cliente of clientesRows) {
+  console.log(`📊 Procesando ${clientesRows.length} clientes...`);
+  
+  for (let i = 0; i < clientesRows.length; i++) {
+    const cliente = clientesRows[i];
+    console.log(`   📋 Procesando cliente ${i + 1}/${clientesRows.length}: ${cliente.nombre} ${cliente.apellido || ''}`);
+    
     // Obtener productos comprados por este cliente
     const productosRows = await query(`
       SELECT 
@@ -172,6 +177,8 @@ async function generarInformeDetallado(codigoEmpresa, fechaDesde, fechaHasta) {
     });
   }
 
+  console.log(`✅ Informe detallado generado: ${clientesConProductos.length} clientes procesados`);
+  
   return {
     clientes: clientesConProductos
   };

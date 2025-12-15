@@ -23,7 +23,10 @@ import InformesSection from '../components/InformesSection.astro';
             <div class="app-icon">
               <img src="/drop.png" alt="Aqua Logo" style="width: 50%; height: 50%; object-fit: contain;" />
             </div>
-            <h1 class="app-title">Aqua Delivery Manager</h1>
+            <div class="app-title-container">
+              <h1 class="app-title">Aqua314</h1>
+              <span class="app-subtitle">Delivery Manager</span>      
+            </div>
           </div>
           <div class="header-right">
             <span id="userInfo" class="user-info"></span>
@@ -139,7 +142,7 @@ import InformesSection from '../components/InformesSection.astro';
 
 <script>
 // Estado global
-let currentUser = null;
+let currentUser: User | null = null;
 let currentRoute = 'clientes';
 
 // Inicialización
@@ -225,7 +228,7 @@ window.performLogout = function() {
     console.log('🗑️ LocalStorage limpiado');
     console.log('🔄 Redirigiendo a login...');
     window.location.href = '/login';
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error en logout:', error);
     localStorage.clear();
     window.location.href = '/login';
@@ -248,7 +251,7 @@ async function checkAuth() {
   }
 
   try {
-    currentUser = JSON.parse(userStr);
+    currentUser = JSON.parse(userStr) as User;
     showMainApp();
     
     // Mostrar info usuario
@@ -271,8 +274,8 @@ function showMainApp() {
 }
 
 // Mapa de Entregas
-let deliveryMap = null;
-let deliveryMarkers = [];
+let deliveryMap: any = null;
+let deliveryMarkers: any[] = [];
 
 window.showDeliveryMap = async function() {
   console.log('🗺️ Mostrando mapa de entregas...');
@@ -423,14 +426,15 @@ async function initDeliveryMap() {
       }
     }, 100);
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error inicializando mapa:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     container.innerHTML = `
       <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #fef2f2;">
         <div style="text-align: center; padding: 2rem;">
           <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
           <h4 style="color: #dc2626; margin: 0 0 0.5rem 0;">Error cargando mapa</h4>
-          <p style="color: #991b1b; margin: 0;">${error.message}</p>
+          <p style="color: #991b1b; margin: 0;">${errorMessage}</p>
         </div>
       </div>
     `;
@@ -440,11 +444,13 @@ async function initDeliveryMap() {
 
 // Navegación
 document.addEventListener('click', (e) => {
-  const target = e.target;
-  if (target.matches('[data-route]') || target.closest('[data-route]')) {
-    const button = target.matches('[data-route]') ? target : target.closest('[data-route]');
-    const route = button.getAttribute('data-route');
-    if (route) navigateTo(route);
+  const target = e.target as HTMLElement | null;
+  if (target && (target.matches?.('[data-route]') || target.closest?.('[data-route]'))) {
+    const button = target.matches?.('[data-route]') ? target : target.closest?.('[data-route]') as HTMLElement | null;
+    if (button) {
+      const route = button.getAttribute('data-route');
+      if (route) navigateTo(route);
+    }
   }
 });
 
@@ -459,14 +465,16 @@ function navigateTo(route) {
   
   // Ocultar todas las secciones
   document.querySelectorAll('.section-content').forEach(el => {
-    el.style.display = 'none';
+    if (el instanceof HTMLElement && el.style) {
+      el.style.display = 'none';
+    }
   });
   
   // Mostrar sección actual e inicializarla
   const sectionId = `${route}Section`;
   const sectionEl = document.getElementById(sectionId);
   
-  if (sectionEl) {
+  if (sectionEl && sectionEl instanceof HTMLElement && sectionEl.style) {
     sectionEl.style.display = 'block';
     
     // Inicializar lógica específica de la sección

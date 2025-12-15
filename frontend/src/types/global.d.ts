@@ -3,7 +3,7 @@
 declare global {
   interface Window {
     // Variables globales
-    currentUser: any;
+    currentUser: User | null;
     currentRoute: string;
     currentPedidos: any[];
     allPedidos: any[];
@@ -145,6 +145,43 @@ declare global {
     showMainApp: () => void;
     loadRoute: (route: string) => void;
     redirectToLogin: () => void;
+    
+    // Funciones de modal de logout
+    showLogoutModal: () => void;
+    hideLogoutModal: () => void;
+    performLogout: () => void;
+    
+    // Funciones de mapa de entregas
+    showDeliveryMap: () => Promise<void>;
+    closeDeliveryMap: () => void;
+    initMapPWA: (containerId: string, options?: any) => Promise<any>;
+    
+    // Funciones de inicialización de secciones
+    initPedidosSection: () => Promise<void>;
+    initClientesSection: () => Promise<void>;
+    initProductosSection: () => Promise<void>;
+    initInformesSection: () => Promise<void>;
+    
+    // Variables de mapa
+    deliveryMap: any;
+    deliveryMarkers: any[];
+    
+    // API Config
+    API_CONFIG: {
+      BASE_URL: string;
+      ENDPOINTS: {
+        LOGIN: string;
+        CLIENTES: string;
+        PRODUCTOS: string;
+        PEDIDOS: string;
+        PAGOS: string;
+        ZONAS: string;
+        TIPOS_PAGO: string;
+        INFORMES: string;
+      };
+      getUrl: (endpoint: string) => string;
+      getEndpointUrl: (endpointName: string) => string;
+    };
   }
 
   // Extender HTMLElement para incluir propiedades comunes
@@ -154,8 +191,49 @@ declare global {
     selected?: boolean;
     selectedIndex?: number;
     options?: HTMLOptionsCollection;
+    style?: CSSStyleDeclaration;
+    matches?: (selector: string) => boolean;
+    closest?: (selector: string) => HTMLElement | null;
   }
+  
+  // Tipo para usuario
+  interface User {
+    nombre?: string;
+    telegramId?: string;
+    [key: string]: any;
+  }
+  
+  // Tipo para Leaflet
+  interface LeafletMap {
+    remove: () => void;
+    invalidateSize: () => void;
+    fitBounds: (bounds: any, options?: any) => void;
+    [key: string]: any;
+  }
+  
+  // Declarar Leaflet global
+  const L: {
+    divIcon: (options: any) => any;
+    marker: (latlng: [number, number], options?: any) => any;
+    featureGroup: (layers?: any[]) => any;
+    [key: string]: any;
+  };
 }
+
+// Declarar tipos para errores
+declare type Error = {
+  message: string;
+  name?: string;
+  stack?: string;
+  [key: string]: any;
+};
+
+// Declarar User fuera del bloque global para uso en código
+declare type User = {
+  nombre?: string;
+  telegramId?: string;
+  [key: string]: any;
+};
 
 // Declaraciones de funciones globales (no en window)
 declare function clearPedidosFilters(): void;

@@ -78,11 +78,7 @@ class DeliveryModal {
             <div class="form-group">
               <label class="form-label">Tipo de Pago *</label>
               <select id="tipoPago" name="tipoPago" required class="form-input">
-                <option value="">Seleccionar tipo de pago...</option>
-                <option value="efectivo">💵 Efectivo</option>
-                <option value="transferencia">🏦 Transferencia</option>
-                <option value="tarjeta">💳 Tarjeta</option>
-                <option value="cuenta_corriente">📋 Cuenta Corriente</option>
+                <option value="">Cargando tipos de pago...</option>
               </select>
             </div>
 
@@ -197,6 +193,12 @@ class DeliveryModal {
     console.log('🚚 Iniciando proceso de entrega para pedido:', pedidoId);
 
     try {
+      // Asegurarse de que los tipos de pago estén cargados
+      if (this.tiposPago.length === 0) {
+        console.log('💳 Cargando tipos de pago...');
+        await this.loadTiposPago();
+      }
+
       // Cargar datos del pedido
       await this.loadPedidoData(pedidoId);
 
@@ -415,15 +417,31 @@ class DeliveryModal {
 
   setupTiposPago() {
     const tipoPagoSelect = document.getElementById('tipoPago');
-    if (!tipoPagoSelect || this.tiposPago.length === 0) return;
+    if (!tipoPagoSelect) return;
 
     // Limpiar opciones existentes
     tipoPagoSelect.innerHTML = '<option value="">Seleccionar tipo de pago...</option>';
 
+    // Si no hay tipos de pago cargados, mostrar mensaje y recargar
+    if (this.tiposPago.length === 0) {
+      tipoPagoSelect.innerHTML = '<option value="">Cargando tipos de pago...</option>';
+      // Intentar recargar tipos de pago
+      this.loadTiposPago().then(() => {
+        // Después de cargar, volver a intentar
+        if (this.tiposPago.length > 0) {
+          this.setupTiposPago();
+        } else {
+          tipoPagoSelect.innerHTML = '<option value="">Error cargando tipos de pago</option>';
+          console.error('❌ No se pudieron cargar los tipos de pago');
+        }
+      });
+      return;
+    }
+
     // Agregar opciones dinámicas
     this.tiposPago.forEach(tipo => {
       const option = document.createElement('option');
-      option.value = tipo.id;
+      option.value = tipo.id; // Usar el ID numérico
       const aplicaSaldo = this.convertirAplicaSaldo(tipo.aplicaSaldo);
       option.textContent = `${tipo.pago}${aplicaSaldo ? ' (Aplica saldo)' : ''}`;
       tipoPagoSelect.appendChild(option);
@@ -443,11 +461,23 @@ class DeliveryModal {
       return;
     }
 
-    // Buscar el tipo de pago seleccionado
-    const tipoPago = this.tiposPago.find(t => t.id == tipoPagoId);
-    const aplicaSaldo = tipoPago ? this.convertirAplicaSaldo(tipoPago.aplicaSaldo) : false;
+    // Convertir a número
+    const tipoPagoIdNum = parseInt(tipoPagoId);
+    if (isNaN(tipoPagoIdNum)) {
+      console.error('❌ Tipo de pago ID inválido:', tipoPagoId);
+      return;
+    }
 
-    if (tipoPago && aplicaSaldo) {
+    // Buscar el tipo de pago seleccionado
+    const tipoPago = this.tiposPago.find(t => t.id == tipoPagoIdNum);
+    if (!tipoPago) {
+      console.error('❌ Tipo de pago no encontrado:', tipoPagoIdNum);
+      return;
+    }
+
+    const aplicaSaldo = this.convertirAplicaSaldo(tipoPago.aplicaSaldo);
+
+    if (aplicaSaldo) {
       // Si aplica saldo, no se cobra dinero
       montoGroup.classList.add('hidden');
       montoCobrado.required = false;
@@ -464,25 +494,31 @@ class DeliveryModal {
   }
 
   updateResumen() {
-    const tipoPago = document.getElementById('tipoPago').value;
+    const tipoPagoId = document.getElementById('tipoPago').value;
     const montoCobrado = parseFloat(document.getElementById('montoCobrado').value || 0);
     const retornablesDevueltos = parseInt(document.getElementById('retornablesDevueltos').value || 0);
     const totalPedido = parseFloat(this.pedidoData.total || 0);
 
     const container = document.getElementById('resumenContent');
 
-    if (!tipoPago) {
+    if (!tipoPagoId) {
       container.innerHTML = '<p style="color: #6b7280; margin: 0;">Selecciona el tipo de pago para ver el resumen</p>';
       return;
     }
 
+    // Obtener información del tipo de pago
+    const tipoPagoIdNum = parseInt(tipoPagoId);
+    const tipoPago = this.tiposPago.find(t => t.id == tipoPagoIdNum);
+    const aplicaSaldo = tipoPago ? this.convertirAplicaSaldo(tipoPago.aplicaSaldo) : false;
+    const nombreTipoPago = tipoPago ? tipoPago.pago : 'Tipo de pago';
+
     let resumenHTML = '';
 
     // Información de pago
-    if (tipoPago === 'cuenta_corriente') {
+    if (aplicaSaldo) {
       resumenHTML += `
         <div style="margin-bottom: 0.5rem;">
-          💳 <strong>Pago:</strong> Se aplicará a cuenta corriente
+          💳 <strong>Pago:</strong> ${nombreTipoPago} - Se aplicará a cuenta corriente
         </div>
         <div style="margin-bottom: 0.5rem;">
           💰 <strong>Monto:</strong> $${totalPedido.toFixed(2)} (se sumará al saldo del cliente)
@@ -491,7 +527,7 @@ class DeliveryModal {
     } else {
       resumenHTML += `
         <div style="margin-bottom: 0.5rem;">
-          💰 <strong>Pago:</strong> ${tipoPago} - $${montoCobrado.toFixed(2)}
+          💰 <strong>Pago:</strong> ${nombreTipoPago} - $${montoCobrado.toFixed(2)}
         </div>
       `;
 
@@ -560,13 +596,30 @@ class DeliveryModal {
       const tipoPagoId = formData.get('tipoPago');
       const pedidoId = this.pedidoData.id || this.pedidoData.codigo;
 
-      // Obtener información del tipo de pago seleccionado
-      const tipoPago = this.tiposPago.find(t => t.id == tipoPagoId);
-      const aplicaSaldo = tipoPago ? this.convertirAplicaSaldo(tipoPago.aplicaSaldo) : false;
+      // Validar que se haya seleccionado un tipo de pago
+      if (!tipoPagoId || tipoPagoId === '') {
+        throw new Error('Por favor selecciona un tipo de pago');
+      }
 
-      console.log('🚚 Procesando entrega:', { pedidoId, tipoPagoId, aplicaSaldo });
+      // Convertir a número para asegurar que es un ID válido
+      const tipoPagoIdNum = parseInt(tipoPagoId);
+      if (isNaN(tipoPagoIdNum)) {
+        throw new Error('Tipo de pago inválido. Por favor recarga la página.');
+      }
+
+      // Obtener información del tipo de pago seleccionado
+      const tipoPago = this.tiposPago.find(t => t.id == tipoPagoIdNum);
+      if (!tipoPago) {
+        console.error('❌ Tipo de pago no encontrado en lista local:', tipoPagoIdNum);
+        console.log('💳 Tipos de pago disponibles:', this.tiposPago);
+        throw new Error('Tipo de pago no encontrado. Por favor recarga la página.');
+      }
+
+      const aplicaSaldo = this.convertirAplicaSaldo(tipoPago.aplicaSaldo);
+
+      console.log('🚚 Procesando entrega:', { pedidoId, tipoPagoId: tipoPagoIdNum, aplicaSaldo });
       console.log('💳 Tipo de pago encontrado:', tipoPago);
-      console.log('💳 aplicaSaldo raw:', tipoPago?.aplicaSaldo);
+      console.log('💳 aplicaSaldo raw:', tipoPago.aplicaSaldo);
       console.log('💳 aplicaSaldo convertido:', aplicaSaldo);
 
       // Preparar datos para el endpoint de entrega
@@ -575,7 +628,7 @@ class DeliveryModal {
       const totalPedido = parseFloat(this.pedidoData.total || 0);
 
       const entregaData = {
-        tipoPago: tipoPagoId,
+        tipoPago: tipoPagoIdNum, // Enviar el ID numérico
         montoCobrado: aplicaSaldo ? 0 : montoCobrado,
         retornablesDevueltos: retornablesDevueltos,
         totalRetornables: this.totalRetornables,
@@ -617,7 +670,7 @@ class DeliveryModal {
         window.eventBus.emit(window.EVENTS.PEDIDO_UPDATED, {
           pedidoId: pedidoId,
           nuevoEstado: 'entregad',
-          tipoPago: tipoPagoId,
+          tipoPago: tipoPagoIdNum,
           aplicaSaldo: aplicaSaldo
         });
       }

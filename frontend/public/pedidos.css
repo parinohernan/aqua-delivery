@@ -1245,3 +1245,678 @@
   padding-bottom: 120px;
   /* Espacio para la barra de navegación */
 }
+
+/* Aumentar padding en móviles para evitar que se oculten datos */
+@media (max-width: 480px) {
+  .pedidos-section {
+    padding-bottom: 180px; /* Más espacio para la barra de navegación y evitar datos ocultos */
+  }
+  
+  .pedidos-list {
+    padding-bottom: 2rem; /* Espacio adicional al final de la lista */
+  }
+  
+  .pedidos-grid {
+    padding-bottom: 1rem; /* Espacio adicional después del último pedido */
+  }
+}
+
+/* ===== MEJORAS PARA SMARTPHONES - ELIMINAR ESPACIO EN BLANCO ===== */
+@media (max-width: 480px) {
+  /* Prevenir overflow horizontal en contenedores padre */
+  #pedidosSection.section-content {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Prevenir overflow horizontal */
+  .pedidos-section *,
+  .pedidos-section *::before,
+  .pedidos-section *::after {
+    box-sizing: border-box;
+  }
+
+  /* Sección principal más compacta */
+  .pedidos-section {
+    padding: 0.75rem;
+    padding-bottom: 180px; /* Más espacio para la barra de navegación y evitar datos ocultos */
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    margin: 0;
+    position: relative;
+  }
+
+  /* Contenedor más compacto */
+  .pedidos-container {
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Paneles más compactos */
+  .actions-panel,
+  .tracking-panel,
+  .filters-panel,
+  .pedidos-list {
+    padding: 1rem;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  .actions-header h3,
+  .tracking-header h3,
+  .filters-header h3,
+  .list-header h3 {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Grid de pedidos - una sola columna */
+  .pedidos-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Tarjetas de pedidos optimizadas */
+  .pedido-card {
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  /* Header de tarjeta más compacto */
+  .pedido-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .pedido-number {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    align-self: flex-start;
+  }
+
+  .pedido-status {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Información del cliente más compacta */
+  .pedido-body {
+    margin-bottom: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .client-info {
+    margin-bottom: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .client-name {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+    word-break: break-word;
+  }
+
+  .client-details {
+    font-size: 0.85rem;
+    margin-bottom: 0.375rem;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .client-details span {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  /* Items preview más compacto */
+  .items-preview {
+    font-size: 0.85rem;
+    padding: 0.625rem;
+    line-height: 1.5;
+    max-height: 80px;
+    overflow-y: auto;
+    word-break: break-word;
+  }
+
+  /* Footer más compacto */
+  .pedido-footer {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .total-section {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .total-label {
+    font-size: 0.8rem;
+  }
+
+  .total-amount {
+    font-size: 1.25rem;
+  }
+
+  /* Botones de acción optimizados */
+  .pedido-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .btn-action {
+    padding: 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    min-height: 44px;
+    font-weight: 600;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Botón "Ver Detalles" ocupa toda la fila */
+  .btn-view {
+    grid-column: 1 / -1;
+  }
+
+  /* Contador de pedidos más compacto */
+  .pedidos-counter {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .counter-content {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .counter-label {
+    font-size: 0.875rem;
+  }
+
+  .counter-value {
+    font-size: 1rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  /* Campo de búsqueda optimizado */
+  .search-group {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .search-input {
+    font-size: 1rem; /* Evitar zoom en iOS */
+    padding: 0.875rem 0.875rem 0.875rem 2.75rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Botones principales más grandes para fácil toque */
+  .action-buttons {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .btn-create,
+  .btn-export {
+    padding: 1rem;
+    font-size: 1rem;
+    min-height: 48px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Tracking panel más compacto */
+  .btn-tracking {
+    padding: 1rem;
+    font-size: 1rem;
+    min-height: 48px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tracking-controls {
+    margin-top: 0.75rem;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Filtros más compactos */
+  .filters-content {
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .filter-group {
+    gap: 0.375rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .filter-label {
+    font-size: 0.8rem;
+  }
+
+  .filter-input,
+  .filter-select {
+    padding: 0.75rem;
+    font-size: 0.95rem; /* Evitar zoom en iOS */
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .filter-actions {
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .btn-filter,
+  .btn-clear-filters {
+    padding: 0.875rem;
+    font-size: 0.9rem;
+    min-height: 44px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Toggle de filtros */
+  .filters-toggle {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .btn-toggle-filters {
+    padding: 0.875rem;
+    font-size: 0.9rem;
+    min-height: 44px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Header de la sección */
+  .pedidos-header {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .header-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    gap: 0.5rem;
+  }
+
+  .section-title .icon {
+    font-size: 2rem;
+  }
+
+  /* Scroll suave y prevenir overflow */
+  .pedidos-list {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Asegurar que todos los elementos internos no se desborden */
+  .pedido-header,
+  .pedido-body,
+  .pedido-footer,
+  .client-info,
+  .items-preview,
+  .total-section,
+  .pedido-actions {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* ===== MODAL DE PEDIDOS CERCANOS ===== */
+
+#nearbyResultsModal.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  padding: 1rem;
+}
+
+#nearbyResultsModal.modal-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.nearby-modal-content {
+  background: white;
+  border-radius: 20px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+.nearby-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  border-radius: 20px 20px 0 0;
+}
+
+.nearby-modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #6b7280;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nearby-modal-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.nearby-results-list {
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.nearby-item {
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.nearby-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #d1d5db;
+}
+
+.nearby-item.closest {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+}
+
+.nearby-item-distance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.distance-badge {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+  padding: 0.625rem 0.875rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  min-width: 70px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.distance-badge.closest-badge {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.closest-label {
+  background: #10b981;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nearby-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nearby-item-header {
+  margin-bottom: 0.75rem;
+}
+
+.nearby-item-number {
+  color: #111827;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.nearby-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.info-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.info-text {
+  color: #374151;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.address-text {
+  color: #6b7280;
+  word-break: break-word;
+}
+
+.nearby-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 140px;
+}
+
+.btn-navigate,
+.btn-deliver {
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.btn-navigate {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.btn-navigate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.btn-deliver {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.btn-deliver:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+.nearby-modal-footer {
+  padding: 1rem 1.5rem;
+  text-align: center;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 20px 20px;
+}
+
+.nearby-modal-footer p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Responsive para modal de pedidos cercanos */
+@media (max-width: 768px) {
+  .nearby-modal-content {
+    max-height: 90vh;
+    border-radius: 16px;
+  }
+
+  .nearby-modal-header {
+    padding: 1.25rem;
+  }
+
+  .nearby-results-list {
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .nearby-item {
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .nearby-item-distance {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+  .nearby-item-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .btn-navigate,
+  .btn-deliver {
+    width: 100%;
+  }
+}

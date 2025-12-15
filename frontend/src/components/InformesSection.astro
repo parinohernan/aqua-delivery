@@ -120,11 +120,106 @@
   }
 
   function mostrarDetalle(datos, container) {
+    const clientes = datos.clientes || [];
+    
+    if (clientes.length === 0) {
+      container.innerHTML = `
+        <div class="informe-card">
+          <h4>📋 Detalle por Cliente</h4>
+          <div class="empty-state-mini">
+            <p>No se encontraron clientes con pedidos en el período seleccionado.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    let clientesHTML = '';
+    
+    clientes.forEach(cliente => {
+      const nombreCompleto = `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'Cliente sin nombre';
+      const productosHTML = cliente.productos && cliente.productos.length > 0
+        ? cliente.productos.map(prod => `
+            <tr>
+              <td>${prod.descripcion || 'Producto sin nombre'}</td>
+              <td style="text-align: center;">${prod.cantidadTotal || 0}</td>
+              <td style="text-align: right;">$${(prod.precioPromedio || 0).toFixed(2)}</td>
+              <td style="text-align: right; color: #4ade80; font-weight: 600;">$${(prod.totalPagado || 0).toFixed(2)}</td>
+            </tr>
+          `).join('')
+        : '<tr><td colspan="4" class="empty-state-mini">No hay productos registrados</td></tr>';
+
+      const pedidosHTML = cliente.pedidos && cliente.pedidos.length > 0
+        ? cliente.pedidos.map(pedido => {
+            const fecha = pedido.fechaEntrega ? new Date(pedido.fechaEntrega).toLocaleDateString('es-AR') : 'Sin fecha';
+            return `
+              <div class="pedido-item">
+                <div>
+                  <div class="pedido-codigo">Pedido #${pedido.codigo || 'N/A'}</div>
+                  <div class="pedido-fecha">📅 ${fecha}</div>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                  <div class="pedido-items">📦 ${pedido.cantidadItems || 0} items</div>
+                  <div class="pedido-total">$${(pedido.total || 0).toFixed(2)}</div>
+                </div>
+              </div>
+            `;
+          }).join('')
+        : '<div class="empty-state-mini">No hay pedidos registrados</div>';
+
+      clientesHTML += `
+        <div class="cliente-card">
+          <div class="cliente-header">
+            <div class="cliente-info">
+              <h5>${nombreCompleto}</h5>
+              <p class="cliente-telefono">📞 ${cliente.telefono || 'Sin teléfono'}</p>
+            </div>
+            <div class="cliente-stats">
+              <div class="stat-mini">
+                <span class="stat-value">${cliente.totalPedidos || 0}</span>
+                <span class="stat-label">Pedidos</span>
+              </div>
+              <div class="stat-mini">
+                <span class="stat-value" style="color: #4ade80;">$${(cliente.totalComprado || 0).toFixed(2)}</span>
+                <span class="stat-label">Total</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="productos-cliente">
+            <h6>🛒 Productos Comprados</h6>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th style="text-align: center;">Cantidad</th>
+                  <th style="text-align: right;">Precio Prom.</th>
+                  <th style="text-align: right;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${productosHTML}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pedidos-cliente">
+            <h6>📋 Pedidos</h6>
+            <div class="pedidos-list">
+              ${pedidosHTML}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
     container.innerHTML = `
       <div class="informe-card">
         <h4>📋 Detalle por Cliente</h4>
-        <p>Se encontraron ${datos.clientes?.length || 0} clientes en el período.</p>
-        <!-- Aquí iría la tabla detallada -->
+        <p style="margin-bottom: 1.5rem; opacity: 0.9;">Se encontraron ${clientes.length} cliente${clientes.length !== 1 ? 's' : ''} en el período.</p>
+        <div class="clientes-detalle">
+          ${clientesHTML}
+        </div>
       </div>
     `;
   }

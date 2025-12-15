@@ -7,6 +7,8 @@
   padding: 2rem;
   color: white;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Header de la sección */
@@ -181,6 +183,13 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   min-height: 400px;
   transition: all 0.3s ease;
+}
+
+/* Contenedor de resultados del informe */
+.informe-resultados {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: none;
 }
 
 /* Estado vacío */
@@ -446,7 +455,8 @@
   border-collapse: collapse;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .mini-table th,

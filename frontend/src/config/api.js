@@ -12,7 +12,18 @@ const getBackendUrl = () => {
     }
   }
 
-  // Fallback para desarrollo
+  // Fallback inteligente para desarrollo
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+
+    // Si estamos accediendo por IP local (ej: 192.168.1.110), usar esa IP para el backend
+    if (hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.')) {
+      const networkUrl = `http://${hostname}:8001`;
+      console.log('🌐 Detectado acceso por red local, usando backend en:', networkUrl);
+      return networkUrl;
+    }
+  }
+
   const fallbackUrl = 'http://localhost:8001';
   console.log('⚠️ PUBLIC_API_URL no definida, usando fallback:', fallbackUrl);
   return fallbackUrl;

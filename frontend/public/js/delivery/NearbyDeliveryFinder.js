@@ -94,10 +94,13 @@ class NearbyDeliveryFinder {
 
         const modalHTML = `
       <div id="nearbyResultsModal" class="modal-overlay show">
-        <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; position: sticky; top: 0; background: white; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb;">
-            <h3 style="margin: 0; color: #111827;">📍 Pedidos Cercanos</h3>
-            <button onclick="window.closeNearbyResults()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">
+        <div class="modal-content nearby-modal-content">
+          <div class="nearby-modal-header">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span style="font-size: 1.5rem;">📍</span>
+              <h3 style="margin: 0; color: #111827; font-size: 1.5rem; font-weight: 700;">Pedidos Cercanos</h3>
+            </div>
+            <button onclick="window.closeNearbyResults()" class="nearby-modal-close">
               ×
             </button>
           </div>
@@ -107,9 +110,9 @@ class NearbyDeliveryFinder {
           </div>
 
           ${deliveries.length >= this.maxResults ? `
-            <p style="text-align: center; color: #6b7280; font-size: 0.875rem; margin-top: 1rem;">
-              Mostrando los ${this.maxResults} pedidos más cercanos
-            </p>
+            <div class="nearby-modal-footer">
+              <p>Mostrando los ${this.maxResults} pedidos más cercanos</p>
+            </div>
           ` : ''}
         </div>
       </div>
@@ -136,74 +139,35 @@ class NearbyDeliveryFinder {
         const isClosest = index === 0;
 
         return `
-      <div class="nearby-item ${isClosest ? 'closest' : ''}" style="
-        background: ${isClosest ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : '#f9fafb'};
-        border: 2px solid ${isClosest ? '#3b82f6' : '#e5e7eb'};
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        transition: all 0.2s ease;
-      " onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='translateX(0)'">
-        
-        <div class="distance-badge" style="
-          background: ${isClosest ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'linear-gradient(135deg, #6b7280, #4b5563)'};
-          color: white;
-          padding: 0.5rem 0.75rem;
-          border-radius: 8px;
-          font-weight: 700;
-          font-size: 0.875rem;
-          min-width: 60px;
-          text-align: center;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        ">
-          ${distanceText}
-        </div>
-
-        <div class="delivery-info" style="flex: 1; min-width: 0;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-            <strong style="color: #111827; font-size: 1rem;">Pedido #${delivery.codigo || delivery.id}</strong>
-            ${isClosest ? '<span style="background: #10b981; color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">MÁS CERCANO</span>' : ''}
+      <div class="nearby-item ${isClosest ? 'closest' : ''}">
+        <div class="nearby-item-distance">
+          <div class="distance-badge ${isClosest ? 'closest-badge' : ''}">
+            ${distanceText}
           </div>
-          <p style="margin: 0.25rem 0; color: #374151; font-size: 0.875rem;">
-            <strong>👤</strong> ${nombreCliente}
-          </p>
-          <p style="margin: 0.25rem 0; color: #6b7280; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <strong>📍</strong> ${direccion}
-          </p>
+          ${isClosest ? '<div class="closest-label">MÁS CERCANO</div>' : ''}
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-          <button onclick="window.navigateToDelivery(${delivery.codigo || delivery.id})" style="
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.875rem;
-            white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
-            transition: all 0.2s ease;
-          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.25)'">
+        <div class="nearby-item-content">
+          <div class="nearby-item-header">
+            <strong class="nearby-item-number">Pedido #${delivery.codigo || delivery.id}</strong>
+          </div>
+          <div class="nearby-item-info">
+            <div class="info-row">
+              <span class="info-icon">👤</span>
+              <span class="info-text">${nombreCliente}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-icon">📍</span>
+              <span class="info-text address-text">${direccion}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="nearby-item-actions">
+          <button onclick="window.navigateToDelivery(${delivery.codigo || delivery.id})" class="btn-navigate">
             🗺️ Navegar
           </button>
-          <button onclick="window.startDelivery(${delivery.codigo || delivery.id}); window.closeNearbyResults()" style="
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.875rem;
-            white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
-            transition: all 0.2s ease;
-          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.25)'">
+          <button onclick="window.startDelivery(${delivery.codigo || delivery.id}); window.closeNearbyResults()" class="btn-deliver">
             🚚 Entregar
           </button>
         </div>

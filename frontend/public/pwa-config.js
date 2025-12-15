@@ -2,19 +2,19 @@
 const PWA_CONFIG = {
   // Nombre de la aplicación
   appName: 'AquaDelivery',
-  
+
   // Configuración del Service Worker
   swConfig: {
     cacheName: 'aqua-delivery-v4',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
   },
-  
+
   // Configuración de instalación
   installConfig: {
     prompt: true,
     beforeInstallPrompt: null,
   },
-  
+
   // Configuración de actualización
   updateConfig: {
     checkInterval: 24 * 60 * 60 * 1000, // 24 horas
@@ -35,26 +35,26 @@ function isChromeAndroid() {
 // Función para manejar la instalación de la PWA
 function handlePWAInstall() {
   let deferredPrompt;
-  
+
   window.addEventListener('beforeinstallprompt', (e) => {
     // Prevenir que Chrome muestre automáticamente el prompt
     e.preventDefault();
     // Guardar el evento para usarlo después
     deferredPrompt = e;
     PWA_CONFIG.installConfig.beforeInstallPrompt = e;
-    
+
     console.log('📱 PWA instalable detectada');
-    
+
     // Opcional: Mostrar un botón de instalación personalizado
-    showInstallButton();
+    //showInstallButton(); //por el momento no lo muestro
   });
-  
+
   window.addEventListener('appinstalled', (evt) => {
     console.log('✅ PWA instalada exitosamente');
     // Limpiar el prompt guardado
     deferredPrompt = null;
     PWA_CONFIG.installConfig.beforeInstallPrompt = null;
-    
+
     // Ocultar el botón de instalación si existe
     hideInstallButton();
   });
@@ -69,7 +69,7 @@ function showInstallButton() {
     installBtn.innerHTML = '📱 Instalar App';
     installBtn.className = 'pwa-install-btn';
     installBtn.onclick = installPWA;
-    
+
     // Agregar estilos
     installBtn.style.cssText = `
       position: fixed;
@@ -86,7 +86,7 @@ function showInstallButton() {
       box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
       transition: all 0.3s ease;
     `;
-    
+
     document.body.appendChild(installBtn);
   }
 }
@@ -104,16 +104,16 @@ async function installPWA() {
   if (PWA_CONFIG.installConfig.beforeInstallPrompt) {
     // Mostrar el prompt de instalación
     PWA_CONFIG.installConfig.beforeInstallPrompt.prompt();
-    
+
     // Esperar la respuesta del usuario
     const { outcome } = await PWA_CONFIG.installConfig.beforeInstallPrompt.userChoice;
-    
+
     if (outcome === 'accepted') {
       console.log('✅ Usuario aceptó instalar la PWA');
     } else {
       console.log('❌ Usuario rechazó instalar la PWA');
     }
-    
+
     // Limpiar el prompt
     PWA_CONFIG.installConfig.beforeInstallPrompt = null;
     hideInstallButton();
@@ -123,13 +123,13 @@ async function installPWA() {
 // Función para verificar si la PWA está instalada
 function isPWAInstalled() {
   return window.matchMedia('(display-mode: standalone)').matches ||
-         window.navigator.standalone === true;
+    window.navigator.standalone === true;
 }
 
 // Función para forzar actualización de la PWA (específica para Android)
 async function forcePWAUpdate() {
   console.log('🔄 Forzando actualización de la PWA...');
-  
+
   try {
     // Limpiar caché del Service Worker
     if ('serviceWorker' in navigator) {
@@ -137,14 +137,14 @@ async function forcePWAUpdate() {
       if (registration) {
         // Forzar actualización del Service Worker
         await registration.update();
-        
+
         // Enviar mensaje para limpiar caché
         if (registration.active) {
           registration.active.postMessage({ type: 'CLEAR_CACHE' });
         }
       }
     }
-    
+
     // Limpiar caché del navegador
     if ('caches' in window) {
       const cacheNames = await caches.keys();
@@ -155,14 +155,14 @@ async function forcePWAUpdate() {
         }
       }
     }
-    
+
     // Para Android, usar métodos específicos
     if (isAndroid()) {
       // Forzar recarga completa en Android
       if (window.showSuccess) {
         window.showSuccess('Actualizando aplicación...', 2000);
       }
-      
+
       // Usar location.reload(true) para forzar recarga desde servidor
       setTimeout(() => {
         window.location.reload(true);
@@ -171,7 +171,7 @@ async function forcePWAUpdate() {
       // Para otros dispositivos
       window.location.reload(true);
     }
-    
+
   } catch (error) {
     console.error('❌ Error al actualizar PWA:', error);
     if (window.showError) {
@@ -186,7 +186,7 @@ async function forcePWAUpdate() {
 function showUpdateButton() {
   // Solo mostrar si la PWA está instalada
   if (!isPWAInstalled()) return;
-  
+
   // Crear botón de actualización si no existe
   if (!document.getElementById('pwa-update-btn')) {
     const updateBtn = document.createElement('button');
@@ -194,7 +194,7 @@ function showUpdateButton() {
     updateBtn.innerHTML = '🔄 Actualizar';
     updateBtn.className = 'pwa-update-btn';
     updateBtn.onclick = forcePWAUpdate;
-    
+
     // Agregar estilos
     updateBtn.style.cssText = `
       position: fixed;
@@ -212,7 +212,7 @@ function showUpdateButton() {
       transition: all 0.3s ease;
       font-size: 0.875rem;
     `;
-    
+
     document.body.appendChild(updateBtn);
   }
 }
@@ -222,7 +222,7 @@ function handleSWUpdate() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       console.log('🔄 Service Worker actualizado');
-      
+
       if (PWA_CONFIG.updateConfig.showUpdatePrompt) {
         // Mostrar notificación de actualización
         showUpdateNotification();
@@ -255,7 +255,7 @@ async function requestNotificationPermission() {
 // Inicializar configuración PWA
 function initPWA() {
   console.log('🚀 Inicializando PWA...');
-  
+
   // Log de información del dispositivo
   if (isAndroid()) {
     console.log('📱 Dispositivo Android detectado');
@@ -265,20 +265,20 @@ function initPWA() {
       console.log('🌐 Navegador Android - Soporte limitado para PWA');
     }
   }
-  
+
   // Manejar instalación
   handlePWAInstall();
-  
+
   // Manejar actualizaciones
   handleSWUpdate();
-  
+
   // Verificar si ya está instalada
   if (isPWAInstalled()) {
     console.log('📱 PWA ya está instalada');
     // Mostrar botón de actualización si está instalada
     showUpdateButton();
   }
-  
+
   // Solicitar permisos de notificación
   requestNotificationPermission();
 }
