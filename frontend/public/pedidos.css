@@ -1209,6 +1209,29 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   transform: scale(0.9);
   transition: all 0.3s ease;
+  position: relative;
+}
+
+.map-modal-close {
+  background: #f3f4f6 !important;
+  border: none !important;
+  font-size: 1.5rem !important;
+  cursor: pointer !important;
+  color: #6b7280 !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  font-weight: 600 !important;
+  flex-shrink: 0 !important;
+}
+
+.map-modal-close:hover {
+  background: #e5e7eb !important;
+  color: #111827 !important;
 }
 
 #mapModal.modal-overlay.show .modal-content {

@@ -88,6 +88,76 @@ router.get('/', verifyToken, async (req, res) => {
     }
 });
 
+// Obtener cliente específico por ID
+router.get('/:id', verifyToken, async (req, res) => {
+    try {
+        console.log('👤 Obteniendo cliente:', req.params.id);
+
+        // Intentar consulta con columnas de ubicación
+        let sql = `
+            SELECT
+                codigo as id,
+                codigo,
+                nombre,
+                apellido,
+                telefono,
+                direccion,
+                zona,
+                saldo,
+                retornables,
+                NULL as latitud,
+                NULL as longitud,
+                activo,
+                codigoEmpresa
+            FROM clientes
+            WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1
+        `;
+        
+        // Intentar determinar si las columnas existen
+        let hasLocationColumns = false;
+        try {
+            const testQuery = await query('SELECT latitud, longitud FROM clientes LIMIT 1');
+            hasLocationColumns = true;
+            console.log('🗺️ Columnas de ubicación disponibles');
+            
+            // Usar consulta con columnas reales
+            sql = `
+                SELECT
+                    codigo as id,
+                    codigo,
+                    nombre,
+                    apellido,
+                    telefono,
+                    direccion,
+                    zona,
+                    saldo,
+                    retornables,
+                    latitud,
+                    longitud,
+                    activo,
+                    codigoEmpresa
+                FROM clientes
+                WHERE codigo = ? AND codigoEmpresa = ? AND activo = 1
+            `;
+        } catch (error) {
+            console.log('⚠️ Columnas de ubicación no disponibles, usando valores NULL');
+        }
+
+        const cliente = await query(sql, [req.params.id, req.user.codigoEmpresa]);
+
+        if (cliente.length === 0) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
+        }
+
+        console.log('✅ Cliente encontrado:', cliente[0]);
+        res.json(cliente[0]);
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo cliente:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Crear cliente
 router.post('/', verifyToken, async (req, res) => {
     try {

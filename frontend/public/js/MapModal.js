@@ -20,9 +20,26 @@ class MapModal {
     const modalHTML = `
       <div id="mapModal" class="hidden modal-overlay">
         <div class="modal-content" style="max-width: 95vw; max-height: 95vh; width: 1200px; height: 800px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h4 class="modal-title">🗺️ Mapa de Pedidos Pendientes</h4>
-            <button onclick="mapModal.close()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span style="font-size: 1.5rem;">🗺️</span>
+              <h4 class="modal-title" style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #111827;">Mapa de Pedidos Pendientes</h4>
+            </div>
+            <button onclick="mapModal.close()" class="map-modal-close" style="
+              background: #f3f4f6;
+              border: none;
+              font-size: 1.5rem;
+              cursor: pointer;
+              color: #6b7280;
+              width: 36px;
+              height: 36px;
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.2s ease;
+              font-weight: 600;
+            " onmouseover="this.style.background='#e5e7eb'; this.style.color='#111827';" onmouseout="this.style.background='#f3f4f6'; this.style.color='#6b7280';">
               ×
             </button>
           </div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aqua-delivery-v5';
+const CACHE_NAME = 'aqua-delivery-v6';
 const urlsToCache = [
     '/',
     '/styles.css',
@@ -12,6 +12,8 @@ const urlsToCache = [
     '/js/components/clientes.js',
     '/js/components/productos.js',
     '/js/components/pagos.js',
+    '/js/ClientModal.js',
+    '/js/ClientPaymentModal.js',
     '/leaflet.css',
     '/leaflet.js',
     '/map-pwa.js'
@@ -118,4 +120,86 @@ self.addEventListener('fetch', event => {
                 });
             })
     );
+});
+
+// ===== NOTIFICACIONES PUSH =====
+
+// Escuchar notificaciones push
+self.addEventListener('push', event => {
+    console.log('🔔 Notificación push recibida:', event);
+    
+    let notificationData = {
+        title: 'AquaDelivery',
+        body: 'Tienes una nueva notificación',
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'aqua-notification',
+        requireInteraction: false,
+        data: {}
+    };
+
+    // Si hay datos en el evento push, usarlos
+    if (event.data) {
+        try {
+            const data = event.data.json();
+            notificationData = {
+                ...notificationData,
+                ...data,
+                data: data.data || {}
+            };
+        } catch (e) {
+            // Si no es JSON, usar como texto
+            notificationData.body = event.data.text() || notificationData.body;
+        }
+    }
+
+    // Mostrar la notificación
+    event.waitUntil(
+        self.registration.showNotification(notificationData.title, {
+            body: notificationData.body,
+            icon: notificationData.icon,
+            badge: notificationData.badge,
+            tag: notificationData.tag,
+            requireInteraction: notificationData.requireInteraction,
+            data: notificationData.data,
+            vibrate: [200, 100, 200],
+            actions: notificationData.actions || []
+        })
+    );
+});
+
+// Manejar clics en notificaciones
+self.addEventListener('notificationclick', event => {
+    console.log('🔔 Notificación clickeada:', event);
+    
+    event.notification.close();
+
+    // Si hay una URL en los datos, abrirla
+    if (event.notification.data && event.notification.data.url) {
+        event.waitUntil(
+            clients.openWindow(event.notification.data.url)
+        );
+    } else {
+        // Si no hay URL, enfocar/abrir la aplicación
+        event.waitUntil(
+            clients.matchAll({ type: 'window', includeUncontrolled: true })
+                .then(clientList => {
+                    // Si hay una ventana abierta, enfocarla
+                    for (let client of clientList) {
+                        if (client.url === '/' && 'focus' in client) {
+                            return client.focus();
+                        }
+                    }
+                    // Si no hay ventana abierta, abrir una nueva
+                    if (clients.openWindow) {
+                        return clients.openWindow('/');
+                    }
+                })
+        );
+    }
+});
+
+// Manejar acciones de notificaciones
+self.addEventListener('notificationclose', event => {
+    console.log('🔔 Notificación cerrada:', event);
 });

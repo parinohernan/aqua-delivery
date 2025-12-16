@@ -39,6 +39,7 @@ app.use('/api/pagos', require('./routes/pagos'));
 app.use('/api/zonas', require('./routes/zonas'));
 app.use('/api/tiposdepago', require('./routes/tiposdepago'));
 app.use('/api/informes', require('./routes/informes'));
+app.use('/api/push', require('./routes/push'));
 
 // Health check
 app.get('/health', (req, res) => {
