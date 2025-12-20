@@ -70,13 +70,14 @@ router.post('/', verifyToken, async (req, res) => {
 // Crear pago directo a cliente (nuevo endpoint)
 router.post('/cliente', verifyToken, async (req, res) => {
     try {
-        const { clienteId, tipoPagoId, monto, observaciones } = req.body;
+        const { clienteId, tipoPagoId, monto, observaciones, retornablesDevueltos } = req.body;
         
         console.log('💰 Procesando pago directo a cliente:', {
             clienteId,
             tipoPagoId,
             monto,
             observaciones,
+            retornablesDevueltos: retornablesDevueltos || 0,
             empresa: req.user.codigoEmpresa
         });
         
@@ -110,14 +111,27 @@ router.post('/cliente', verifyToken, async (req, res) => {
             });
         }
         
+        // Validar retornables devueltos
+        const retornablesADevolver = parseInt(retornablesDevueltos || 0);
+        const retornablesActuales = parseInt(cliente[0].retornables || 0);
+        
+        // Permitir que devuelvan más retornables de los que deben (quedan a favor/a cuenta)
+        // Si retornablesADevolver > retornablesActuales, el cliente queda con retornables a favor
+        // Si retornablesADevolver es negativo y retornablesActuales es 0, también queda a favor
+        
         // Obtener saldo actual del cliente
         const saldoActual = parseFloat(cliente[0].saldo || 0);
         const nuevoSaldo = saldoActual - monto;
+        // Si retornablesADevolver es negativo, significa que el cliente entrega más de los que debe (queda a favor)
+        const nuevosRetornables = retornablesActuales - retornablesADevolver;
         
-        console.log('💰 Cálculo de saldo:', {
+        console.log('💰 Cálculo de saldo y retornables:', {
             saldoActual,
             monto,
-            nuevoSaldo
+            nuevoSaldo,
+            retornablesActuales,
+            retornablesADevolver,
+            nuevosRetornables
         });
         
         // Usar la función transaction del módulo database
@@ -130,10 +144,33 @@ router.post('/cliente', verifyToken, async (req, res) => {
                 [nuevoSaldo, clienteId]
             );
             
+            // Actualizar retornables del cliente si hay devolución (positiva o negativa)
+            if (retornablesADevolver !== 0) {
+                await transactionQuery(
+                    'UPDATE clientes SET retornables = ? WHERE codigo = ?',
+                    [nuevosRetornables, clienteId]
+                );
+                console.log(`🔄 Retornables actualizados: ${retornablesActuales} → ${nuevosRetornables}`);
+            }
+            
             // Registrar el pago (sin pedido asociado)
+            let observacionesCompletas = '';
+            if (retornablesADevolver !== 0) {
+                if (retornablesADevolver > 0) {
+                    observacionesCompletas = `Devolución: ${retornablesADevolver} ${retornablesADevolver === 1 ? 'envase retornable' : 'envases retornables'}`;
+                } else {
+                    observacionesCompletas = `Entrega de envases: ${Math.abs(retornablesADevolver)} ${Math.abs(retornablesADevolver) === 1 ? 'envase retornable' : 'envases retornables'} (a favor)`;
+                }
+            }
+            if (observaciones && observaciones.trim()) {
+                observacionesCompletas = observacionesCompletas 
+                    ? `${observacionesCompletas} | ${observaciones.trim()}`
+                    : observaciones.trim();
+            }
+            
             await transactionQuery(
                 'INSERT INTO pagos (clienteId, monto, metodoPago, observaciones, fechaPago) VALUES (?, ?, ?, ?, NOW())',
-                [clienteId, monto, tipoPago[0].pago, observaciones]
+                [clienteId, monto, tipoPago[0].pago, observacionesCompletas || null]
             );
         });
         
@@ -147,6 +184,9 @@ router.post('/cliente', verifyToken, async (req, res) => {
             tipoPago: tipoPago[0].pago,
             saldoAnterior: saldoActual,
             nuevoSaldo: nuevoSaldo,
+            retornablesAnteriores: retornablesActuales,
+            retornablesDevueltos: retornablesADevolver,
+            nuevosRetornables: nuevosRetornables,
             fechaPago: new Date()
         });
         

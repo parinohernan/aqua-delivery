@@ -5,6 +5,7 @@ class ClientPaymentModal {
     this.clienteId = null;
     this.clienteData = null;
     this.tiposPago = [];
+    this.retornablesDevueltos = 0; // Estado local para retornables devueltos
     this.init();
     console.log('✅ ClientPaymentModal inicializado');
   }
@@ -13,6 +14,22 @@ class ClientPaymentModal {
     this.createModal();
     this.attachEventListeners();
     await this.loadTiposPago();
+  }
+
+  convertirAplicaSaldo(valor) {
+    if (valor === null || valor === undefined) {
+      return false;
+    }
+    if (typeof valor === 'object' && valor.type === 'Buffer') {
+      return valor.data[0] === 1;
+    } else if (typeof valor === 'number') {
+      return valor === 1;
+    } else if (typeof valor === 'string') {
+      return parseInt(valor) === 1;
+    } else if (typeof valor === 'boolean') {
+      return valor;
+    }
+    return false;
   }
 
   async loadTiposPago() {
@@ -27,13 +44,14 @@ class ClientPaymentModal {
 
       if (response.ok) {
         const allTipos = await response.json();
+        console.log('💳 Todos los tipos de pago recibidos:', allTipos);
         // Solo tipos de pago que NO aplican saldo (para pagos inmediatos)
         this.tiposPago = allTipos.filter(tipo => {
-          const aplicaSaldo = tipo.aplicaSaldo && 
-            (tipo.aplicaSaldo[0] === 1 || tipo.aplicaSaldo === 1 || tipo.aplicaSaldo === true);
+          const aplicaSaldo = this.convertirAplicaSaldo(tipo.aplicaSaldo);
+          console.log(`💳 Tipo: ${tipo.pago}, aplicaSaldo: ${tipo.aplicaSaldo}, convertido: ${aplicaSaldo}`);
           return !aplicaSaldo;
         });
-        console.log('💳 Tipos de pago cargados (sin saldo):', this.tiposPago.length);
+        console.log('💳 Tipos de pago cargados (sin saldo):', this.tiposPago.length, this.tiposPago);
       } else {
         console.warn('⚠️ No se pudieron cargar los tipos de pago');
         this.tiposPago = [];
@@ -69,17 +87,43 @@ class ClientPaymentModal {
             
             <div class="form-group">
               <label class="form-label">Monto a Cobrar ($) *</label>
-              <input type="number" id="paymentMonto" name="monto" step="0.01" min="0.01" required class="form-input" 
+              <input type="number" id="paymentMonto" name="monto" step="0.01" min="0" required class="form-input" 
                      placeholder="0.00" />
               <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
-                Ingresa el monto que el cliente está pagando
+                Ingresa el monto que el cliente está pagando (puede ser $0.00)
               </p>
             </div>
             
             <div class="form-group">
-              <label class="form-label">Observaciones</label>
-              <textarea id="paymentObservaciones" name="observaciones" class="form-input" rows="3"
-                        placeholder="Observaciones opcionales sobre el pago..."></textarea>
+              <label class="form-label">🔄 Retornables Devueltos</label>
+              <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <button type="button" id="btnRetornablesMenos" 
+                          style="width: 40px; height: 40px; border: 2px solid #f59e0b; background: white; border-radius: 0.375rem; font-size: 1.25rem; font-weight: bold; color: #f59e0b; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                          onmouseover="this.style.background='#fef3c7'" 
+                          onmouseout="this.style.background='white'"
+                          onclick="console.log('🔽 Botón - clickeado'); if(window.clientPaymentModal) { window.clientPaymentModal.decrementarRetornables(event); } else { console.error('❌ clientPaymentModal no disponible'); }">
+                    −
+                  </button>
+
+                  <span id="retornablesDevueltosInfo" style="font-weight: 500; color: #f59e0b; font-size: 0.875rem;">
+                    <!-- Se actualizará dinámicamente -->
+                  </span>
+                  <button type="button" id="btnRetornablesMas" 
+                          style="width: 40px; height: 40px; border: 2px solid #f59e0b; background: white; border-radius: 0.375rem; font-size: 1.25rem; font-weight: bold; color: #f59e0b; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                          onmouseover="this.style.background='#fef3c7'" 
+                          onmouseout="this.style.background='white'"
+                          onclick="console.log('🔼 Botón + clickeado'); if(window.clientPaymentModal) { window.clientPaymentModal.incrementarRetornables(event); } else { console.error('❌ clientPaymentModal no disponible'); }">
+                    +
+                  </button>
+                </div>
+                <span id="retornablesInfo" style="color: #6b7280; font-size: 0.875rem;">
+                  <span id="retornablesTextoInfo">El cliente tiene <span id="retornablesActuales" style="font-weight: 600; color: #f59e0b;">0</span> retornables adeudados</span>
+                </span>
+              </div>
+              <p id="retornablesHelpText" style="font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem;">
+                Los envases devueltos se descontarán del saldo de retornables del cliente
+              </p>
             </div>
             
             <div id="paymentSummary" style="background: #ecfdf5; border: 1px solid #059669; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
@@ -109,7 +153,9 @@ class ClientPaymentModal {
     const form = document.getElementById('clientPaymentForm');
     if (form) {
       // Remover event listeners previos
-      form.removeEventListener('submit', this.boundHandleSubmit);
+      if (this.boundHandleSubmit) {
+        form.removeEventListener('submit', this.boundHandleSubmit);
+      }
       
       // Crear función bound
       this.boundHandleSubmit = (e) => this.handleSubmit(e);
@@ -121,13 +167,28 @@ class ClientPaymentModal {
     const montoInput = document.getElementById('paymentMonto');
     const tipoPagoSelect = document.getElementById('paymentTipoPago');
     
+    // Remover listeners previos si existen
+    if (montoInput && this.boundMontoInput) {
+      montoInput.removeEventListener('input', this.boundMontoInput);
+    }
+    if (tipoPagoSelect && this.boundTipoPagoChange) {
+      tipoPagoSelect.removeEventListener('change', this.boundTipoPagoChange);
+    }
+    
     if (montoInput) {
-      montoInput.addEventListener('input', () => this.updateSummary());
+      this.boundMontoInput = () => this.updateSummary();
+      montoInput.addEventListener('input', this.boundMontoInput);
     }
     
     if (tipoPagoSelect) {
-      tipoPagoSelect.addEventListener('change', () => this.updateSummary());
+      this.boundTipoPagoChange = () => this.updateSummary();
+      tipoPagoSelect.addEventListener('change', this.boundTipoPagoChange);
     }
+    
+    // El h2 de retornables se actualiza solo con los botones, no necesita event listeners
+    
+    // Botones de incremento/decremento para retornables - usar delegación de eventos
+    // Los listeners se configurarán después de que el modal se muestre
   }
 
   async show(clienteId) {
@@ -153,6 +214,9 @@ class ClientPaymentModal {
     // Configurar tipos de pago
     this.setupTiposPago();
     
+    // Configurar sección de retornables
+    this.setupRetornables();
+    
     // Limpiar resumen
     this.updateSummary();
     
@@ -163,6 +227,11 @@ class ClientPaymentModal {
     
     // Reconfigurar event listeners
     this.attachEventListeners();
+    
+    // Configurar botones de retornables después de que el modal esté visible
+    setTimeout(() => {
+      this.setupRetornablesButtons();
+    }, 150);
     
     // Focus en el campo de monto
     setTimeout(() => {
@@ -207,6 +276,7 @@ class ClientPaymentModal {
 
     const nombreCompleto = `${this.clienteData.nombre} ${this.clienteData.apellido || ''}`.trim();
     const saldo = parseFloat(this.clienteData.saldo || 0);
+    const retornables = parseInt(this.clienteData.retornables || 0);
     const saldoClass = saldo > 0 ? 'text-red-600' : saldo < 0 ? 'text-green-600' : 'text-gray-600';
     const saldoText = saldo > 0 ? 'Debe' : saldo < 0 ? 'A favor' : 'Sin deuda';
 
@@ -226,9 +296,170 @@ class ClientPaymentModal {
               $${saldo.toFixed(2)} ${saldo > 0 ? '(Debe)' : saldo < 0 ? '(A favor)' : '(Sin deuda)'}
             </span>
           </p>
+          ${retornables > 0 ? `
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">
+              <span style="font-weight: 500;">🔄 Retornables:</span> 
+              <span style="color: #f59e0b; font-weight: 600;">
+                ${retornables} ${retornables === 1 ? 'retornable' : 'retornables'} adeudados
+              </span>
+            </p>
+          ` : ''}
         </div>
       </div>
     `;
+  }
+
+  setupRetornables() {
+    const retornablesActualesSpan = document.getElementById('retornablesActuales');
+    const retornablesTextoInfo = document.getElementById('retornablesTextoInfo');
+    const retornablesDisplay = document.getElementById('retornablesDevueltos');
+    const retornablesHelpText = document.getElementById('retornablesHelpText');
+    
+    if (!this.clienteData) return;
+    
+    const retornables = parseInt(this.clienteData.retornables || 0);
+    
+    if (retornablesActualesSpan) {
+      retornablesActualesSpan.textContent = retornables;
+    }
+    
+    if (retornablesTextoInfo) {
+      if (retornables > 0) {
+        retornablesTextoInfo.textContent = `El cliente tiene ${retornables} ${retornables === 1 ? 'retornable' : 'retornables'} adeudados`;
+        retornablesTextoInfo.style.color = '#92400e';
+        retornablesTextoInfo.style.fontWeight = '500';
+      } else {
+        retornablesTextoInfo.textContent = 'El cliente no tiene retornables adeudados';
+        retornablesTextoInfo.style.color = '#059669';
+        retornablesTextoInfo.style.fontWeight = '500';
+      }
+    }
+    
+    if (retornablesDisplay) {
+      // Inicializar estado local y actualizar el h2
+      this.retornablesDevueltos = 0;
+      this.updateRetornablesInput();
+    }
+    
+    if (retornablesHelpText) {
+      if (retornables === 0) {
+        retornablesHelpText.textContent = 'Puedes ingresar números negativos si el cliente entrega envases sin deberlos (quedarán a favor)';
+        retornablesHelpText.style.color = '#059669';
+      } else {
+        retornablesHelpText.textContent = 'Los envases devueltos se descontarán del saldo de retornables del cliente';
+        retornablesHelpText.style.color = '#6b7280';
+      }
+    }
+    
+    this.validateRetornables();
+  }
+
+  // Método para actualizar el h2 con el estado local
+  updateRetornablesInput() {
+    // Primero validar el estado (puede ajustar this.retornablesDevueltos)
+    this.validateRetornables();
+    
+    // Luego actualizar el h2 y el resumen
+    this.updateSummary();
+  }
+
+  decrementarRetornables(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    console.log('🔽 decrementarRetornables - clienteData:', this.clienteData);
+    
+    if (!this.clienteData) {
+      console.error('❌ clienteData no disponible');
+      return;
+    }
+    
+    // Solo permitir decrementar si la cantidad es mayor a 0
+    if (this.retornablesDevueltos <= 0) {
+      console.log('⚠️ Ya está en 0 o menos, no se puede decrementar más');
+      return;
+    }
+    
+    this.retornablesDevueltos -= 1;
+    console.log('🔽 decrementarRetornables - nuevo valor:', this.retornablesDevueltos);
+    this.updateRetornablesInput();
+  }
+
+  incrementarRetornables(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    console.log('🔼 incrementarRetornables - clienteData:', this.clienteData);
+    
+    if (!this.clienteData) {
+      console.error('❌ clienteData no disponible');
+      return;
+    }
+    
+    const retornablesActuales = parseInt(this.clienteData.retornables || 0);
+    console.log('🔼 incrementarRetornables - retornablesActuales:', retornablesActuales, 'actual:', this.retornablesDevueltos);
+    
+    // Permitir incrementar sin límite (pueden devolver más de los que deben, quedan a favor)
+    this.retornablesDevueltos += 1;
+    
+    console.log('🔼 incrementarRetornables - nuevo valor:', this.retornablesDevueltos);
+    this.updateRetornablesInput();
+  }
+
+  setupRetornablesButtons() {
+    // Los botones ahora usan onclick directamente, no necesitamos configurar listeners aquí
+    // Pero podemos validar que existan
+    const btnRetornablesMenos = document.getElementById('btnRetornablesMenos');
+    const btnRetornablesMas = document.getElementById('btnRetornablesMas');
+    
+    if (btnRetornablesMenos && btnRetornablesMas) {
+      console.log('✅ Botones de retornables encontrados');
+    } else {
+      console.warn('⚠️ Botones de retornables no encontrados');
+    }
+  }
+
+  validateRetornables() {
+    const btnRetornablesMenos = document.getElementById('btnRetornablesMenos');
+    const btnRetornablesMas = document.getElementById('btnRetornablesMas');
+    
+    if (!this.clienteData) return;
+    
+    const retornablesActuales = parseInt(this.clienteData.retornables || 0);
+    const current = this.retornablesDevueltos; // Usar estado local
+    
+    // Validar y ajustar el valor - permitir cualquier valor (pueden devolver más de los que deben)
+    // Solo evitar valores negativos si el cliente tiene retornables adeudados
+    if (retornablesActuales > 0 && current < 0) {
+      // Si tiene retornables adeudados, no permitir valores negativos
+      this.retornablesDevueltos = 0;
+    }
+    // Si no tiene retornables adeudados, permitir cualquier valor (negativos quedan a favor)
+    
+    // Habilitar/deshabilitar botones
+    if (btnRetornablesMenos) {
+      // Deshabilitar el botón - solo si la cantidad es 0 o menor
+      if (this.retornablesDevueltos <= 0) {
+        btnRetornablesMenos.disabled = true;
+        btnRetornablesMenos.style.opacity = '0.5';
+        btnRetornablesMenos.style.cursor = 'not-allowed';
+      } else {
+        btnRetornablesMenos.disabled = false;
+        btnRetornablesMenos.style.opacity = '1';
+        btnRetornablesMenos.style.cursor = 'pointer';
+      }
+    }
+    
+    // El botón + siempre habilitado (pueden devolver más de los que deben)
+    if (btnRetornablesMas) {
+      btnRetornablesMas.disabled = false;
+      btnRetornablesMas.style.opacity = '1';
+      btnRetornablesMas.style.cursor = 'pointer';
+    }
   }
 
   setupTiposPago() {
@@ -260,8 +491,33 @@ class ClientPaymentModal {
 
     const monto = parseFloat(document.getElementById('paymentMonto').value) || 0;
     const tipoPagoId = document.getElementById('paymentTipoPago').value;
+    const retornablesDevueltos = this.retornablesDevueltos; // Usar estado local
+    const retornablesActuales = parseInt(this.clienteData.retornables || 0);
 
-    if (monto <= 0 || !tipoPagoId) {
+    // Actualizar el h2 y el span de retornables devueltos SIEMPRE al inicio
+    const retornablesDisplay = document.getElementById('retornablesDevueltos');
+    const retornablesInfo = document.getElementById('retornablesDevueltosInfo');
+    
+    if (retornablesDisplay) {
+      retornablesDisplay.textContent = this.retornablesDevueltos;
+    }
+    
+    // Actualizar el span con la información detallada
+    if (retornablesInfo && this.clienteData) {
+      if (retornablesDevueltos !== 0) {
+        if (retornablesDevueltos > 0) {
+          retornablesInfo.textContent = `${retornablesDevueltos} de ${retornablesActuales}`;
+          retornablesInfo.style.color = '#f59e0b';
+        } else {
+          retornablesInfo.textContent = `${Math.abs(retornablesDevueltos)} envases entregados (a favor)`;
+          retornablesInfo.style.color = '#059669';
+        }
+      } else {
+        retornablesInfo.textContent = '';
+      }
+    }
+
+    if (monto < 0 || !tipoPagoId) {
       container.innerHTML = '<p style="color: #6b7280; margin: 0; text-align: center;">Completa los campos para ver el resumen</p>';
       return;
     }
@@ -269,7 +525,9 @@ class ClientPaymentModal {
     const tipoPago = this.tiposPago.find(t => t.id == tipoPagoId);
     const saldoActual = parseFloat(this.clienteData.saldo || 0);
     const nuevoSaldo = saldoActual - monto;
-
+    // Si retornablesDevueltos es negativo, significa que el cliente entrega más de los que debe (queda a favor)
+    const nuevosRetornables = retornablesActuales - retornablesDevueltos;
+     // nota: esos retornables si cambian al colocar + o - en el input de retornables devueltos
     container.innerHTML = `
       <div style="font-size: 0.875rem;">
         <h5 style="margin: 0 0 0.75rem 0; font-weight: 600; color: #059669;">📋 Resumen del Cobro</h5>
@@ -281,6 +539,14 @@ class ClientPaymentModal {
           <span style="color: #6b7280;">Monto a cobrar:</span>
           <span style="font-weight: 500; color: #059669;">$${monto.toFixed(2)}</span>
         </div>
+        ${retornablesDevueltos !== 0 ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="color: #6b7280;">🔄 Retornables devueltos:</span>
+            <span style="font-weight: 500; color: ${retornablesDevueltos < 0 ? '#059669' : '#f59e0b'};">
+              ${retornablesDevueltos > 0 ? `${retornablesDevueltos} de ${retornablesActuales}` : `${Math.abs(retornablesDevueltos)} envases entregados (a favor)`}
+            </span>
+          </div>
+        ` : ''}
         <div style="border-top: 1px solid #d1fae5; margin: 0.5rem 0; padding-top: 0.5rem;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
             <span style="color: #6b7280;">Saldo actual:</span>
@@ -288,12 +554,22 @@ class ClientPaymentModal {
               $${saldoActual.toFixed(2)}
             </span>
           </div>
-          <div style="display: flex; justify-content: space-between;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: ${retornablesActuales > 0 ? '0.25rem' : '0'};">
             <span style="font-weight: 600;">Nuevo saldo:</span>
             <span style="font-weight: 600; font-size: 1rem; color: ${nuevoSaldo > 0 ? '#dc2626' : nuevoSaldo < 0 ? '#059669' : '#059669'};">
               $${nuevoSaldo.toFixed(2)}
             </span>
           </div>
+          ${retornablesDevueltos !== 0 ? `
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-weight: 600;">Nuevos retornables:</span>
+              <span style="font-weight: 600; font-size: 1rem; color: ${nuevosRetornables > 0 ? '#f59e0b' : nuevosRetornables < 0 ? '#059669' : '#059669'};">
+                ${nuevosRetornables > 0 ? `${nuevosRetornables} ${nuevosRetornables === 1 ? 'retornable' : 'retornables'} adeudados` : 
+                  nuevosRetornables < 0 ? `${Math.abs(nuevosRetornables)} ${Math.abs(nuevosRetornables) === 1 ? 'retornable' : 'retornables'} a favor` : 
+                  'Sin retornables'}
+              </span>
+            </div>
+          ` : ''}
         </div>
         ${nuevoSaldo < 0 ? `
           <div style="margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 0.25rem; font-size: 0.75rem; color: #92400e;">
@@ -310,6 +586,16 @@ class ClientPaymentModal {
             ✅ El cliente quedará sin deuda
           </div>
         ` : ''}
+        ${retornablesDevueltos !== 0 && nuevosRetornables === 0 ? `
+          <div style="margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-radius: 0.25rem; font-size: 0.75rem; color: #065f46;">
+            ✅ El cliente quedará sin retornables adeudados
+          </div>
+        ` : ''}
+        ${retornablesDevueltos < 0 ? `
+          <div style="margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-radius: 0.25rem; font-size: 0.75rem; color: #065f46;">
+            ✅ El cliente quedará con ${Math.abs(nuevosRetornables)} ${Math.abs(nuevosRetornables) === 1 ? 'retornable' : 'retornables'} a favor
+          </div>
+        ` : ''}
       </div>
     `;
   }
@@ -323,6 +609,7 @@ class ClientPaymentModal {
     
     this.clienteId = null;
     this.clienteData = null;
+    this.retornablesDevueltos = 0; // Resetear estado local
     
     // Limpiar formulario
     document.getElementById('clientPaymentForm').reset();
@@ -347,11 +634,17 @@ class ClientPaymentModal {
 
     try {
       const formData = new FormData(e.target);
+      const retornablesDevueltos = this.retornablesDevueltos; // Usar estado local
+      const retornablesActuales = parseInt(this.clienteData?.retornables || 0);
+      
+      // Permitir que devuelvan más retornables de los que deben (quedan a favor/a cuenta)
+      // No hay restricciones - pueden devolver cualquier cantidad
+      
       const paymentData = {
         clienteId: this.clienteId,
         tipoPagoId: parseInt(formData.get('tipoPagoId')),
         monto: parseFloat(formData.get('monto')),
-        observaciones: formData.get('observaciones')?.trim() || ''
+        retornablesDevueltos: retornablesDevueltos !== 0 ? retornablesDevueltos : undefined
       };
 
       console.log('📋 Datos del pago a enviar:', paymentData);
@@ -363,8 +656,8 @@ class ClientPaymentModal {
       if (!paymentData.tipoPagoId) {
         throw new Error('Por favor selecciona un tipo de pago');
       }
-      if (!paymentData.monto || paymentData.monto <= 0) {
-        throw new Error('Por favor ingresa un monto válido mayor a 0');
+      if (paymentData.monto === null || paymentData.monto === undefined || paymentData.monto < 0) {
+        throw new Error('Por favor ingresa un monto válido (puede ser $0.00)');
       }
 
       const token = localStorage.getItem('token');
@@ -413,12 +706,16 @@ class ClientPaymentModal {
   }
 
   showSuccessMessage(result) {
-    const message = `
-      Cobro registrado correctamente
-      ${result.clienteNombre ? `\n${result.clienteNombre}` : ''}
-      ${result.monto ? `\nMonto: $${result.monto.toFixed(2)}` : ''}
-      ${result.nuevoSaldo !== undefined ? `\nNuevo saldo: $${result.nuevoSaldo.toFixed(2)}` : ''}
-    `;
+    let message = `Cobro registrado correctamente`;
+    if (result.clienteNombre) message += `\n${result.clienteNombre}`;
+    if (result.monto) message += `\nMonto: $${result.monto.toFixed(2)}`;
+    if (result.nuevoSaldo !== undefined) message += `\nNuevo saldo: $${result.nuevoSaldo.toFixed(2)}`;
+    if (result.retornablesDevueltos > 0) {
+      message += `\nRetornables devueltos: ${result.retornablesDevueltos}`;
+      if (result.nuevosRetornables !== undefined) {
+        message += `\nRetornables restantes: ${result.nuevosRetornables}`;
+      }
+    }
     this.showNotification(message, 'success');
   }
 

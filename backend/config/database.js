@@ -5,10 +5,15 @@ const dbConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT,
+    port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    connectTimeout: 10000, // 10 segundos para establecer conexión
+    acquireTimeout: 10000, // 10 segundos para obtener conexión del pool
+    timeout: 30000, // 30 segundos para ejecutar queries
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0
 };
 
 const pool = mysql.createPool(dbConfig);
@@ -20,6 +25,18 @@ async function query(sql, params = []) {
         return results;
     } catch (error) {
         console.error('Error en query:', error);
+        console.error('SQL:', sql);
+        console.error('Params:', params);
+        
+        // Si es un error de timeout, intentar verificar el estado del pool
+        if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+            console.error('⚠️ Error de timeout en conexión a la base de datos');
+            console.error('   Verifica que MySQL esté corriendo y accesible');
+            console.error('   Host:', dbConfig.host);
+            console.error('   Port:', dbConfig.port);
+            console.error('   Database:', dbConfig.database);
+        }
+        
         throw error;
     }
 }

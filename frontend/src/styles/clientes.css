@@ -817,6 +817,47 @@
 }
 
 @media (max-width: 480px) {
+  /* Contenedor principal de la sección */
+  #clientesSection.section-content {
+    padding-bottom: 250px !important; /* Mucho más espacio para la barra de navegación y evitar datos ocultos */
+  }
+  
+  .clientes-section {
+    padding-bottom: 250px; /* Mucho más espacio para la barra de navegación y evitar datos ocultos */
+  }
+  
+  .clientes-container {
+    padding-bottom: 2rem; /* Espacio adicional en el contenedor */
+  }
+  
+  .clientes-area {
+    padding-bottom: 4rem; /* Espacio adicional al final del área */
+  }
+  
+  #clientesList {
+    padding-bottom: 4rem; /* Espacio adicional al final de la lista de clientes */
+  }
+  
+  .clientes-grid {
+    padding-bottom: 3rem; /* Espacio adicional después del último cliente */
+  }
+  
+  /* Asegurar que la lista de productos (usada por clientes) también tenga padding */
+  .clientes-area .products-list {
+    padding-bottom: 4rem; /* Espacio adicional después del último cliente */
+  }
+  
+  /* Asegurar que el último cliente tenga margen adicional */
+  .clientes-area .products-list .product-card:last-child {
+    margin-bottom: 4rem; /* Margen adicional al último cliente */
+  }
+  
+  /* Agregar espacio después del último elemento de cualquier tipo */
+  .clientes-area > *:last-child {
+    padding-bottom: 4rem;
+    margin-bottom: 4rem;
+  }
+
   .section-title {
     font-size: 1.5rem;
     flex-direction: column;
