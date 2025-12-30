@@ -142,7 +142,7 @@ class NearbyDeliveryFinder {
       <div class="nearby-item ${isClosest ? 'closest' : ''}">
         <div class="nearby-item-distance">
           <div class="distance-badge ${isClosest ? 'closest-badge' : ''}">
-            ${distanceText}
+          ${distanceText}
           </div>
           ${isClosest ? '<div class="closest-label">MÁS CERCANO</div>' : ''}
         </div>

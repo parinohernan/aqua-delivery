@@ -178,7 +178,7 @@ async function generarInformeDetallado(codigoEmpresa, fechaDesde, fechaHasta) {
   }
 
   console.log(`✅ Informe detallado generado: ${clientesConProductos.length} clientes procesados`);
-  
+
   return {
     clientes: clientesConProductos
   };

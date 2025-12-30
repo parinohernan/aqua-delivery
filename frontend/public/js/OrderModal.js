@@ -863,7 +863,7 @@ class OrderModal {
           <div style="font-weight: 600; color: #111827; font-size: 1rem; flex: 1;">${item.name}</div>
           <div style="font-size: 0.875rem; color: #6b7280; margin-left: 1rem;">$${item.price.toFixed(2)} c/u</div>
         </div>
-        
+
         <!-- Línea 2: Cantidad y Total -->
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -1016,11 +1016,11 @@ class OrderModal {
             productos: productosInfo
           });
         } else {
-          window.eventBus.emit(window.EVENTS.PEDIDO_CREATED, {
-            pedido: result,
-            cliente: clienteInfo,
-            productos: productosInfo
-          });
+        window.eventBus.emit(window.EVENTS.PEDIDO_CREATED, {
+          pedido: result,
+          cliente: clienteInfo,
+          productos: productosInfo
+        });
         }
       }
 

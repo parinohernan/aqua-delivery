@@ -9,7 +9,8 @@ router.get('/', verifyToken, async (req, res) => {
         console.log('📦 Obteniendo pedidos para usuario:', req.user.telegramId);
         console.log('🏢 Código empresa:', req.user.codigoEmpresa);
 
-        const { clienteId, fecha, zona, search, estado } = req.query;
+        const { clienteId, fecha, zona, search, estado, incluirDetalles } = req.query;
+        const cargarDetalles = incluirDetalles !== 'false'; // Por defecto true para compatibilidad
 
         // Consulta base sin columnas de ubicación
         let sql = `
@@ -99,14 +100,60 @@ router.get('/', verifyToken, async (req, res) => {
         const pedidos = await query(sql, params);
         console.log('✅ Pedidos encontrados:', pedidos.length);
 
-        // Obtener detalles de cada pedido
-        for (let pedido of pedidos) {
-            console.log('🔍 Cargando detalles para pedido ID:', pedido.id);
-            const detalles = await query(
-                'SELECT pi.*, pr.descripcion, pr.precio, pr.esRetornable FROM pedidositems pi JOIN productos pr ON pi.codigoProducto = pr.codigo WHERE pi.codigoPedido = ? AND pr.activo = 1',
-                [pedido.id]  // Cambiado de pedido.codigo a pedido.id
+        // Optimización: Obtener todos los detalles en una sola query usando JOIN
+        // Solo cargar detalles si hay pedidos y se solicitan
+        if (pedidos.length > 0 && cargarDetalles) {
+            const pedidosIds = pedidos.map(p => p.id);
+            const placeholders = pedidosIds.map(() => '?').join(',');
+            
+            // Obtener todos los items de todos los pedidos en una sola query
+            const todosDetalles = await query(
+                `SELECT 
+                    pi.codigoPedido as pedidoId,
+                    pi.codigoProducto,
+                    pi.cantidad,
+                    pi.precioTotal,
+                    pr.descripcion,
+                    pr.precio,
+                    pr.esRetornable
+                FROM pedidositems pi 
+                JOIN productos pr ON pi.codigoProducto = pr.codigo 
+                WHERE pi.codigoPedido IN (${placeholders}) 
+                AND pr.activo = 1
+                AND pr.codigoEmpresa = ?`,
+                [...pedidosIds, req.user.codigoEmpresa]
             );
-            pedido.detalles = detalles;
+            
+            // Agrupar detalles por pedido
+            const detallesPorPedido = {};
+            todosDetalles.forEach(detalle => {
+                if (!detallesPorPedido[detalle.pedidoId]) {
+                    detallesPorPedido[detalle.pedidoId] = [];
+                }
+                detallesPorPedido[detalle.pedidoId].push({
+                    codigoProducto: detalle.codigoProducto,
+                    cantidad: detalle.cantidad,
+                    precioTotal: detalle.precioTotal,
+                    descripcion: detalle.descripcion,
+                    precio: detalle.precio,
+                    esRetornable: detalle.esRetornable
+                });
+            });
+            
+            // Asignar detalles a cada pedido
+            pedidos.forEach(pedido => {
+                pedido.detalles = detallesPorPedido[pedido.id] || [];
+                pedido.items = detallesPorPedido[pedido.id] || []; // También como items para compatibilidad
+            });
+            
+            console.log('✅ Detalles cargados para', pedidos.length, 'pedidos en una sola query');
+        } else if (!cargarDetalles) {
+            // Si no se solicitan detalles, inicializar arrays vacíos
+            pedidos.forEach(pedido => {
+                pedido.detalles = [];
+                pedido.items = [];
+            });
+            console.log('✅ Pedidos cargados sin detalles (modo rápido)');
         }
 
         res.json(pedidos);
