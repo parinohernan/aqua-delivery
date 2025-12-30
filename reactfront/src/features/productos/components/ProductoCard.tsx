@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useProductosStore } from '../stores/productosStore';
 import { formatCurrency } from '@/utils/formatters';
+import ProductoModal from './ProductoModal';
 import type { Producto } from '@/types/entities';
 
 /**
@@ -12,16 +14,18 @@ interface ProductoCardProps {
 
 function ProductoCard({ producto }: ProductoCardProps) {
   const { deleteProducto, updateProducto } = useProductosStore();
+  const [showEditModal, setShowEditModal] = useState(false);
   
   const nombre = producto.descripcion || producto.nombre || 'Sin nombre';
   const precio = producto.precio || 0;
   const stock = producto.stock || 0;
   const activo = producto.activo !== false;
-  const imagen = producto.imagen || 'https://res.cloudinary.com/drgs7xuag/image/upload/v1764287946/aqua_product_generic_nwadej.png';
+  // El backend devuelve imageURL, pero también puede venir como imagen
+  const imagen = (producto.imageURL || producto.imagen || '') as string;
+  const imagenUrl = imagen || 'https://res.cloudinary.com/drgs7xuag/image/upload/v1764287946/aqua_product_generic_nwadej.png';
 
   const handleEdit = () => {
-    // TODO: Implementar modal de edición
-    alert('Funcionalidad de edición en desarrollo');
+    setShowEditModal(true);
   };
 
   const handleDelete = async () => {
@@ -46,7 +50,7 @@ function ProductoCard({ producto }: ProductoCardProps) {
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
       <div className="w-full h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
         <img
-          src={imagen}
+          src={imagenUrl}
           alt={nombre}
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -108,6 +112,13 @@ function ProductoCard({ producto }: ProductoCardProps) {
           </button>
         </div>
       </div>
+
+      {/* Modal de Edición */}
+      <ProductoModal
+        isOpen={showEditModal}
+        producto={producto}
+        onClose={() => setShowEditModal(false)}
+      />
     </div>
   );
 }

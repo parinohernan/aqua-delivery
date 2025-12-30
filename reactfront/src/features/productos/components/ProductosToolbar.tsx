@@ -5,7 +5,11 @@ import { useState, useEffect } from 'react';
  * Barra de herramientas de productos
  * Contiene búsqueda y filtros
  */
-function ProductosToolbar() {
+interface ProductosToolbarProps {
+  onNewProduct: () => void;
+}
+
+function ProductosToolbar({ onNewProduct }: ProductosToolbarProps) {
   const { filters, setFilters, clearFilters } = useProductosStore();
   const [searchValue, setSearchValue] = useState(filters.search);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -41,13 +45,11 @@ function ProductosToolbar() {
   return (
     <div className="flex flex-wrap gap-3 mb-6">
       <button
-        onClick={() => {
-          alert('Funcionalidad de nuevo producto en desarrollo');
-        }}
+        onClick={onNewProduct}
         className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
       >
         <span>➕</span>
-        <span>Nuevo</span>
+        <span>Nuevo Producto</span>
       </button>
 
       <div className="flex-1 min-w-[200px] relative">

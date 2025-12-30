@@ -1,5 +1,6 @@
 import { usePedidosStore } from '../stores/pedidosStore';
 import { useState, useEffect } from 'react';
+import NewPedidoModal from './NewPedidoModal';
 
 /**
  * Barra de herramientas de pedidos
@@ -9,6 +10,7 @@ function PedidosToolbar() {
   const { filters, setFilters, clearFilters } = usePedidosStore();
   const [searchValue, setSearchValue] = useState(filters.search);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
@@ -43,16 +45,15 @@ function PedidosToolbar() {
   }, [searchTimeout]);
 
   return (
-    <div className="flex flex-wrap gap-3 mb-6">
-      <button
-        onClick={() => {
-          alert('Funcionalidad de nuevo pedido en desarrollo');
-        }}
-        className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-      >
-        <span>➕</span>
-        <span>Nuevo Pedido</span>
-      </button>
+    <>
+      <div className="flex flex-wrap gap-3 mb-6">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+        >
+          <span>➕</span>
+          <span>Nuevo Pedido</span>
+        </button>
 
       <div className="flex-1 min-w-[200px] relative">
         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -103,7 +104,13 @@ function PedidosToolbar() {
         <span>🗺️</span>
         <span>Mapa</span>
       </button>
-    </div>
+      </div>
+
+      <NewPedidoModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 }
 

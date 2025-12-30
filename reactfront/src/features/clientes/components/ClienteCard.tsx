@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useClientesStore } from '../stores/clientesStore';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
+import ClienteModal from './ClienteModal';
+import ClientPaymentModal from './ClientPaymentModal';
 import type { Cliente } from '@/types/entities';
 
 /**
@@ -12,6 +15,9 @@ interface ClienteCardProps {
 
 function ClienteCard({ cliente }: ClienteCardProps) {
   const { deleteCliente } = useClientesStore();
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  
   const nombreCompleto = formatFullName(cliente.nombre, cliente.apellido);
   const saldo = cliente.saldo || 0;
   const retornables = cliente.retornables || 0;
@@ -19,8 +25,7 @@ function ClienteCard({ cliente }: ClienteCardProps) {
   const saldoText = saldo > 0 ? 'Debe' : saldo < 0 ? 'A favor' : 'Al día';
 
   const handleEdit = () => {
-    // TODO: Implementar modal de edición
-    console.log('Editar cliente:', cliente.id);
+    setShowEditModal(true);
   };
 
   const handleDelete = async () => {
@@ -34,8 +39,7 @@ function ClienteCard({ cliente }: ClienteCardProps) {
   };
 
   const handlePayment = () => {
-    // TODO: Implementar modal de pago
-    console.log('Cobrar a cliente:', cliente.id);
+    setShowPaymentModal(true);
   };
 
   return (
@@ -92,6 +96,20 @@ function ClienteCard({ cliente }: ClienteCardProps) {
           <span>🗑️</span>
         </button>
       </div>
+
+      {/* Modal de Edición */}
+      <ClienteModal
+        isOpen={showEditModal}
+        cliente={cliente}
+        onClose={() => setShowEditModal(false)}
+      />
+
+      {/* Modal de Pago */}
+      <ClientPaymentModal
+        isOpen={showPaymentModal}
+        cliente={cliente}
+        onClose={() => setShowPaymentModal(false)}
+      />
     </div>
   );
 }

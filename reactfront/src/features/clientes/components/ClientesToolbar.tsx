@@ -5,7 +5,11 @@ import { useState, useEffect } from 'react';
  * Barra de herramientas de clientes
  * Contiene búsqueda, filtros y botón de nuevo cliente
  */
-function ClientesToolbar() {
+interface ClientesToolbarProps {
+  onNewClient: () => void;
+}
+
+function ClientesToolbar({ onNewClient }: ClientesToolbarProps) {
   const { filters, setFilters, clearFilters } = useClientesStore();
   const [searchValue, setSearchValue] = useState(filters.search);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -45,14 +49,11 @@ function ClientesToolbar() {
   return (
     <div className="flex flex-wrap gap-3 mb-6">
       <button
-        onClick={() => {
-          // TODO: Implementar modal de creación
-          alert('Funcionalidad de nuevo cliente en desarrollo');
-        }}
+        onClick={onNewClient}
         className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
       >
         <span>➕</span>
-        <span>Nuevo</span>
+        <span>Nuevo Cliente</span>
       </button>
 
       <div className="flex-1 min-w-[200px] relative">

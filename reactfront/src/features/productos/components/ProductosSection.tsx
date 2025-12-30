@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useProductosStore } from '../stores/productosStore';
 import ProductosToolbar from './ProductosToolbar';
 import ProductosList from './ProductosList';
+import ProductoModal from './ProductoModal';
 
 /**
  * Sección de Productos
@@ -9,6 +10,7 @@ import ProductosList from './ProductosList';
  */
 function ProductosSection() {
   const { loadProductos, isLoading, error } = useProductosStore();
+  const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
 
   useEffect(() => {
     loadProductos();
@@ -26,7 +28,7 @@ function ProductosSection() {
         </p>
       </div>
 
-      <ProductosToolbar />
+      <ProductosToolbar onNewProduct={() => setIsNewProductModalOpen(true)} />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
@@ -35,6 +37,13 @@ function ProductosSection() {
       )}
 
       <ProductosList isLoading={isLoading} />
+
+      {/* Modal para crear nuevo producto */}
+      <ProductoModal
+        isOpen={isNewProductModalOpen}
+        producto={null}
+        onClose={() => setIsNewProductModalOpen(false)}
+      />
     </div>
   );
 }

@@ -46,6 +46,8 @@ export interface Producto {
   stock: number;
   activo?: boolean;
   imagen?: string;
+  imageURL?: string; // Campo que devuelve el backend
+  esRetornable?: boolean | number;
   [key: string]: unknown;
 }
 
@@ -103,7 +105,8 @@ export interface Pago {
  */
 export interface TipoPago {
   id: number;
-  nombre: string;
+  pago: string; // Nombre del tipo de pago
+  aplicaSaldo?: boolean | number; // Si aplica saldo (cuenta corriente)
   activo?: boolean;
   [key: string]: unknown;
 }

@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useClientesStore } from '../stores/clientesStore';
 import ClientesToolbar from './ClientesToolbar';
 import ClientesList from './ClientesList';
 import ClienteModal from './ClienteModal';
 import ClientPaymentModal from './ClientPaymentModal';
+import type { Cliente } from '@/types/entities';
 
 /**
  * Sección de Clientes
@@ -11,6 +12,7 @@ import ClientPaymentModal from './ClientPaymentModal';
  */
 function ClientesSection() {
   const { loadClientes, isLoading, error } = useClientesStore();
+  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
 
   useEffect(() => {
     loadClientes();
@@ -28,7 +30,7 @@ function ClientesSection() {
         </p>
       </div>
 
-      <ClientesToolbar />
+      <ClientesToolbar onNewClient={() => setIsNewClientModalOpen(true)} />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
@@ -38,8 +40,12 @@ function ClientesSection() {
 
       <ClientesList isLoading={isLoading} />
 
-      <ClienteModal />
-      <ClientPaymentModal />
+      {/* Modal para crear nuevo cliente */}
+      <ClienteModal
+        isOpen={isNewClientModalOpen}
+        cliente={null}
+        onClose={() => setIsNewClientModalOpen(false)}
+      />
     </div>
   );
 }

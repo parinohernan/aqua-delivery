@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { usePedidosStore } from '../stores/pedidosStore';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import EntregarPedidoModal from './EntregarPedidoModal';
 import type { Pedido } from '@/types/entities';
 
 /**
@@ -12,6 +14,7 @@ interface PedidoCardProps {
 
 function PedidoCard({ pedido }: PedidoCardProps) {
   const { updatePedido } = usePedidosStore();
+  const [showEntregarModal, setShowEntregarModal] = useState(false);
   
   const id = pedido.codigo || pedido.id;
   const nombreCliente = pedido.cliente_nombre || 
@@ -50,14 +53,8 @@ function PedidoCard({ pedido }: PedidoCardProps) {
     }
   };
 
-  const handleEntregar = async () => {
-    if (confirm('¿Marcar este pedido como entregado?')) {
-      try {
-        await updatePedido(pedido.id, { estado: 'entregad' });
-      } catch (error) {
-        alert('Error actualizando pedido');
-      }
-    }
+  const handleEntregar = () => {
+    setShowEntregarModal(true);
   };
 
   const handleCancelar = async () => {
@@ -70,15 +67,6 @@ function PedidoCard({ pedido }: PedidoCardProps) {
     }
   };
 
-  const handleIniciarEntrega = async () => {
-    if (confirm('¿Iniciar entrega de este pedido?')) {
-      try {
-        await updatePedido(pedido.id, { estado: 'proceso' });
-      } catch (error) {
-        alert('Error iniciando entrega');
-      }
-    }
-  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -132,10 +120,10 @@ function PedidoCard({ pedido }: PedidoCardProps) {
         {estado === 'pendient' && (
           <>
             <button
-              onClick={handleIniciarEntrega}
-              className="flex-1 px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+              onClick={handleEntregar}
+              className="flex-1 px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors"
             >
-              🚚 Iniciar
+              ✅ Entregar
             </button>
             <button
               onClick={handleCancelar}
@@ -178,6 +166,13 @@ function PedidoCard({ pedido }: PedidoCardProps) {
           👁️
         </button>
       </div>
+
+      {/* Modal de Entrega */}
+      <EntregarPedidoModal
+        isOpen={showEntregarModal}
+        pedido={pedido}
+        onClose={() => setShowEntregarModal(false)}
+      />
     </div>
   );
 }
