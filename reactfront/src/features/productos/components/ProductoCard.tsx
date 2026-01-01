@@ -47,8 +47,8 @@ function ProductoCard({ producto }: ProductoCardProps) {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-      <div className="w-full h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
+    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg overflow-hidden hover:bg-white/10 hover:border-white/20 transition-all shadow-lg">
+      <div className="w-full h-48 bg-gray-900/50 flex items-center justify-center overflow-hidden">
         <img
           src={imagenUrl}
           alt={nombre}
@@ -62,12 +62,12 @@ function ProductoCard({ producto }: ProductoCardProps) {
 
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-semibold text-gray-900 flex-1">{nombre}</h4>
+          <h4 className="font-semibold text-white flex-1">{nombre}</h4>
           <span
-            className={`px-2 py-1 rounded text-xs font-medium ${
+            className={`px-2 py-1 rounded text-xs font-medium border ${
               activo
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+                ? 'bg-green-500/20 text-green-300 border-green-500/50'
+                : 'bg-red-500/20 text-red-300 border-red-500/50'
             }`}
           >
             {activo ? '✓ Activo' : '✕ Inactivo'}
@@ -77,9 +77,9 @@ function ProductoCard({ producto }: ProductoCardProps) {
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-sm">
             <span>💰</span>
-            <span className="font-semibold text-gray-900">{formatCurrency(precio)}</span>
+            <span className="font-semibold text-white">{formatCurrency(precio)}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-white/70">
             <span>📦</span>
             <span>{stock} unidades</span>
           </div>
@@ -88,17 +88,17 @@ function ProductoCard({ producto }: ProductoCardProps) {
         <div className="flex gap-2">
           <button
             onClick={handleEdit}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors border border-white/20 backdrop-blur-sm"
           >
             <span>✏️</span>
             <span>Editar</span>
           </button>
           <button
             onClick={handleToggleActivo}
-            className={`px-3 py-2 rounded-lg transition-colors ${
+            className={`px-3 py-2 rounded-lg transition-all border backdrop-blur-sm ${
               activo
-                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50 hover:bg-yellow-500/30'
+                : 'bg-green-500/20 text-green-300 border-green-500/50 hover:bg-green-500/30'
             }`}
             title={activo ? 'Desactivar' : 'Activar'}
           >
@@ -106,7 +106,7 @@ function ProductoCard({ producto }: ProductoCardProps) {
           </button>
           <button
             onClick={handleDelete}
-            className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+            className="px-3 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors border border-red-500/50 backdrop-blur-sm"
           >
             <span>🗑️</span>
           </button>

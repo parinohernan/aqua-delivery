@@ -9,17 +9,22 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true, // Habilitar PWA en desarrollo
+        type: 'module',
+      },
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'AquaDelivery - Gestión de Pedidos',
         short_name: 'AquaDelivery',
         description: 'Sistema completo de gestión para delivery de agua con pedidos, clientes y productos',
-        theme_color: '#6366f1',
-        background_color: '#ffffff',
+        theme_color: '#0a1628',
+        background_color: '#0a1628',
         display: 'standalone',
         orientation: 'portrait-primary',
         scope: '/',
         start_url: '/',
+        lang: 'es',
         icons: [
           {
             src: 'icon-192.png',
@@ -87,17 +92,17 @@ export default defineConfig({
   },
   server: {
     port: 4321,
-    host: true,
+    host: true, // Permite acceso desde la red local
     proxy: {
       '/api': {
         target: process.env.VITE_API_BASE_URL || 'http://localhost:8001',
         changeOrigin: true,
-        secure: true
+        secure: false // Permitir conexiones HTTP en desarrollo local
       },
       '/auth': {
         target: process.env.VITE_API_BASE_URL || 'http://localhost:8001',
         changeOrigin: true,
-        secure: true
+        secure: false // Permitir conexiones HTTP en desarrollo local
       }
     }
   }

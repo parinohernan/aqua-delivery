@@ -1,9 +1,39 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const os = require('os');
 
 const app = express();
 const PORT = process.env.PORT || 8001;
+
+/**
+ * Obtiene la IP local de la máquina en la red
+ */
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // Ignorar direcciones internas y no IPv4
+      if (iface.family === 'IPv4' && !iface.internal) {
+        // Preferir IPs de la red local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+        if (iface.address.startsWith('192.168.') || 
+            iface.address.startsWith('10.') || 
+            iface.address.startsWith('172.')) {
+          return iface.address;
+        }
+      }
+    }
+  }
+  // Si no encuentra IP local, devolver la primera no interna
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
 
 // Middlewares
 app.use(cors({
@@ -48,6 +78,7 @@ app.get('/health', (req, res) => {
 
 // Escuchar en todas las interfaces de red (0.0.0.0) para permitir acceso desde la red local
 app.listen(PORT, '0.0.0.0', () => {
+  const localIP = getLocalIP();
   console.log(`🚀 API Backend corriendo en http://localhost:${PORT}`);
-  console.log(`📱 Accesible desde la red en http://192.168.1.109:${PORT}`);
+  console.log(`📱 Accesible desde la red en http://${localIP}:${PORT}`);
 });

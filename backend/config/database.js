@@ -9,11 +9,14 @@ const dbConfig = {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    connectTimeout: 10000, // 10 segundos para establecer conexión
-    acquireTimeout: 10000, // 10 segundos para obtener conexión del pool
+    connectTimeout: 15000, // 15 segundos para establecer conexión (aumentado)
+    acquireTimeout: 15000, // 15 segundos para obtener conexión del pool
     timeout: 30000, // 30 segundos para ejecutar queries
     enableKeepAlive: true,
-    keepAliveInitialDelay: 0
+    keepAliveInitialDelay: 0,
+    // Opciones adicionales para mejorar la conexión
+    reconnect: true,
+    ssl: false, // Deshabilitar SSL si no es necesario
 };
 
 const pool = mysql.createPool(dbConfig);

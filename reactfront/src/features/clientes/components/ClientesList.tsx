@@ -17,7 +17,7 @@ function ClientesList({ isLoading }: ClientesListProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-solid border-primary-500 border-r-transparent"></div>
-        <p className="mt-4 text-gray-600">Cargando clientes...</p>
+        <p className="mt-4 text-white/70">Cargando clientes...</p>
       </div>
     );
   }
@@ -26,10 +26,10 @@ function ClientesList({ isLoading }: ClientesListProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="text-6xl mb-4">👥</div>
-        <h4 className="text-xl font-semibold text-gray-900 mb-2">
+        <h4 className="text-xl font-semibold text-white mb-2">
           No se encontraron clientes
         </h4>
-        <p className="text-gray-600">Intenta con otros filtros de búsqueda</p>
+        <p className="text-white/70">Intenta con otros filtros de búsqueda</p>
       </div>
     );
   }

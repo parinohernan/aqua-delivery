@@ -238,29 +238,29 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-          <h3 className="text-xl font-bold text-gray-900">Nuevo Pedido</h3>
+      <div className="relative bg-[#0f1b2e] backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border-2 border-white/20 w-full max-w-3xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto z-[101]">
+        <div className="sticky top-0 bg-[#0f1b2e] backdrop-blur-xl border-b-2 border-white/20 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+          <h3 className="text-lg sm:text-xl font-bold text-white">Nuevo Pedido</h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-white/60 hover:text-white text-2xl sm:text-3xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Selección de Cliente */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Cliente *
             </label>
             
@@ -272,20 +272,20 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
                   placeholder="Buscar cliente por nombre..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
                 />
                 
                 {showClientDropdown && filteredClientes.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-20">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f1b2e]/95 backdrop-blur-lg border border-white/20 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-20">
                     {filteredClientes.map((cliente) => (
                       <button
                         key={cliente.id}
                         type="button"
                         onClick={() => handleSelectCliente(cliente)}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-white"
                       >
                         <div className="font-medium">{formatFullName(cliente.nombre, cliente.apellido)}</div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-white/70">
                           {cliente.telefono} • {cliente.direccion}
                         </div>
                       </button>
@@ -294,20 +294,20 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
                 )}
               </div>
             ) : (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-4 bg-primary-500/20 border border-primary-500/50 rounded-lg backdrop-blur-sm">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="font-semibold text-gray-900">
+                    <div className="font-semibold text-white">
                       {formatFullName(selectedCliente.nombre, selectedCliente.apellido)}
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">
+                    <div className="text-sm text-white/70 mt-1">
                       {selectedCliente.telefono} • {selectedCliente.direccion}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={handleClearCliente}
-                    className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+                    className="px-3 py-1 bg-red-500/20 border border-red-500/50 text-red-300 text-sm rounded hover:bg-red-500/30 transition-colors backdrop-blur-sm"
                   >
                     Cambiar
                   </button>
@@ -318,19 +318,19 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
 
           {/* Agregar Productos */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Productos del Pedido
             </label>
             
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
               <select
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(e.target.value ? Number(e.target.value) : '')}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm"
               >
-                <option value="">Seleccionar producto...</option>
+                <option value="" className="bg-[#0f1b2e]">Seleccionar producto...</option>
                 {productos.map((producto) => (
-                  <option key={producto.id} value={producto.id}>
+                  <option key={producto.id} value={producto.id} className="bg-[#0f1b2e]">
                     {producto.descripcion || producto.nombre} - {formatCurrency(producto.precio || 0)} (Stock: {producto.stock || 0})
                   </option>
                 ))}
@@ -342,13 +342,13 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
                 onChange={(e) => setProductQuantity(Number(e.target.value))}
                 min="1"
                 placeholder="Cant."
-                className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full sm:w-20 px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
               />
               
               <button
                 type="button"
                 onClick={handleAddProduct}
-                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                className="px-4 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-all shadow-lg shadow-primary-500/30"
               >
                 + Agregar
               </button>
@@ -356,53 +356,53 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
 
             {/* Lista de Productos */}
             {orderItems.length === 0 ? (
-              <div className="p-8 text-center border border-gray-200 rounded-lg bg-gray-50">
-                <p className="text-gray-500">No hay productos agregados al pedido</p>
-                <p className="text-sm text-gray-400 mt-1">Selecciona productos arriba para agregarlos</p>
+              <div className="p-8 text-center border border-white/10 rounded-lg bg-white/5 backdrop-blur-sm">
+                <p className="text-white/70">No hay productos agregados al pedido</p>
+                <p className="text-sm text-white/50 mt-1">Selecciona productos arriba para agregarlos</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {orderItems.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm"
                   >
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-white">
                         {item.producto.descripcion || item.producto.nombre}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-white/70">
                         {formatCurrency(item.precio)} x {item.cantidad}
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => handleUpdateItemQuantity(index, item.cantidad - 1)}
-                          className="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                          className="w-8 h-8 flex items-center justify-center bg-white/10 border border-white/20 text-white rounded hover:bg-white/20 transition-colors backdrop-blur-sm"
                         >
                           −
                         </button>
-                        <span className="w-12 text-center font-medium">{item.cantidad}</span>
+                        <span className="w-12 text-center font-medium text-white">{item.cantidad}</span>
                         <button
                           type="button"
                           onClick={() => handleUpdateItemQuantity(index, item.cantidad + 1)}
-                          className="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                          className="w-8 h-8 flex items-center justify-center bg-white/10 border border-white/20 text-white rounded hover:bg-white/20 transition-colors backdrop-blur-sm"
                         >
                           +
                         </button>
                       </div>
                       
-                      <div className="w-24 text-right font-semibold text-gray-900">
+                      <div className="w-24 text-right font-semibold text-white">
                         {formatCurrency(item.subtotal)}
                       </div>
                       
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(index)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                        className="px-3 py-1 bg-red-500/20 border border-red-500/50 text-red-300 rounded hover:bg-red-500/30 transition-colors backdrop-blur-sm"
                       >
                         🗑️
                       </button>
@@ -413,10 +413,10 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
             )}
 
             {/* Total */}
-            <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="mt-4 p-4 bg-primary-500/20 border border-primary-500/50 rounded-lg backdrop-blur-sm">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-gray-900">Total del Pedido:</span>
-                <span className="text-2xl font-bold text-green-600">
+                <span className="text-lg font-semibold text-white">Total del Pedido:</span>
+                <span className="text-2xl font-bold text-primary-300">
                   {formatCurrency(calculateTotal())}
                 </span>
               </div>
@@ -424,8 +424,8 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
           </div>
 
           {/* Información */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-900">
+          <div className="p-4 bg-primary-500/20 border border-primary-500/50 rounded-lg backdrop-blur-sm">
+            <p className="text-sm text-white/90">
               <strong>📋 Información:</strong> El pedido se creará con estado "Pendient".
               El tipo de pago se definirá durante la entrega. El stock de los productos se actualizará automáticamente.
             </p>
@@ -433,24 +433,24 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
 
           {/* Error */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 backdrop-blur-sm">
               {error}
             </div>
           )}
 
           {/* Botones */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-white/10">
             <button
               type="button"
               onClick={handleClose}
-              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="w-full sm:w-auto px-6 py-2.5 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors border border-white/20 backdrop-blur-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/30"
             >
               {isLoading ? 'Creando...' : 'Crear Pedido'}
             </button>

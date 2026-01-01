@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useProductosStore } from '../stores/productosStore';
 import type { Producto } from '@/types/entities';
 
@@ -126,32 +127,38 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
 
   const isEditMode = !!producto;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  // Renderizar el modal usando Portal directamente en el body
+  // Esto asegura que esté por encima de todo el contenido
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4" style={{ isolation: 'isolate' }}>
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/85 backdrop-blur-md"
         onClick={handleClose}
+        style={{ zIndex: 1 }}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-          <h3 className="text-xl font-bold text-gray-900">
+      <div 
+        className="relative bg-[#0f1b2e] backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border-2 border-white/20 w-full max-w-md max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+        style={{ zIndex: 2 }}
+      >
+        <div className="sticky top-0 bg-[#0f1b2e] backdrop-blur-xl border-b-2 border-white/20 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+          <h3 className="text-lg sm:text-xl font-bold text-white">
             {isEditMode ? '✏️ Editar Producto' : '➕ Nuevo Producto'}
           </h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-white/60 hover:text-white text-2xl sm:text-3xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Descripción */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Descripción *
             </label>
             <input
@@ -159,19 +166,19 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
               placeholder="Ej: Bidón de agua 20L"
             />
           </div>
 
           {/* Precio y Stock */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-white mb-2">
                 Precio ($) *
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">$</span>
                 <input
                   type="number"
                   value={precio}
@@ -179,14 +186,14 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
                   step="0.01"
                   min="0"
                   required
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
                   placeholder="0.00"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-white mb-2">
                 Stock *
               </label>
               <input
@@ -195,7 +202,7 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
                 onChange={(e) => setStock(e.target.value)}
                 min="0"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
                 placeholder="0"
               />
             </div>
@@ -203,14 +210,14 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
 
           {/* URL de Imagen */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               URL de Imagen
             </label>
             <input
               type="url"
               value={imageURL}
               onChange={(e) => setImageURL(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
               placeholder="https://ejemplo.com/imagen.jpg"
             />
             {imageURL && (
@@ -218,7 +225,7 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
                 <img
                   src={imageURL}
                   alt="Vista previa"
-                  className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                  className="w-full h-32 object-cover rounded-lg border border-white/20"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
@@ -235,9 +242,9 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
               id="esRetornable"
               checked={esRetornable}
               onChange={(e) => setEsRetornable(e.target.checked)}
-              className="w-5 h-5 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+              className="w-5 h-5 text-primary-500 border-white/30 rounded focus:ring-primary-500 bg-white/10"
             />
-            <label htmlFor="esRetornable" className="text-sm font-medium text-gray-700 cursor-pointer">
+            <label htmlFor="esRetornable" className="text-sm font-medium text-white cursor-pointer">
               Es retornable
             </label>
           </div>
@@ -249,34 +256,34 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
               id="activo"
               checked={activo}
               onChange={(e) => setActivo(e.target.checked)}
-              className="w-5 h-5 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+              className="w-5 h-5 text-primary-500 border-white/30 rounded focus:ring-primary-500 bg-white/10"
             />
-            <label htmlFor="activo" className="text-sm font-medium text-gray-700 cursor-pointer">
+            <label htmlFor="activo" className="text-sm font-medium text-white cursor-pointer">
               Producto activo
             </label>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 backdrop-blur-sm">
               {error}
             </div>
           )}
 
           {/* Botones */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-white/10">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-2.5 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 border border-white/20 backdrop-blur-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/30"
             >
               {isSubmitting ? 'Guardando...' : isEditMode ? 'Actualizar Producto' : 'Crear Producto'}
             </button>
@@ -285,6 +292,9 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
       </div>
     </div>
   );
+
+  // Renderizar usando Portal en el body para asegurar que esté por encima de todo
+  return createPortal(modalContent, document.body);
 }
 
 export default ProductoModal;

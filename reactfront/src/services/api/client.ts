@@ -2,6 +2,28 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import { APP_CONFIG, API_ENDPOINTS } from '@/utils/constants';
 
 /**
+ * Obtiene la URL base del API
+ * Si se accede desde la red local (no localhost), usa la IP del servidor
+ */
+function getApiBaseUrl(): string {
+  // Si hay una variable de entorno configurada, usarla
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  // Si estamos en localhost, usar el proxy de Vite
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return ''; // Vite proxy manejará las rutas /api y /auth
+  }
+
+  // Si estamos en la red local, usar la IP del servidor
+  // La IP del servidor es la misma que la del frontend pero con el puerto del backend
+  const hostname = window.location.hostname;
+  const backendPort = import.meta.env.VITE_BACKEND_PORT || '8001';
+  return `http://${hostname}:${backendPort}`;
+}
+
+/**
  * Cliente HTTP configurado con interceptores
  * Maneja autenticación, errores y configuración base
  */
@@ -9,8 +31,10 @@ class ApiClient {
   private client: AxiosInstance;
 
   constructor() {
+    const baseURL = getApiBaseUrl();
+    
     this.client = axios.create({
-      baseURL: APP_CONFIG.API_BASE_URL,
+      baseURL: baseURL || APP_CONFIG.API_BASE_URL,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',

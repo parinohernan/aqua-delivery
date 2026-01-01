@@ -17,13 +17,13 @@ function ProductosSection() {
   }, [loadProductos]);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-[#0f1b2e]/60 backdrop-blur-sm rounded-xl shadow-2xl border border-white/10 p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <span>🛍️</span>
           Gestión de Productos
         </h2>
-        <p className="text-gray-600 mt-1">
+        <p className="text-white/70 mt-1">
           Administra tu catálogo de productos y stock
         </p>
       </div>
@@ -31,7 +31,7 @@ function ProductosSection() {
       <ProductosToolbar onNewProduct={() => setIsNewProductModalOpen(true)} />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+        <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-4 backdrop-blur-sm">
           {error}
         </div>
       )}

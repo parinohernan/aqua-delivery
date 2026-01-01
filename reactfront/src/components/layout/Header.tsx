@@ -11,10 +11,10 @@ function Header() {
 
   return (
     <>
-      <header className="bg-gradient-to-r from-primary-500 to-primary-700 text-white shadow-lg">
+      <header className="bg-gradient-to-r from-primary-400 via-primary-500 to-primary-600 text-white shadow-2xl border-b border-primary-700/30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/20">
               <img 
                 src="/drop.png" 
                 alt="Aqua Logo" 
@@ -22,18 +22,18 @@ function Header() {
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Aqua314</h1>
-              <span className="text-sm text-primary-100">Delivery Manager</span>
+              <h1 className="text-xl font-bold text-white">Aqua314</h1>
+              <span className="text-sm text-white/80">Delivery Manager</span>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            <span className="text-sm hidden sm:inline">
+            <span className="text-sm hidden sm:inline text-white/90">
               Hola, {nombreUsuario}
             </span>
             <button
               onClick={showLogoutModal}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-colors border border-white/20"
               title="Cerrar sesión"
             >
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">

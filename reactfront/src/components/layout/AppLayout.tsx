@@ -17,7 +17,7 @@ const InformesSection = lazy(() => import('@/features/informes/components/Inform
  */
 function AppLayout() {
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] to-[#050a14] text-white pb-20 lg:pb-0">
       <Header />
       
       <div className="flex flex-col lg:flex-row">

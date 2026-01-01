@@ -237,34 +237,39 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
   const retornablesNoDevueltos = totalRetornables - retornablesDevueltos;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md"
         onClick={handleClose}
       />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-          <h3 className="text-xl font-bold text-gray-900">🚚 Entregar Pedido</h3>
+      {/* Modal - Mejorado para mostrar contenido completo */}
+      <div className="relative bg-[#0f1b2e] backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border-2 border-white/20 w-full max-w-2xl my-auto z-[101] flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        {/* Header sticky */}
+        <div className="sticky top-0 bg-[#0f1b2e]/95 backdrop-blur-xl border-b-2 border-white/20 px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+          <h3 className="text-lg sm:text-xl font-bold text-white">🚚 Entregar Pedido</h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-white/60 hover:text-white text-2xl sm:text-3xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Cerrar modal"
           >
             ×
           </button>
         </div>
 
-        {isLoading ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">Cargando datos del pedido...</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Contenido scrollable */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-solid border-primary-500/30 border-r-primary-500 mb-4"></div>
+              <p className="text-white/70">Cargando datos del pedido...</p>
+            </div>
+          ) : (
+            <form id="entregar-pedido-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Información del Pedido */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="space-y-2 text-sm">
+            <div className="p-4 bg-primary-500/20 border border-primary-500/50 rounded-lg backdrop-blur-sm">
+              <div className="space-y-2 text-sm text-white/90">
                 <div><strong>🧾 Pedido:</strong> #{pedido.codigo || pedido.id}</div>
                 <div><strong>👤 Cliente:</strong> {pedido.cliente_nombre || 'Cliente sin nombre'}</div>
                 {pedido.direccion && (
@@ -275,8 +280,8 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                 )}
                 <div><strong>💰 Total:</strong> {formatCurrency(totalPedido)}</div>
                 {pedidoItems.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-blue-300">
-                    <div className="font-medium mb-1">📦 Productos:</div>
+                  <div className="mt-2 pt-2 border-t border-primary-500/30">
+                    <div className="font-medium mb-1 text-white">📦 Productos:</div>
                     <div className="pl-2 space-y-1">
                       {pedidoItems.slice(0, 5).map((item, idx) => {
                         const esRetornable = (item.producto as any)?.esRetornable === 1 || 
@@ -291,14 +296,14 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                                              item.producto?.descripcion ||
                                              'Producto';
                         return (
-                          <div key={idx} className="text-xs">
+                          <div key={idx} className="text-xs text-white/80">
                             {item.cantidad}x {nombreProducto}
-                            {esRetornable && <span className="text-yellow-600"> 🔄</span>}
+                            {esRetornable && <span className="text-yellow-300"> 🔄</span>}
                           </div>
                         );
                       })}
                       {pedidoItems.length > 5 && (
-                        <div className="text-xs text-gray-500">... y {pedidoItems.length - 5} más</div>
+                        <div className="text-xs text-white/60">... y {pedidoItems.length - 5} más</div>
                       )}
                     </div>
                   </div>
@@ -308,30 +313,30 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
 
             {/* Tipo de Pago */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-white mb-2">
                 Tipo de Pago *
               </label>
               <select
                 value={selectedTipoPago}
                 onChange={(e) => setSelectedTipoPago(e.target.value ? Number(e.target.value) : '')}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm disabled:opacity-50"
                 disabled={tiposPago.length === 0 && isLoading}
               >
-                <option value="">
+                <option value="" className="bg-[#0f1b2e]">
                   {isLoading ? 'Cargando tipos de pago...' : tiposPago.length === 0 ? 'No hay tipos de pago disponibles' : 'Seleccionar tipo de pago...'}
                 </option>
                 {tiposPago.map((tipo) => {
                   const aplicaSaldo = tiposPagoService.convertirAplicaSaldo(tipo.aplicaSaldo);
                   return (
-                    <option key={tipo.id} value={tipo.id}>
+                    <option key={tipo.id} value={tipo.id} className="bg-[#0f1b2e]">
                       {tipo.pago || tipo.nombre}{aplicaSaldo ? ' (Aplica saldo)' : ''}
                     </option>
                   );
                 })}
               </select>
               {tiposPago.length === 0 && !isLoading && (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-xs text-red-300">
                   No se pudieron cargar los tipos de pago. Por favor, recarga la página.
                 </p>
               )}
@@ -340,11 +345,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
             {/* Monto Cobrado (solo si no aplica saldo) */}
             {showMontoCobrado() && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-white mb-2">
                   Monto Cobrado *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">$</span>
                   <input
                     type="number"
                     value={montoCobrado}
@@ -352,11 +357,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                     step="0.01"
                     min="0"
                     required
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
                     placeholder="0.00"
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-white/60">
                   Total del pedido: {formatCurrency(totalPedido)}. Puede cobrar más o menos del total.
                 </p>
               </div>
@@ -365,13 +370,13 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
             {/* Retornables (solo si hay productos retornables) */}
             {totalRetornables > 0 && (
               <div>
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-3">
-                  <p className="text-sm text-yellow-900">
+                <div className="p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg mb-3 backdrop-blur-sm">
+                  <p className="text-sm text-yellow-300">
                     <strong>🔄 El pedido tiene {totalRetornables} retornables</strong>
                   </p>
                 </div>
                 
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-white mb-2">
                   ¿Cuántos retornables entregó el cliente?
                 </label>
                 <div className="flex items-center gap-3">
@@ -384,13 +389,13 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                     }}
                     min="0"
                     max={totalRetornables}
-                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-24 px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm"
                   />
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-white/70">
                     de {totalRetornables} retornables adeudados
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-white/60">
                   Los retornables no entregados quedarán como adeudados en la cuenta del cliente.
                 </p>
               </div>
@@ -398,9 +403,9 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
 
             {/* Resumen de Entrega */}
             {selectedTipoPago && (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <h5 className="font-semibold text-gray-900 mb-3">📋 Resumen de Entrega</h5>
-                <div className="space-y-2 text-sm">
+              <div className="p-4 bg-green-500/20 border border-green-500/50 rounded-lg backdrop-blur-sm">
+                <h5 className="font-semibold text-white mb-3">📋 Resumen de Entrega</h5>
+                <div className="space-y-2 text-sm text-white/90">
                   {aplicaSaldo() ? (
                     <>
                       <div>
@@ -416,7 +421,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                         <strong>💰 Pago:</strong> {tipoPago?.pago || tipoPago?.nombre} - {formatCurrency(monto)}
                       </div>
                       {diferencia !== 0 && (
-                        <div className={diferencia > 0 ? 'text-red-600' : 'text-green-600'}>
+                        <div className={diferencia > 0 ? 'text-red-300' : 'text-green-300'}>
                           <strong>📊 Diferencia:</strong> {formatCurrency(Math.abs(diferencia))} {diferencia > 0 ? '(faltante)' : '(vuelto)'}
                         </div>
                       )}
@@ -429,7 +434,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                         <strong>🔄 Retornables devueltos:</strong> {retornablesDevueltos} de {totalRetornables}
                       </div>
                       {retornablesNoDevueltos > 0 && (
-                        <div className="text-yellow-600">
+                        <div className="text-yellow-300">
                           <strong>⚠️ Retornables pendientes:</strong> {retornablesNoDevueltos} (se sumarán al saldo del cliente)
                         </div>
                       )}
@@ -441,30 +446,51 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
 
             {/* Error */}
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+              <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 backdrop-blur-sm">
                 {error}
               </div>
             )}
-
-            {/* Botones */}
-            <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isSubmitting}
-                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || isLoading}
-                className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? '🚚 Procesando entrega...' : '✅ Confirmar Entrega'}
-              </button>
-            </div>
           </form>
+          )}
+        </div>
+
+        {/* Botones - Footer fijo siempre visible */}
+        {!isLoading && (
+          <div className="border-t-2 border-white/20 bg-[#0f1b2e]/95 backdrop-blur-xl px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 justify-end flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all disabled:opacity-50 border-2 border-white/20 backdrop-blur-sm font-semibold min-h-[48px]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              form="entregar-pedido-form"
+              onClick={(e) => {
+                e.preventDefault();
+                const form = document.getElementById('entregar-pedido-form') as HTMLFormElement;
+                if (form) {
+                  form.requestSubmit();
+                }
+              }}
+              disabled={isSubmitting || isLoading}
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30 font-bold min-h-[48px] hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Procesando...
+                </span>
+              ) : (
+                '✅ Confirmar Entrega'
+              )}
+            </button>
+          </div>
         )}
       </div>
     </div>

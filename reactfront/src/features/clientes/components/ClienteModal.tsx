@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 // import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 // import L from 'leaflet';
 // import 'leaflet/dist/leaflet.css';
@@ -312,32 +313,38 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
 
   const isEditMode = !!cliente;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  // Renderizar el modal usando Portal directamente en el body
+  // Esto asegura que esté por encima de todo el contenido
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4" style={{ isolation: 'isolate' }}>
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/85 backdrop-blur-md"
         onClick={handleClose}
+        style={{ zIndex: 1 }}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-          <h3 className="text-xl font-bold text-gray-900">
+      <div 
+        className="relative bg-[#0a2e1a] backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border-2 border-green-500/30 w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+        style={{ zIndex: 2 }}
+      >
+        <div className="sticky top-0 bg-[#0a2e1a] backdrop-blur-xl border-b-2 border-green-500/30 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+          <h3 className="text-lg sm:text-xl font-bold text-white">
             {isEditMode ? '✏️ Editar Cliente' : '➕ Nuevo Cliente'}
           </h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-white/60 hover:text-white text-2xl sm:text-3xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Nombre */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Nombre *
             </label>
             <input
@@ -345,66 +352,66 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
               placeholder="Nombre del cliente"
             />
           </div>
 
           {/* Apellido */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Apellido
             </label>
             <input
               type="text"
               value={apellido}
               onChange={(e) => setApellido(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
               placeholder="Apellido del cliente (opcional)"
             />
           </div>
 
           {/* Teléfono */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Teléfono
             </label>
             <input
               type="tel"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
               placeholder="Teléfono de contacto (opcional)"
             />
           </div>
 
           {/* Dirección */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Dirección
             </label>
             <textarea
               value={direccion}
               onChange={(e) => setDireccion(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm resize-none"
               placeholder="Dirección del cliente (opcional)"
             />
           </div>
 
           {/* Zona */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Zona
             </label>
             <select
               value={zonaId}
               onChange={(e) => setZonaId(e.target.value ? Number(e.target.value) : '')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm"
             >
-              <option value="">Seleccionar zona (opcional)</option>
+              <option value="" className="bg-[#0f1b2e]">Seleccionar zona (opcional)</option>
               {zonas.map((zona) => (
-                <option key={zona.id} value={zona.id}>
+                <option key={zona.id} value={zona.id} className="bg-[#0f1b2e]">
                   {zona.nombre}
                 </option>
               ))}
@@ -413,54 +420,31 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
 
           {/* Coordenadas */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Ubicación (Coordenadas)
             </label>
             
-            {/* Mapa comentado temporalmente */}
-            {/* <div className="mb-3 h-64 w-full rounded-lg overflow-hidden border border-gray-300 bg-gray-100">
-              {isOpen && mapReady ? (
-                <ClienteMap
-                  key={`cliente-map-component-${mapKeyRef.current}`}
-                  center={mapCenter}
-                  latitud={latitud}
-                  longitud={longitud}
-                  onMapClick={(lat, lng) => {
-                    setLatitud(lat.toFixed(6));
-                    setLongitud(lng.toFixed(6));
-                    setMapCenter([lat, lng]);
-                  }}
-                  markerIcon={markerIcon}
-                  mapKey={mapKeyRef.current}
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-gray-500">
-                  <p>Cargando mapa...</p>
-                </div>
-              )}
-            </div> */}
-
             {/* Campos de coordenadas */}
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Latitud</label>
+                <label className="block text-xs text-white/70 mb-1">Latitud</label>
                 <input
                   type="number"
                   step="any"
                   value={latitud}
                   onChange={(e) => setLatitud(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm text-sm"
                   placeholder="Ej: -34.603722"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Longitud</label>
+                <label className="block text-xs text-white/70 mb-1">Longitud</label>
                 <input
                   type="number"
                   step="any"
                   value={longitud}
                   onChange={(e) => setLongitud(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm text-sm"
                   placeholder="Ej: -58.381592"
                 />
               </div>
@@ -470,36 +454,36 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
               type="button"
               onClick={handleGetLocation}
               disabled={isLoading}
-              className="w-full px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 text-sm"
+              className="w-full px-4 py-2.5 bg-primary-500/20 border border-primary-500/50 text-primary-300 rounded-lg hover:bg-primary-500/30 transition-colors disabled:opacity-50 text-sm backdrop-blur-sm"
             >
               📍 Obtener mi ubicación actual
             </button>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-white/60">
               Ingresa las coordenadas manualmente o usa el botón para obtener tu ubicación actual.
             </p>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 backdrop-blur-sm">
               {error}
             </div>
           )}
 
           {/* Botones */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-white/10">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-2.5 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 border border-white/20 backdrop-blur-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting || isLoading}
-              className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/30"
             >
               {isSubmitting ? 'Guardando...' : isEditMode ? 'Actualizar Cliente' : 'Crear Cliente'}
             </button>
@@ -508,6 +492,9 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
       </div>
     </div>
   );
+
+  // Renderizar usando Portal en el body para asegurar que esté por encima de todo
+  return createPortal(modalContent, document.body);
 }
 
 export default ClienteModal;

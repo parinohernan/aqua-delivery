@@ -1,5 +1,6 @@
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
+import type { InformeResumen, InformeDetallado } from '../types';
 
 /**
  * Servicio de Informes
@@ -8,26 +9,30 @@ import { endpoints } from '@/services/api/endpoints';
 class InformesService {
   /**
    * Genera un informe de resumen de ventas
+   * @param fechaDesde Fecha de inicio (YYYY-MM-DD)
+   * @param fechaHasta Fecha de fin (YYYY-MM-DD)
    */
-  async getResumenVentas(fechaInicio: string, fechaFin: string): Promise<unknown> {
-    return await apiClient.get(endpoints.informes(), {
+  async getResumenVentas(fechaDesde: string, fechaHasta: string): Promise<InformeResumen> {
+    return await apiClient.get(`${endpoints.informes()}/ventas`, {
       params: {
         tipo: 'resumen',
-        fechaInicio,
-        fechaFin,
+        fechaDesde,
+        fechaHasta,
       },
     });
   }
 
   /**
    * Genera un informe detallado por cliente
+   * @param fechaDesde Fecha de inicio (YYYY-MM-DD)
+   * @param fechaHasta Fecha de fin (YYYY-MM-DD)
    */
-  async getDetalladoClientes(fechaInicio: string, fechaFin: string): Promise<unknown> {
-    return await apiClient.get(endpoints.informes(), {
+  async getDetalladoClientes(fechaDesde: string, fechaHasta: string): Promise<InformeDetallado> {
+    return await apiClient.get(`${endpoints.informes()}/ventas`, {
       params: {
         tipo: 'detallado',
-        fechaInicio,
-        fechaFin,
+        fechaDesde,
+        fechaHasta,
       },
     });
   }

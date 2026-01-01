@@ -84,10 +84,11 @@ async function generarInformeResumen(codigoEmpresa, fechaDesde, fechaHasta) {
 }
 
 // Función para generar informe detallado por cliente
+// OPTIMIZADA: Usa solo 3 queries en total en lugar de N*2 queries
 async function generarInformeDetallado(codigoEmpresa, fechaDesde, fechaHasta) {
-  console.log('📋 Generando informe detallado por cliente...');
+  console.log('📋 Generando informe detallado por cliente (optimizado)...');
 
-  // Primero obtener la lista de clientes con sus estadísticas
+  // Query 1: Obtener todos los clientes con sus estadísticas generales
   const clientesRows = await query(`
     SELECT 
       c.codigo,
@@ -105,77 +106,89 @@ async function generarInformeDetallado(codigoEmpresa, fechaDesde, fechaHasta) {
     ORDER BY totalComprado DESC
   `, [codigoEmpresa, fechaDesde, fechaHasta]);
 
-  // Para cada cliente, obtener los productos que compró
-  const clientesConProductos = [];
-  
-  console.log(`📊 Procesando ${clientesRows.length} clientes...`);
-  
-  for (let i = 0; i < clientesRows.length; i++) {
-    const cliente = clientesRows[i];
-    console.log(`   📋 Procesando cliente ${i + 1}/${clientesRows.length}: ${cliente.nombre} ${cliente.apellido || ''}`);
-    
-    // Obtener productos comprados por este cliente
-    const productosRows = await query(`
-      SELECT 
-        pr.descripcion,
-        pr.codigo as codigoProducto,
-        SUM(pi.cantidad) as cantidadTotal,
-        SUM(pi.precioTotal) as totalPagado,
-        AVG(pi.precioTotal / pi.cantidad) as precioPromedio,
-        COUNT(DISTINCT p.codigo) as pedidosConEsteProducto
-      FROM pedidos p
-      JOIN pedidositems pi ON p.codigo = pi.codigoPedido
-      JOIN productos pr ON pi.codigoProducto = pr.codigo
-      WHERE p.codigoEmpresa = ?
-        AND p.estado = 'entregad'
-        AND DATE(p.FechaEntrega) BETWEEN ? AND ?
-        AND p.codigoCliente = ?
-      GROUP BY pr.codigo, pr.descripcion
-      ORDER BY cantidadTotal DESC
-    `, [codigoEmpresa, fechaDesde, fechaHasta, cliente.codigo]);
+  console.log(`📊 Encontrados ${clientesRows.length} clientes, obteniendo detalles...`);
 
-    // Obtener detalles de pedidos individuales
-    const pedidosDetalle = await query(`
-      SELECT 
-        p.codigo as codigoPedido,
-        p.fechaPedido,
-        p.FechaEntrega,
-        p.total as totalPedido,
-        COUNT(pi.codigo) as cantidadItems
-      FROM pedidos p
-      LEFT JOIN pedidositems pi ON p.codigo = pi.codigoPedido
-      WHERE p.codigoEmpresa = ?
-        AND p.estado = 'entregad'
-        AND DATE(p.FechaEntrega) BETWEEN ? AND ?
-        AND p.codigoCliente = ?
-      GROUP BY p.codigo, p.fechaPedido, p.FechaEntrega, p.total
-      ORDER BY p.FechaEntrega DESC
-    `, [codigoEmpresa, fechaDesde, fechaHasta, cliente.codigo]);
+  // Query 2: Obtener TODOS los productos de TODOS los clientes en una sola query
+  const productosRows = await query(`
+    SELECT 
+      p.codigoCliente,
+      pr.codigo as codigoProducto,
+      pr.descripcion,
+      SUM(pi.cantidad) as cantidadTotal,
+      SUM(pi.precioTotal) as totalPagado,
+      AVG(pi.precioTotal / pi.cantidad) as precioPromedio,
+      COUNT(DISTINCT p.codigo) as pedidosConEsteProducto
+    FROM pedidos p
+    JOIN pedidositems pi ON p.codigo = pi.codigoPedido
+    JOIN productos pr ON pi.codigoProducto = pr.codigo
+    WHERE p.codigoEmpresa = ?
+      AND p.estado = 'entregad'
+      AND DATE(p.FechaEntrega) BETWEEN ? AND ?
+    GROUP BY p.codigoCliente, pr.codigo, pr.descripcion
+    ORDER BY p.codigoCliente, cantidadTotal DESC
+  `, [codigoEmpresa, fechaDesde, fechaHasta]);
 
-    clientesConProductos.push({
-      codigo: cliente.codigo,
-      nombre: cliente.nombre,
-      apellido: cliente.apellido || '',
-      telefono: cliente.telefono || '',
-      totalPedidos: parseInt(cliente.totalPedidos),
-      totalComprado: parseFloat(cliente.totalComprado) || 0,
-      productos: productosRows.map(p => ({
-        codigo: p.codigoProducto,
-        descripcion: p.descripcion,
-        cantidadTotal: parseInt(p.cantidadTotal),
-        totalPagado: parseFloat(p.totalPagado) || 0,
-        precioPromedio: parseFloat(p.precioPromedio) || 0,
-        pedidosConEsteProducto: parseInt(p.pedidosConEsteProducto)
-      })),
-      pedidos: pedidosDetalle.map(p => ({
-        codigo: p.codigoPedido,
-        fechaPedido: p.fechaPedido,
-        fechaEntrega: p.FechaEntrega,
-        total: parseFloat(p.totalPedido) || 0,
-        cantidadItems: parseInt(p.cantidadItems)
-      }))
+  // Query 3: Obtener TODOS los pedidos de TODOS los clientes en una sola query
+  const pedidosRows = await query(`
+    SELECT 
+      p.codigoCliente,
+      p.codigo as codigoPedido,
+      p.fechaPedido,
+      p.FechaEntrega,
+      p.total as totalPedido,
+      COUNT(pi.codigo) as cantidadItems
+    FROM pedidos p
+    LEFT JOIN pedidositems pi ON p.codigo = pi.codigoPedido
+    WHERE p.codigoEmpresa = ?
+      AND p.estado = 'entregad'
+      AND DATE(p.FechaEntrega) BETWEEN ? AND ?
+    GROUP BY p.codigo, p.codigoCliente, p.fechaPedido, p.FechaEntrega, p.total
+    ORDER BY p.codigoCliente, p.FechaEntrega DESC
+  `, [codigoEmpresa, fechaDesde, fechaHasta]);
+
+  console.log(`✅ Datos obtenidos: ${productosRows.length} productos, ${pedidosRows.length} pedidos`);
+
+  // Agrupar productos y pedidos por cliente en memoria (muy rápido)
+  const productosPorCliente = {};
+  productosRows.forEach(row => {
+    if (!productosPorCliente[row.codigoCliente]) {
+      productosPorCliente[row.codigoCliente] = [];
+    }
+    productosPorCliente[row.codigoCliente].push({
+      codigo: row.codigoProducto,
+      descripcion: row.descripcion,
+      cantidadTotal: parseInt(row.cantidadTotal),
+      totalPagado: parseFloat(row.totalPagado) || 0,
+      precioPromedio: parseFloat(row.precioPromedio) || 0,
+      pedidosConEsteProducto: parseInt(row.pedidosConEsteProducto)
     });
-  }
+  });
+
+  const pedidosPorCliente = {};
+  pedidosRows.forEach(row => {
+    if (!pedidosPorCliente[row.codigoCliente]) {
+      pedidosPorCliente[row.codigoCliente] = [];
+    }
+    pedidosPorCliente[row.codigoCliente].push({
+      codigo: row.codigoPedido,
+      fechaPedido: row.fechaPedido,
+      fechaEntrega: row.FechaEntrega,
+      total: parseFloat(row.totalPedido) || 0,
+      cantidadItems: parseInt(row.cantidadItems)
+    });
+  });
+
+  // Construir el resultado final
+  const clientesConProductos = clientesRows.map(cliente => ({
+    codigo: cliente.codigo,
+    nombre: cliente.nombre,
+    apellido: cliente.apellido || '',
+    telefono: cliente.telefono || '',
+    totalPedidos: parseInt(cliente.totalPedidos),
+    totalComprado: parseFloat(cliente.totalComprado) || 0,
+    productos: productosPorCliente[cliente.codigo] || [],
+    pedidos: pedidosPorCliente[cliente.codigo] || []
+  }));
 
   console.log(`✅ Informe detallado generado: ${clientesConProductos.length} clientes procesados`);
 
