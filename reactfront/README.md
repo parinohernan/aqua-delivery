@@ -12,7 +12,6 @@ Aplicación PWA moderna para gestión de delivery de agua, construida con React 
 - **PWA** - Progressive Web App completa
 - **Tailwind CSS** - Estilos modernos
 - **React Router** - Navegación SPA
-- **Leaflet** - Mapas interactivos
 
 ## 📦 Instalación
 

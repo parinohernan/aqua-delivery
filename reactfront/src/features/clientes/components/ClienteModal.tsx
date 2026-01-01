@@ -1,20 +1,9 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-// import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-// import L from 'leaflet';
-// import 'leaflet/dist/leaflet.css';
 import { useClientesStore } from '../stores/clientesStore';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import type { Cliente, Zona } from '@/types/entities';
-
-// Fix para los iconos de Leaflet en React (comentado temporalmente)
-// delete (L.Icon.Default.prototype as any)._getIconUrl;
-// L.Icon.Default.mergeOptions({
-//   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-//   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-//   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-// });
 
 /**
  * Modal para crear o editar un cliente
@@ -35,33 +24,16 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   const [zonaId, setZonaId] = useState<number | ''>('');
   const [latitud, setLatitud] = useState<string>('');
   const [longitud, setLongitud] = useState<string>('');
-  const [mapCenter, setMapCenter] = useState<[number, number]>([-34.603722, -58.381592]); // Buenos Aires por defecto
   
   const [zonas, setZonas] = useState<Zona[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // const [mapReady, setMapReady] = useState(false);
-  // const mapKeyRef = useRef(0);
-
-  // Icono personalizado para el marcador (comentado temporalmente)
-  // const markerIcon = useMemo(() => {
-  //   return L.icon({
-  //     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  //     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  //     iconSize: [25, 41],
-  //     iconAnchor: [12, 41],
-  //     popupAnchor: [1, -34],
-  //     shadowSize: [41, 41]
-  //   });
-  // }, []);
 
   // Cargar zonas cuando se abre el modal
   useEffect(() => {
     if (isOpen) {
       loadZonas();
-      // setMapReady(false);
-      // mapKeyRef.current += 1;
       
       if (cliente) {
         // Modo edición: cargar datos del cliente
@@ -74,24 +46,11 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
         const lng = cliente.longitud?.toString() || '';
         setLatitud(lat);
         setLongitud(lng);
-        
-        // Si hay coordenadas, centrar el mapa en ellas (comentado temporalmente)
-        // if (lat && lng) {
-        //   const latNum = parseFloat(lat);
-        //   const lngNum = parseFloat(lng);
-        //   if (!isNaN(latNum) && !isNaN(lngNum)) {
-        //     setMapCenter([latNum, lngNum]);
-        //   }
-        // }
       } else {
         // Modo creación: limpiar formulario
         resetForm();
       }
     }
-    // else {
-    //   setMapReady(false);
-    //   mapKeyRef.current += 1;
-    // }
   }, [isOpen, cliente]);
 
   const loadZonas = async () => {
@@ -115,8 +74,6 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     setZonaId('');
     setLatitud('');
     setLongitud('');
-    // setMapCenter([-34.603722, -58.381592]); // Resetear a Buenos Aires
-    // setMapReady(false);
     setError(null);
   };
 
@@ -203,7 +160,6 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
           const lng = position.coords.longitude.toFixed(6);
           setLatitud(lat);
           setLongitud(lng);
-          setMapCenter([parseFloat(lat), parseFloat(lng)]);
           setIsLoading(false);
         },
         (error) => {
@@ -217,97 +173,6 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     }
   };
 
-  // Componentes del mapa comentados temporalmente
-  // function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
-  //   useMapEvents({
-  //     click: (e) => {
-  //       const { lat, lng } = e.latlng;
-  //       onMapClick(lat, lng);
-  //     },
-  //   });
-  //   return null;
-  // }
-
-  // function MapCenterUpdater({ center }: { center: [number, number] }) {
-  //   const map = useMap();
-  //   useEffect(() => {
-  //     map.setView(center, map.getZoom());
-  //   }, [center, map]);
-  //   return null;
-  // }
-
-  // function ClienteMap({
-  //   center,
-  //   latitud,
-  //   longitud,
-  //   onMapClick,
-  //   markerIcon,
-  //   mapKey,
-  // }: {
-  //   center: [number, number];
-  //   latitud: string;
-  //   longitud: string;
-  //   onMapClick: (lat: number, lng: number) => void;
-  //   markerIcon: L.Icon;
-  //   mapKey: number;
-  // }) {
-  //   const mapRef = useRef<L.Map | null>(null);
-  //   const containerId = useMemo(() => `map-container-${mapKey}`, [mapKey]);
-  //   
-  //   useEffect(() => {
-  //     return () => {
-  //       if (mapRef.current) {
-  //         try {
-  //           mapRef.current.remove();
-  //         } catch (e) {
-  //           console.warn('Error removing map:', e);
-  //         }
-  //         mapRef.current = null;
-  //       }
-  //       const container = document.getElementById(containerId);
-  //       if (container) {
-  //         container.innerHTML = '';
-  //         if ((container as any)._leaflet_id) {
-  //           delete (container as any)._leaflet_id;
-  //         }
-  //       }
-  //     };
-  //   }, [containerId]);
-  //   
-  //   return (
-  //     <div id={containerId} style={{ height: '100%', width: '100%' }}>
-  //       <MapContainer
-  //         center={center}
-  //         zoom={latitud && longitud ? 15 : 12}
-  //         style={{ height: '100%', width: '100%', zIndex: 0 }}
-  //         scrollWheelZoom={true}
-  //         whenCreated={(map) => {
-  //           mapRef.current = map;
-  //           setTimeout(() => {
-  //             try {
-  //               map.invalidateSize();
-  //             } catch (e) {
-  //               console.warn('Error invalidating map size:', e);
-  //             }
-  //           }, 300);
-  //         }}
-  //       >
-  //         <TileLayer
-  //           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  //           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  //         />
-  //         <MapCenterUpdater center={center} />
-  //         <MapClickHandler onMapClick={onMapClick} />
-  //         {latitud && longitud && !isNaN(parseFloat(latitud)) && !isNaN(parseFloat(longitud)) && (
-  //           <Marker
-  //             position={[parseFloat(latitud), parseFloat(longitud)]}
-  //             icon={markerIcon}
-  //           />
-  //         )}
-  //       </MapContainer>
-  //     </div>
-  //   );
-  // }
 
   if (!isOpen) return null;
 
