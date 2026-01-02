@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -93,6 +96,13 @@ export default defineConfig({
   server: {
     port: 4321,
     host: true, // Permite acceso desde la red local
+    allowedHosts: [
+      'aqua.janus314.com.ar',
+      'localhost',
+      '.localhost',
+      '127.0.0.1',
+      '.janus314.com.ar'
+    ],
     proxy: {
       '/api': {
         target: process.env.VITE_API_BASE_URL || 'http://localhost:8001',
