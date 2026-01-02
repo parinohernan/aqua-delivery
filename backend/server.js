@@ -38,7 +38,7 @@ function getLocalIP() {
 // Middlewares
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir cualquier origen localhost, IPs locales, netlify.app o koyeb.app
+    // Permitir cualquier origen localhost, IPs locales, netlify.app, koyeb.app o janus314.com.ar
     if (!origin ||
       origin.startsWith('http://localhost:') ||
       origin.startsWith('http://127.0.0.1:') ||
@@ -47,7 +47,10 @@ app.use(cors({
       origin.startsWith('http://172.') ||
       origin.endsWith('.netlify.app') ||
       origin.endsWith('.koyeb.app') ||
-      origin === 'https://aquadeliverymanager.netlify.app') {
+      origin.endsWith('.janus314.com.ar') ||
+      origin === 'https://aquadeliverymanager.netlify.app' ||
+      origin === 'https://aqua.janus314.com.ar' ||
+      origin === 'https://aqua-api.janus314.com.ar') {
       callback(null, true);
     } else {
       console.log('CORS bloqueado para origen:', origin);

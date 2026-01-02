@@ -16,7 +16,19 @@ function getApiBaseUrl(): string {
     return ''; // Vite proxy manejará las rutas /api y /auth
   }
 
-  // Si estamos en la red local, usar la IP del servidor
+  // Si estamos en producción HTTPS, detectar el dominio del backend
+  if (window.location.protocol === 'https:') {
+    const hostname = window.location.hostname;
+    // Si el frontend está en aqua.janus314.com.ar, el backend está en aqua-api.janus314.com.ar
+    if (hostname === 'aqua.janus314.com.ar') {
+      return 'https://aqua-api.janus314.com.ar';
+    }
+    // Para otros dominios de producción, intentar construir la URL del API
+    // Asumiendo que el backend está en un subdominio 'api'
+    return `https://api.${hostname}`;
+  }
+
+  // Si estamos en la red local HTTP, usar la IP del servidor
   // La IP del servidor es la misma que la del frontend pero con el puerto del backend
   const hostname = window.location.hostname;
   const backendPort = import.meta.env.VITE_BACKEND_PORT || '8001';

@@ -249,10 +249,10 @@ function PedidoCard({ pedido }: PedidoCardProps) {
             </button>
           )}
           
-          <button
-            onClick={() => {
-              alert('Funcionalidad de ver detalles en desarrollo');
-            }}
+        <button
+          onClick={() => {
+            alert('Funcionalidad de ver detalles en desarrollo');
+          }}
             className="
               flex-1 px-3 py-2.5 
               bg-white/10 border-2 border-white/20 
@@ -262,10 +262,10 @@ function PedidoCard({ pedido }: PedidoCardProps) {
               flex items-center justify-center gap-1.5
               min-h-[44px]
             "
-          >
+        >
             <span>👁️</span>
             <span className="text-sm">Ver</span>
-          </button>
+        </button>
         </div>
       </div>
 

@@ -26,11 +26,11 @@ function PedidosSection() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white leading-tight">
-                Gestión de Pedidos
+          Gestión de Pedidos
               </h1>
               <p className="text-white/60 text-sm mt-0.5">
-                Administra y rastrea todos tus pedidos de entrega
-              </p>
+          Administra y rastrea todos tus pedidos de entrega
+        </p>
             </div>
           </div>
           {filteredPedidos.length > 0 && (
@@ -44,7 +44,7 @@ function PedidosSection() {
 
       {/* Toolbar con mejor espaciado */}
       <div className="mb-6">
-        <PedidosToolbar />
+      <PedidosToolbar />
       </div>
 
       {/* Mensaje de error mejorado */}

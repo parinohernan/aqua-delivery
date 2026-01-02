@@ -48,16 +48,16 @@ function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border-2 border-white/20 p-8 md:p-10 animate-fade-in">
           {/* Logo y header */}
-          <div className="text-center mb-8">
+        <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-primary-500/20 rounded-full blur-xl"></div>
-                <img 
-                  src="/logo2-min.webp" 
-                  alt="AquaDelivery Logo" 
+            <img 
+              src="/logo2-min.webp" 
+              alt="AquaDelivery Logo" 
                   className="relative w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-2xl"
-                />
-              </div>
+            />
+          </div>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
               Aqua314
@@ -65,32 +65,32 @@ function LoginPage() {
             <p className="text-white/70 text-sm">
               Delivery Manager
             </p>
-          </div>
+        </div>
 
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Campo de contraseña con botón de mostrar/ocultar */}
-            <div>
+          <div>
               <label 
                 htmlFor="telegramId" 
                 className="block text-sm font-semibold text-white/90 mb-2.5"
               >
-                Contraseña de acceso
-              </label>
+              Contraseña de acceso
+            </label>
               <div className="relative">
-                <input
+            <input
                   type={showPassword ? 'text' : 'password'}
-                  id="telegramId"
-                  value={telegramId}
-                  onChange={(e) => setTelegramId(e.target.value)}
-                  required
+              id="telegramId"
+              value={telegramId}
+              onChange={(e) => setTelegramId(e.target.value)}
+              required
                   className="w-full px-4 py-3.5 pr-12 bg-white/10 border-2 border-white/20 rounded-xl 
                            focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 
                            text-white placeholder-white/50 backdrop-blur-sm
                            transition-all duration-200
                            hover:border-white/30"
-                  placeholder="Ingresa tu contraseña de acceso"
-                />
+              placeholder="Ingresa tu contraseña de acceso"
+            />
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
@@ -137,33 +137,33 @@ function LoginPage() {
                   )}
                 </button>
               </div>
-            </div>
+          </div>
 
             {/* Campo de código de empresa */}
-            <div>
+          <div>
               <label 
                 htmlFor="codigoEmpresa" 
                 className="block text-sm font-semibold text-white/90 mb-2.5"
               >
-                Código de Empresa
-              </label>
-              <input
-                type="text"
-                id="codigoEmpresa"
-                value={codigoEmpresa}
-                onChange={(e) => setCodigoEmpresa(e.target.value)}
-                required
+              Código de Empresa
+            </label>
+            <input
+              type="text"
+              id="codigoEmpresa"
+              value={codigoEmpresa}
+              onChange={(e) => setCodigoEmpresa(e.target.value)}
+              required
                 className="w-full px-4 py-3.5 bg-white/10 border-2 border-white/20 rounded-xl 
                          focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 
                          text-white placeholder-white/50 backdrop-blur-sm
                          transition-all duration-200
                          hover:border-white/30"
-                placeholder="Código de empresa"
-              />
-            </div>
+              placeholder="Código de empresa"
+            />
+          </div>
 
             {/* Mensaje de error mejorado */}
-            {error && (
+          {error && (
               <div className="bg-red-500/20 border-2 border-red-500/50 text-red-200 px-4 py-3.5 rounded-xl backdrop-blur-sm flex items-center gap-3 animate-slide-in">
                 <svg 
                   className="w-5 h-5 flex-shrink-0" 
@@ -177,13 +177,13 @@ function LoginPage() {
                   />
                 </svg>
                 <span className="flex-1 text-sm font-medium">{error}</span>
-              </div>
-            )}
+            </div>
+          )}
 
             {/* Botón de submit mejorado */}
-            <button
-              type="submit"
-              disabled={isLoading}
+          <button
+            type="submit"
+            disabled={isLoading}
               className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-3.5 rounded-xl 
                        font-bold text-base shadow-lg shadow-primary-500/30
                        hover:from-primary-600 hover:to-primary-700 
@@ -193,7 +193,7 @@ function LoginPage() {
                        disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
                        flex items-center justify-center gap-2
                        min-h-[48px]"
-            >
+          >
               {isLoading ? (
                 <>
                   <svg 
@@ -236,7 +236,7 @@ function LoginPage() {
                   </svg>
                 </>
               )}
-            </button>
+          </button>
 
             {/* Información de prueba mejorada */}
             <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm">
@@ -254,7 +254,7 @@ function LoginPage() {
                 </div>
               </div>
             </div>
-          </form>
+        </form>
         </div>
       </div>
     </div>

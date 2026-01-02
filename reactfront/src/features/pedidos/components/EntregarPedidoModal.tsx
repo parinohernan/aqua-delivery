@@ -260,12 +260,12 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
 
         {/* Contenido scrollable */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          {isLoading ? (
-            <div className="p-8 text-center">
+        {isLoading ? (
+          <div className="p-8 text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-solid border-primary-500/30 border-r-primary-500 mb-4"></div>
-              <p className="text-white/70">Cargando datos del pedido...</p>
-            </div>
-          ) : (
+            <p className="text-white/70">Cargando datos del pedido...</p>
+          </div>
+        ) : (
             <form id="entregar-pedido-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Información del Pedido */}
             <div className="p-4 bg-primary-500/20 border border-primary-500/50 rounded-lg backdrop-blur-sm">
@@ -457,16 +457,16 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
         {/* Botones - Footer fijo siempre visible */}
         {!isLoading && (
           <div className="border-t-2 border-white/20 bg-[#0f1b2e]/95 backdrop-blur-xl px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 justify-end flex-shrink-0">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isSubmitting}
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isSubmitting}
               className="w-full sm:w-auto px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all disabled:opacity-50 border-2 border-white/20 backdrop-blur-sm font-semibold min-h-[48px]"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
               form="entregar-pedido-form"
               onClick={(e) => {
                 e.preventDefault();
@@ -475,9 +475,9 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                   form.requestSubmit();
                 }
               }}
-              disabled={isSubmitting || isLoading}
+                disabled={isSubmitting || isLoading}
               className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30 font-bold min-h-[48px] hover:scale-[1.02] active:scale-[0.98]"
-            >
+              >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -489,8 +489,8 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
               ) : (
                 '✅ Confirmar Entrega'
               )}
-            </button>
-          </div>
+              </button>
+            </div>
         )}
       </div>
     </div>
