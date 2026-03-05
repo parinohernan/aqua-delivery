@@ -1,57 +1,78 @@
+import { Package, Users, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import type { InformeResumen } from '../types';
 
-/**
- * Tarjetas de resumen de estadísticas
- */
 interface ResumenCardsProps {
   informe: InformeResumen;
 }
 
+const STAT_CARDS = (informe: InformeResumen) => [
+  {
+    label: 'Total de Pedidos',
+    value: informe.totalPedidos.toString(),
+    sub: 'Pedidos entregados',
+    icon: <Package size={20} color="#00D1FF" />,
+    accent: '#00D1FF',
+    accentBg: 'rgba(0,209,255,0.12)',
+  },
+  {
+    label: 'Total de Clientes',
+    value: informe.totalClientes.toString(),
+    sub: 'Clientes únicos',
+    icon: <Users size={20} color="#3B82F6" />,
+    accent: '#3B82F6',
+    accentBg: 'rgba(59,130,246,0.12)',
+  },
+  {
+    label: 'Total de Ventas',
+    value: formatCurrency(informe.totalVentas),
+    sub: 'Ingresos totales',
+    icon: <DollarSign size={20} color="#22C55E" />,
+    accent: '#22C55E',
+    accentBg: 'rgba(34,197,94,0.12)',
+  },
+];
+
 function ResumenCards({ informe }: ResumenCardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      {/* Total de Pedidos */}
-      <div className="bg-[#0f1b2e]/70 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg shadow-black/30">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-4xl">📦</span>
-          <div className="w-12 h-12 bg-primary-500/20 rounded-lg flex items-center justify-center">
-            <span className="text-2xl">📊</span>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+      {STAT_CARDS(informe).map((card) => (
+        <div
+          key={card.label}
+          style={{
+            background: '#1E1E1E',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: '14px',
+            padding: '20px',
+          }}
+        >
+          {/* Icon badge */}
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: card.accentBg,
+              border: `1px solid ${card.accent}30`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '14px',
+            }}
+          >
+            {card.icon}
           </div>
+          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+            {card.label}
+          </p>
+          <p style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F1F5F9', margin: '0 0 4px', lineHeight: 1 }}>
+            {card.value}
+          </p>
+          <p style={{ fontSize: '0.75rem', color: '#4B5563', margin: 0 }}>{card.sub}</p>
         </div>
-        <h3 className="text-sm font-medium text-white/70 mb-1">Total de Pedidos</h3>
-        <p className="text-3xl font-bold text-white">{informe.totalPedidos}</p>
-        <p className="text-xs text-white/50 mt-1">Pedidos entregados</p>
-      </div>
-
-      {/* Total de Clientes */}
-      <div className="bg-[#0f1b2e]/70 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg shadow-black/30">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-4xl">👥</span>
-          <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-            <span className="text-2xl">👤</span>
-          </div>
-        </div>
-        <h3 className="text-sm font-medium text-white/70 mb-1">Total de Clientes</h3>
-        <p className="text-3xl font-bold text-white">{informe.totalClientes}</p>
-        <p className="text-xs text-white/50 mt-1">Clientes únicos</p>
-      </div>
-
-      {/* Total de Ventas */}
-      <div className="bg-[#0f1b2e]/70 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg shadow-black/30">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-4xl">💰</span>
-          <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-            <span className="text-2xl">💵</span>
-          </div>
-        </div>
-        <h3 className="text-sm font-medium text-white/70 mb-1">Total de Ventas</h3>
-        <p className="text-3xl font-bold text-white">{formatCurrency(informe.totalVentas)}</p>
-        <p className="text-xs text-white/50 mt-1">Ingresos totales</p>
-      </div>
+      ))}
     </div>
   );
 }
 
 export default ResumenCards;
-

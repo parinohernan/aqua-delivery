@@ -1,10 +1,6 @@
-import { useState } from 'react';
 import type { TipoInforme } from '../types';
+import { BarChart2, ClipboardList, Play, CalendarDays } from 'lucide-react';
 
-/**
- * Barra de herramientas de informes
- * Contiene selector de tipo de informe y fechas
- */
 interface InformesToolbarProps {
   tipoInforme: TipoInforme;
   fechaDesde: string;
@@ -17,147 +13,190 @@ interface InformesToolbarProps {
 }
 
 function InformesToolbar({
-  tipoInforme,
-  fechaDesde,
-  fechaHasta,
-  onTipoChange,
-  onFechaDesdeChange,
-  onFechaHastaChange,
-  onGenerar,
-  isLoading,
+  tipoInforme, fechaDesde, fechaHasta,
+  onTipoChange, onFechaDesdeChange, onFechaHastaChange,
+  onGenerar, isLoading,
 }: InformesToolbarProps) {
-  // Establecer fechas por defecto (último mes)
-  const getDefaultFechaDesde = () => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 1);
-    return date.toISOString().split('T')[0];
-  };
-
-  const getDefaultFechaHasta = () => {
-    return new Date().toISOString().split('T')[0];
-  };
+  const getDefaultFechaDesde = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split('T')[0]; };
+  const getDefaultFechaHasta = () => new Date().toISOString().split('T')[0];
 
   const handleRangoRapido = (dias: number) => {
     const hasta = new Date();
     const desde = new Date();
     desde.setDate(desde.getDate() - dias);
-    
     onFechaDesdeChange(desde.toISOString().split('T')[0]);
     onFechaHastaChange(hasta.toISOString().split('T')[0]);
   };
 
+  const cardStyle: React.CSSProperties = {
+    background: '#1E1E1E',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '14px',
+    padding: '20px',
+    marginBottom: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '18px',
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '9px 14px',
+    background: '#2A2A2A',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '10px',
+    color: '#E2E8F0',
+    fontSize: '0.85rem',
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: '#94A3B8',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    display: 'block',
+    marginBottom: '8px',
+  };
+
+  const tabActive: React.CSSProperties = {
+    padding: '8px 16px',
+    borderRadius: '8px',
+    border: 'none',
+    background: '#00D1FF',
+    color: '#0B0E11',
+    fontSize: '0.85rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '7px',
+    fontFamily: 'inherit',
+  };
+
+  const tabInactive: React.CSSProperties = {
+    ...tabActive,
+    background: 'transparent',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: '#94A3B8',
+    fontWeight: 500,
+  };
+
+  const rangoStyle: React.CSSProperties = {
+    padding: '6px 12px',
+    borderRadius: '8px',
+    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'transparent',
+    color: '#94A3B8',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: 'background 200ms ease, color 200ms ease',
+  };
+
   return (
-    <div className="bg-[#0f1b2e]/70 backdrop-blur-sm rounded-xl shadow-lg shadow-black/30 p-4 sm:p-6 border border-white/10 mb-6">
-      <div className="space-y-4">
-        {/* Selector de tipo de informe */}
-        <div>
-          <label className="block text-sm font-medium text-white/90 mb-2">
-            Tipo de Informe
-          </label>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => onTipoChange('resumen')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                tipoInforme === 'resumen'
-                  ? 'bg-gradient-to-r from-primary-400 to-primary-600 text-white shadow-lg shadow-primary-500/30'
-                  : 'bg-white/10 text-white/80 hover:bg-white/20 border border-white/20'
-              }`}
-            >
-              📊 Resumen
-            </button>
-            <button
-              onClick={() => onTipoChange('detallado')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                tipoInforme === 'detallado'
-                  ? 'bg-gradient-to-r from-primary-400 to-primary-600 text-white shadow-lg shadow-primary-500/30'
-                  : 'bg-white/10 text-white/80 hover:bg-white/20 border border-white/20'
-              }`}
-            >
-              📋 Detallado por Cliente
-            </button>
-          </div>
-        </div>
-
-        {/* Selector de fechas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-white/90 mb-2">
-              Fecha Desde *
-            </label>
-            <input
-              type="date"
-              value={fechaDesde || getDefaultFechaDesde()}
-              onChange={(e) => onFechaDesdeChange(e.target.value)}
-              max={fechaHasta || getDefaultFechaHasta()}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-white/90 mb-2">
-              Fecha Hasta *
-            </label>
-            <input
-              type="date"
-              value={fechaHasta || getDefaultFechaHasta()}
-              onChange={(e) => onFechaHastaChange(e.target.value)}
-              min={fechaDesde || getDefaultFechaDesde()}
-              max={getDefaultFechaHasta()}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-white"
-            />
-          </div>
-        </div>
-
-        {/* Rangos rápidos */}
-        <div>
-          <label className="block text-sm font-medium text-white/90 mb-2">
-            Rangos Rápidos
-          </label>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => handleRangoRapido(7)}
-              className="px-3 py-1.5 text-sm bg-white/10 text-white/80 rounded-lg hover:bg-white/20 border border-white/20 transition-colors"
-            >
-              Últimos 7 días
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRangoRapido(30)}
-              className="px-3 py-1.5 text-sm bg-white/10 text-white/80 rounded-lg hover:bg-white/20 border border-white/20 transition-colors"
-            >
-              Último mes
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRangoRapido(90)}
-              className="px-3 py-1.5 text-sm bg-white/10 text-white/80 rounded-lg hover:bg-white/20 border border-white/20 transition-colors"
-            >
-              Últimos 3 meses
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRangoRapido(365)}
-              className="px-3 py-1.5 text-sm bg-white/10 text-white/80 rounded-lg hover:bg-white/20 border border-white/20 transition-colors"
-            >
-              Último año
-            </button>
-          </div>
-        </div>
-
-        {/* Botón generar */}
-        <div>
-          <button
-            onClick={onGenerar}
-            disabled={isLoading || !fechaDesde || !fechaHasta}
-            className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/30"
-          >
-            {isLoading ? '⏳ Generando...' : '📊 Generar Informe'}
+    <div style={cardStyle}>
+      {/* Tipo de informe */}
+      <div>
+        <label style={labelStyle}>Tipo de Informe</label>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={() => onTipoChange('resumen')} style={tipoInforme === 'resumen' ? tabActive : tabInactive}>
+            <BarChart2 size={15} />
+            Resumen
+          </button>
+          <button onClick={() => onTipoChange('detallado')} style={tipoInforme === 'detallado' ? tabActive : tabInactive}>
+            <ClipboardList size={15} />
+            Detallado por Cliente
           </button>
         </div>
+      </div>
+
+      {/* Fechas */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+        <div>
+          <label style={labelStyle}>
+            <CalendarDays size={12} style={{ display: 'inline', marginRight: '5px' }} />
+            Fecha Desde
+          </label>
+          <input
+            type="date"
+            value={fechaDesde || getDefaultFechaDesde()}
+            onChange={(e) => onFechaDesdeChange(e.target.value)}
+            max={fechaHasta || getDefaultFechaHasta()}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>
+            <CalendarDays size={12} style={{ display: 'inline', marginRight: '5px' }} />
+            Fecha Hasta
+          </label>
+          <input
+            type="date"
+            value={fechaHasta || getDefaultFechaHasta()}
+            onChange={(e) => onFechaHastaChange(e.target.value)}
+            min={fechaDesde || getDefaultFechaDesde()}
+            max={getDefaultFechaHasta()}
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
+      {/* Rangos rápidos */}
+      <div>
+        <label style={labelStyle}>Rangos Rápidos</label>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {[{ label: '7 días', dias: 7 }, { label: '1 mes', dias: 30 }, { label: '3 meses', dias: 90 }, { label: '1 año', dias: 365 }].map(({ label, dias }) => (
+            <button
+              key={dias}
+              type="button"
+              onClick={() => handleRangoRapido(dias)}
+              style={rangoStyle}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLButtonElement).style.color = '#E2E8F0'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = '#94A3B8'; }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Generar */}
+      <div>
+        <button
+          onClick={onGenerar}
+          disabled={isLoading || !fechaDesde || !fechaHasta}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 24px',
+            borderRadius: '10px',
+            border: 'none',
+            background: isLoading || !fechaDesde || !fechaHasta ? '#2A2A2A' : '#00D1FF',
+            color: isLoading || !fechaDesde || !fechaHasta ? '#4B5563' : '#0B0E11',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            cursor: isLoading || !fechaDesde || !fechaHasta ? 'not-allowed' : 'pointer',
+            fontFamily: 'inherit',
+            transition: 'box-shadow 250ms ease',
+          }}
+          onMouseEnter={(e) => {
+            if (!isLoading) (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 1px #00D1FF, 0 0 16px rgba(0,209,255,0.4)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
+          }}
+        >
+          <Play size={15} />
+          {isLoading ? 'Generando...' : 'Generar Informe'}
+        </button>
       </div>
     </div>
   );
 }
 
 export default InformesToolbar;
-

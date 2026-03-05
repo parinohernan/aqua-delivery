@@ -1,10 +1,7 @@
 import { useProductosStore } from '../stores/productosStore';
 import { useState, useEffect } from 'react';
+import { Search, RotateCcw, Plus } from 'lucide-react';
 
-/**
- * Barra de herramientas de productos
- * Contiene búsqueda y filtros
- */
 interface ProductosToolbarProps {
   onNewProduct: () => void;
 }
@@ -16,75 +13,133 @@ function ProductosToolbar({ onNewProduct }: ProductosToolbarProps) {
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
-    
-    // Debounce de búsqueda
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-    
-    const timeout = setTimeout(() => {
-      setFilters({ search: value });
-    }, 300);
-    
+    if (searchTimeout) clearTimeout(searchTimeout);
+    const timeout = setTimeout(() => setFilters({ search: value }), 300);
     setSearchTimeout(timeout);
   };
 
-  const handleEstadoFilterChange = (value: string) => {
-    setFilters({ activo: value as 'todos' | 'activos' | 'inactivos' });
-  };
-
-  // Limpiar timeout al desmontar
   useEffect(() => {
-    return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-    };
+    return () => { if (searchTimeout) clearTimeout(searchTimeout); };
   }, [searchTimeout]);
 
+  const selectStyle: React.CSSProperties = {
+    padding: '9px 14px',
+    background: '#2A2A2A',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '10px',
+    color: '#E2E8F0',
+    fontSize: '0.85rem',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    outline: 'none',
+  };
+
   return (
-    <div className="flex flex-wrap gap-3 mb-6">
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '24px' }}>
+      {/* Nuevo producto */}
       <button
         onClick={onNewProduct}
-        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-all shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '7px',
+          padding: '9px 16px',
+          borderRadius: '10px',
+          border: 'none',
+          background: '#00D1FF',
+          color: '#0B0E11',
+          fontSize: '0.85rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          transition: 'box-shadow 250ms ease',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.boxShadow =
+            '0 0 0 1px #00D1FF, 0 0 14px rgba(0,209,255,0.4)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
+        }}
       >
-        <span>➕</span>
-        <span>Nuevo Producto</span>
+        <Plus size={16} />
+        Nuevo Producto
       </button>
 
-      <div className="flex-1 min-w-[200px] relative">
-        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">
-          🔍
-        </span>
+      {/* Búsqueda */}
+      <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+        <Search
+          size={15}
+          color="#94A3B8"
+          style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none',
+          }}
+        />
         <input
           type="text"
           value={searchValue}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Buscar productos..."
-          className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
+          style={{
+            width: '100%',
+            padding: '9px 14px 9px 36px',
+            background: '#2A2A2A',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '10px',
+            color: '#E2E8F0',
+            fontSize: '0.85rem',
+            fontFamily: 'inherit',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
         />
       </div>
 
+      {/* Filtro estado */}
       <select
         value={filters.activo}
-        onChange={(e) => handleEstadoFilterChange(e.target.value)}
-        className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm"
+        onChange={(e) =>
+          setFilters({ activo: e.target.value as 'todos' | 'activos' | 'inactivos' })
+        }
+        style={selectStyle}
       >
-        <option value="todos" className="bg-[#0f1b2e]">Todos</option>
-        <option value="activos" className="bg-[#0f1b2e]">Activos</option>
-        <option value="inactivos" className="bg-[#0f1b2e]">Inactivos</option>
+        <option value="todos" style={{ background: '#1E1E1E' }}>Todos</option>
+        <option value="activos" style={{ background: '#1E1E1E' }}>Activos</option>
+        <option value="inactivos" style={{ background: '#1E1E1E' }}>Inactivos</option>
       </select>
 
+      {/* Limpiar filtros */}
       <button
         onClick={clearFilters}
-        className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors backdrop-blur-sm text-white"
         title="Limpiar filtros"
+        style={{
+          padding: '9px 12px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'transparent',
+          color: '#94A3B8',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'background 200ms ease',
+          fontFamily: 'inherit',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+        }}
       >
-        <span>🔄</span>
+        <RotateCcw size={15} />
       </button>
     </div>
   );
 }
 
 export default ProductosToolbar;
-

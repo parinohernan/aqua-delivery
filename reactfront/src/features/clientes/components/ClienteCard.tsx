@@ -1,14 +1,19 @@
 import { useState } from 'react';
+import {
+  Phone,
+  CreditCard,
+  RotateCcw,
+  Pencil,
+  Trash2,
+  DollarSign,
+  User,
+} from 'lucide-react';
 import { useClientesStore } from '../stores/clientesStore';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
 import ClienteModal from './ClienteModal';
 import ClientPaymentModal from './ClientPaymentModal';
 import type { Cliente } from '@/types/entities';
 
-/**
- * Tarjeta de cliente
- * Muestra la información de un cliente
- */
 interface ClienteCardProps {
   cliente: Cliente;
 }
@@ -17,104 +22,243 @@ function ClienteCard({ cliente }: ClienteCardProps) {
   const { deleteCliente } = useClientesStore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  
+  const [hovered, setHovered] = useState(false);
+
   const nombreCompleto = formatFullName(cliente.nombre, cliente.apellido);
   const saldo = cliente.saldo || 0;
   const retornables = cliente.retornables || 0;
-  const saldoClass = saldo > 0 ? 'bg-red-100 text-red-800' : saldo < 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-  const saldoText = saldo > 0 ? 'Debe' : saldo < 0 ? 'A favor' : 'Al día';
 
-  const handleEdit = () => {
-    setShowEditModal(true);
-  };
+  // Saldo config
+  const saldoPositive = saldo > 0; // cliente debe plata
+  const saldoNegative = saldo < 0; // empresa debe al cliente
+  const saldoColor = saldoPositive ? '#EF4444' : saldoNegative ? '#22C55E' : '#94A3B8';
+  const saldoBg = saldoPositive ? 'rgba(239,68,68,0.12)' : saldoNegative ? 'rgba(34,197,94,0.12)' : 'rgba(148,163,184,0.08)';
+  const saldoBorder = saldoPositive ? 'rgba(239,68,68,0.35)' : saldoNegative ? 'rgba(34,197,94,0.35)' : 'rgba(148,163,184,0.2)';
+  const saldoLabel = saldoPositive ? 'DEBE' : saldoNegative ? 'A FAVOR' : 'AL DÍA';
 
   const handleDelete = async () => {
     if (confirm('¿Estás seguro de eliminar este cliente?')) {
       try {
         await deleteCliente(cliente.id);
-      } catch (error) {
+      } catch {
         alert('Error eliminando cliente');
       }
     }
   };
 
-  const handlePayment = () => {
-    setShowPaymentModal(true);
-  };
-
-  const saldoClassDark = saldo > 0 ? 'bg-red-500/20 text-red-300 border-red-500/50' : saldo < 0 ? 'bg-green-500/20 text-green-300 border-green-500/50' : 'bg-white/10 text-white/70 border-white/20';
-
   return (
-    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 hover:bg-white/10 hover:border-white/20 transition-all shadow-lg">
-      <div className="flex items-start gap-4 mb-4">
-        <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center text-3xl shadow-lg shadow-primary-500/30">
-          👤
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-1">
-            <h4 className="font-semibold text-white">{nombreCompleto}</h4>
-            <span className={`px-2 py-1 rounded text-xs font-medium border ${saldoClassDark}`}>
-              {saldoText}
+    <>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          background: '#1E1E1E',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: '16px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          transition: 'transform 250ms ease, box-shadow 250ms ease',
+          transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+          boxShadow: hovered ? '0 8px 24px rgba(0,0,0,0.45)' : '0 2px 8px rgba(0,0,0,0.3)',
+          animation: 'fadeInUp 0.35s ease-out',
+        }}
+      >
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+          {/* Avatar */}
+          <div
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'rgba(0,209,255,0.12)',
+              border: '1px solid rgba(0,209,255,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <User size={20} color="#00D1FF" />
+          </div>
+
+          {/* Nombre + badge */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3
+              style={{
+                fontSize: '1rem',
+                fontWeight: 600,
+                color: '#F1F5F9',
+                margin: 0,
+                lineHeight: 1.3,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {nombreCompleto}
+            </h3>
+            {/* Badge de saldo */}
+            <span
+              style={{
+                display: 'inline-block',
+                marginTop: '4px',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                fontSize: '0.62rem',
+                fontWeight: 600,
+                letterSpacing: '0.1em',
+                color: saldoColor,
+                background: saldoBg,
+                border: `1px solid ${saldoBorder}`,
+              }}
+            >
+              {saldoLabel}
             </span>
           </div>
-          <div className="space-y-1 text-sm text-white/70">
-            {cliente.telefono && (
-              <div className="flex items-center gap-2">
-                <span>📞</span>
-                <span>{cliente.telefono}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span>💰</span>
-              <span>{formatCurrency(saldo)}</span>
+        </div>
+
+        {/* ── Info ───────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {cliente.telefono && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Phone size={14} color="#94A3B8" />
+              <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>{cliente.telefono}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span>🔄</span>
-              <span>{retornables} ret.</span>
-            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <DollarSign size={14} color="#94A3B8" />
+            <span style={{ fontSize: '0.82rem', color: saldoColor, fontWeight: 500 }}>
+              {formatCurrency(Math.abs(saldo))}
+              {saldoPositive ? ' a cobrar' : saldoNegative ? ' a favor' : ''}
+            </span>
           </div>
+          {retornables > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <RotateCcw size={14} color="#94A3B8" />
+              <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>
+                {retornables} retornable{retornables !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Acciones ───────────────────────────────────────────── */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Cobrar — acción principal */}
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '10px',
+              border: 'none',
+              background: '#22C55E',
+              color: '#fff',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'box-shadow 250ms ease, background 250ms ease',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.style.boxShadow = '0 0 0 1px #22C55E, 0 0 14px rgba(34,197,94,0.4)';
+              btn.style.background = '#16A34A';
+            }}
+            onMouseLeave={(e) => {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.style.boxShadow = 'none';
+              btn.style.background = '#22C55E';
+            }}
+          >
+            <CreditCard size={15} />
+            Cobrar
+          </button>
+
+          {/* Editar — secondary */}
+          <button
+            onClick={() => setShowEditModal(true)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '10px',
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'transparent',
+              color: '#E2E8F0',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'background 200ms ease, border-color 200ms ease',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.style.background = 'rgba(255,255,255,0.07)';
+              btn.style.borderColor = 'rgba(255,255,255,0.22)';
+            }}
+            onMouseLeave={(e) => {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.style.background = 'transparent';
+              btn.style.borderColor = 'rgba(255,255,255,0.12)';
+            }}
+          >
+            <Pencil size={14} />
+            Editar
+          </button>
+
+          {/* Eliminar — icono solamente */}
+          <button
+            onClick={handleDelete}
+            title="Eliminar cliente"
+            style={{
+              padding: '10px 12px',
+              borderRadius: '10px',
+              border: '1px solid rgba(239,68,68,0.3)',
+              background: 'transparent',
+              color: '#EF4444',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 200ms ease',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            }}
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <button
-          onClick={handleEdit}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors border border-white/20 backdrop-blur-sm"
-        >
-          <span>✏️</span>
-          <span>Editar</span>
-        </button>
-        <button
-          onClick={handlePayment}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-lg shadow-green-500/30"
-        >
-          <span>💳</span>
-          <span>Cobrar</span>
-        </button>
-        <button
-          onClick={handleDelete}
-          className="px-3 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors border border-red-500/50 backdrop-blur-sm"
-        >
-          <span>🗑️</span>
-        </button>
-      </div>
-
-      {/* Modal de Edición */}
       <ClienteModal
         isOpen={showEditModal}
         cliente={cliente}
         onClose={() => setShowEditModal(false)}
       />
 
-      {/* Modal de Pago */}
       <ClientPaymentModal
         isOpen={showPaymentModal}
         cliente={cliente}
         onClose={() => setShowPaymentModal(false)}
       />
-    </div>
+    </>
   );
 }
 
 export default ClienteCard;
-

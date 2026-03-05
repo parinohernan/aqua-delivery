@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
+import { ShoppingBag } from 'lucide-react';
 import { useProductosStore } from '../stores/productosStore';
 import ProductosToolbar from './ProductosToolbar';
 import ProductosList from './ProductosList';
 import ProductoModal from './ProductoModal';
 
-/**
- * Sección de Productos
- * Componente principal para la gestión de productos
- */
 function ProductosSection() {
   const { loadProductos, isLoading, error } = useProductosStore();
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
@@ -17,13 +14,31 @@ function ProductosSection() {
   }, [loadProductos]);
 
   return (
-    <div className="bg-[#0f1b2e]/60 backdrop-blur-sm rounded-xl shadow-2xl border border-white/10 p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <span>🛍️</span>
+    <div
+      style={{
+        background: '#161B22',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: '20px',
+        padding: '24px',
+      }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: '24px' }}>
+        <h2
+          style={{
+            fontSize: '1.4rem',
+            fontWeight: 700,
+            color: '#F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            margin: 0,
+          }}
+        >
+          <ShoppingBag size={22} color="#00D1FF" />
           Gestión de Productos
         </h2>
-        <p className="text-white/70 mt-1">
+        <p style={{ color: '#94A3B8', marginTop: '6px', fontSize: '0.875rem' }}>
           Administra tu catálogo de productos y stock
         </p>
       </div>
@@ -31,14 +46,23 @@ function ProductosSection() {
       <ProductosToolbar onNewProduct={() => setIsNewProductModalOpen(true)} />
 
       {error && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-4 backdrop-blur-sm">
+        <div
+          style={{
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.35)',
+            color: '#FCA5A5',
+            padding: '12px 16px',
+            borderRadius: '10px',
+            marginBottom: '16px',
+            fontSize: '0.875rem',
+          }}
+        >
           {error}
         </div>
       )}
 
       <ProductosList isLoading={isLoading} />
 
-      {/* Modal para crear nuevo producto */}
       <ProductoModal
         isOpen={isNewProductModalOpen}
         producto={null}

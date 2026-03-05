@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Users } from 'lucide-react';
 import { useClientesStore } from '../stores/clientesStore';
 import ClientesToolbar from './ClientesToolbar';
 import ClientesList from './ClientesList';
 import ClienteModal from './ClienteModal';
-import ClientPaymentModal from './ClientPaymentModal';
-import type { Cliente } from '@/types/entities';
 
 /**
  * Sección de Clientes
- * Componente principal para la gestión de clientes
  */
 function ClientesSection() {
   const { loadClientes, isLoading, error } = useClientesStore();
@@ -19,28 +17,55 @@ function ClientesSection() {
   }, [loadClientes]);
 
   return (
-    <div className="bg-[#0f1b2e]/60 backdrop-blur-sm rounded-xl shadow-2xl border border-white/10 p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <span>👥</span>
+    <div
+      style={{
+        background: '#161B22',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: '20px',
+        padding: '24px',
+      }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: '24px' }}>
+        <h2
+          style={{
+            fontSize: '1.4rem',
+            fontWeight: 700,
+            color: '#F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            margin: 0,
+          }}
+        >
+          <Users size={22} color="#00D1FF" />
           Gestión de Clientes
         </h2>
-        <p className="text-white/70 mt-1">
-          Administra tu base de datos de clientes de manera eficiente
+        <p style={{ color: '#94A3B8', marginTop: '6px', fontSize: '0.875rem' }}>
+          Administra tu base de datos de clientes
         </p>
       </div>
 
       <ClientesToolbar onNewClient={() => setIsNewClientModalOpen(true)} />
 
       {error && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-4 backdrop-blur-sm">
+        <div
+          style={{
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.35)',
+            color: '#FCA5A5',
+            padding: '12px 16px',
+            borderRadius: '10px',
+            marginBottom: '16px',
+            fontSize: '0.875rem',
+          }}
+        >
           {error}
         </div>
       )}
 
       <ClientesList isLoading={isLoading} />
 
-      {/* Modal para crear nuevo cliente */}
       <ClienteModal
         isOpen={isNewClientModalOpen}
         cliente={null}
@@ -51,3 +76,4 @@ function ClientesSection() {
 }
 
 export default ClientesSection;
+

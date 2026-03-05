@@ -1,10 +1,7 @@
+import { ShoppingCart } from 'lucide-react';
 import { useProductosStore } from '../stores/productosStore';
 import ProductoCard from './ProductoCard';
 
-/**
- * Lista de productos
- * Muestra la lista de productos filtrados
- */
 interface ProductosListProps {
   isLoading: boolean;
 }
@@ -14,27 +11,63 @@ function ProductosList({ isLoading }: ProductosListProps) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-solid border-primary-500 border-r-transparent"></div>
-        <p className="mt-4 text-gray-600">Cargando productos...</p>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '48px 0',
+          gap: '16px',
+        }}
+      >
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid rgba(0,209,255,0.2)',
+            borderTopColor: '#00D1FF',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+        <p style={{ color: '#94A3B8', fontSize: '0.875rem' }}>Cargando productos...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   if (filteredProductos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="text-6xl mb-4">🛍️</div>
-        <h4 className="text-xl font-semibold text-gray-900 mb-2">
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '48px 0',
+          gap: '12px',
+        }}
+      >
+        <ShoppingCart size={40} color="#4B5563" />
+        <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#E2E8F0', margin: 0 }}>
           No se encontraron productos
         </h4>
-        <p className="text-gray-600">Intenta con otros filtros de búsqueda</p>
+        <p style={{ color: '#94A3B8', fontSize: '0.875rem', margin: 0 }}>
+          Intenta con otros filtros de búsqueda
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: '16px',
+      }}
+    >
       {filteredProductos.map((producto) => (
         <ProductoCard key={producto.id} producto={producto} />
       ))}
@@ -43,4 +76,3 @@ function ProductosList({ isLoading }: ProductosListProps) {
 }
 
 export default ProductosList;
-
