@@ -1,31 +1,37 @@
 @import "tailwindcss";
 
-/* Configuración de tema personalizado - Celeste con degradado mejorado */
+/* ======================================
+   DESIGN SYSTEM — Bento Grid Dark Mode
+   ====================================== */
 @theme {
-  --color-primary-50: #e0f7fa;
-  --color-primary-100: #b2ebf2;
-  --color-primary-200: #80deea;
-  --color-primary-300: #4dd0e1;
-  --color-primary-400: #26c6da;
-  --color-primary-500: #00bcd4;
-  --color-primary-600: #00acc1;
-  --color-primary-700: #0097a7;
-  --color-primary-800: #00838f;
-  --color-primary-900: #006064;
-  
-  /* Colores de fondo oscuro */
-  --color-bg-dark: #0a1628;
-  --color-bg-darker: #050a14;
-  --color-bg-card: #0f1b2e;
-  
-  /* Sistema de colores para estados - Consistente */
-  --color-pendiente: #f59e0b;
-  --color-proceso: #3b82f6;
-  --color-entregado: #10b981;
-  --color-anulado: #ef4444;
-  
-  /* Teal como color principal de marca */
-  --color-brand: #14b8a6;
+  /* Acento principal — Cian eléctrico */
+  --color-accent:       #00D1FF;
+  --color-accent-dim:   rgba(0, 209, 255, 0.15);
+  --color-accent-glow:  rgba(0, 209, 255, 0.35);
+
+  /* Superficies */
+  --color-bg-app:       #0B0E11;
+  --color-bg-card:      #1E1E1E;
+  --color-bg-card-hover:#252525;
+  --color-border-card:  rgba(255, 255, 255, 0.07);
+
+  /* Semánticos */
+  --color-success:      #22C55E;
+  --color-success-dim:  rgba(34, 197, 94, 0.15);
+  --color-success-glow: rgba(34, 197, 94, 0.4);
+  --color-danger:       #EF4444;
+  --color-danger-dim:   rgba(239, 68, 68, 0.12);
+
+  /* Texto */
+  --color-text-primary:   #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted:     #4B5563;
+
+  /* Estados (para badges) */
+  --color-pendiente: #F59E0B;
+  --color-proceso:   #3B82F6;
+  --color-entregado: #22C55E;
+  --color-anulado:   #EF4444;
 }
 
 /* Estilos globales */
@@ -36,7 +42,7 @@
 }
 
 html {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
@@ -45,14 +51,14 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a1628 0%, #050a14 100%);
-  color: #ffffff;
+  background-color: #0B0E11;
+  color: #F1F5F9;
   line-height: 1.5;
 }
 
 #root {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a1628 0%, #050a14 100%);
+  background-color: #0B0E11;
 }
 
 /* Animaciones personalizadas - Disponibles globalmente */

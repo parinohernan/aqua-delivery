@@ -1,23 +1,39 @@
 const mysql = require('mysql2/promise');
 
+// Validar variables de entorno requeridas
+const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+    console.error('❌ ERROR: Variables de entorno faltantes:');
+    missingVars.forEach(varName => {
+        console.error(`   - ${varName}`);
+    });
+    console.error('⚠️  Asegúrate de configurar estas variables en tu archivo .env o en las variables de entorno del sistema');
+}
+
 const dbConfig = {
-    host: process.env.DB_HOST,
+    host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
+    port: parseInt(process.env.DB_PORT || '3306', 10),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    connectTimeout: 15000, // 15 segundos para establecer conexión (aumentado)
-    acquireTimeout: 15000, // 15 segundos para obtener conexión del pool
-    timeout: 30000, // 30 segundos para ejecutar queries
+    connectTimeout: 15000, // 15 segundos para establecer conexión
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
-    // Opciones adicionales para mejorar la conexión
-    reconnect: true,
     ssl: false, // Deshabilitar SSL si no es necesario
 };
+
+// Log de configuración (sin mostrar password)
+console.log('📊 Configuración de Base de Datos:');
+console.log(`   Host: ${dbConfig.host}`);
+console.log(`   Port: ${dbConfig.port}`);
+console.log(`   Database: ${dbConfig.database}`);
+console.log(`   User: ${dbConfig.user || 'NO CONFIGURADO'}`);
+console.log(`   Password: ${dbConfig.password ? '***' : 'NO CONFIGURADO'}`);
 
 const pool = mysql.createPool(dbConfig);
 
@@ -31,8 +47,18 @@ async function query(sql, params = []) {
         console.error('SQL:', sql);
         console.error('Params:', params);
         
-        // Si es un error de timeout, intentar verificar el estado del pool
-        if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+        // Mensajes de error más descriptivos
+        if (error.code === 'ECONNREFUSED') {
+            console.error('⚠️ Error: Conexión rechazada a la base de datos');
+            console.error('   Esto generalmente significa que:');
+            console.error('   - MySQL no está corriendo en el host especificado');
+            console.error('   - El puerto está bloqueado por firewall');
+            console.error('   - El host es incorrecto');
+            console.error('   Host:', dbConfig.host);
+            console.error('   Port:', dbConfig.port);
+            console.error('   💡 Si estás en Docker, asegúrate de que DB_HOST sea el nombre del servicio (ej: "database")');
+            console.error('   💡 Si estás en producción, verifica que DB_HOST tenga el valor correcto');
+        } else if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
             console.error('⚠️ Error de timeout en conexión a la base de datos');
             console.error('   Verifica que MySQL esté corriendo y accesible');
             console.error('   Host:', dbConfig.host);

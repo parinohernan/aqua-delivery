@@ -61,7 +61,7 @@ export interface Pedido {
   cliente?: Cliente;
   cliente_nombre?: string;
   vendedorId?: number;
-  estado: 'pendiente' | 'en_entrega' | 'entregado' | 'cancelado';
+  estado: 'pendient' | 'proceso' | 'entregad' | 'anulado';
   fecha?: string;
   direccion?: string;
   latitud?: number | string;

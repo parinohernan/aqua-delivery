@@ -23,19 +23,19 @@ class PedidosService {
       if (estado && estado !== 'todos') {
         params.append('estado', estado);
       }
-      
+
       const queryString = params.toString();
       const url = queryString ? `${endpoints.pedidos()}?${queryString}` : endpoints.pedidos();
-      
+
       const pedidos = await apiClient.get<Pedido[]>(url);
-      
+
       // Guardar en caché
       await cacheData(DB_STORES.PEDIDOS, pedidos);
-      
+
       return pedidos;
     } catch (error) {
       console.error('Error obteniendo pedidos:', error);
-      
+
       // Intentar obtener de caché si hay error de red
       try {
         const cached = await getCachedData<Pedido>(DB_STORES.PEDIDOS);
@@ -46,7 +46,7 @@ class PedidosService {
       } catch (cacheError) {
         console.error('Error obteniendo de caché:', cacheError);
       }
-      
+
       throw error;
     }
   }
@@ -63,11 +63,11 @@ class PedidosService {
    */
   async create(data: Partial<Pedido>): Promise<Pedido> {
     const pedido = await apiClient.post<Pedido>(endpoints.pedidos(), data);
-    
+
     // Actualizar caché
     const allPedidos = await this.getAll();
     await cacheData(DB_STORES.PEDIDOS, allPedidos);
-    
+
     return pedido;
   }
 
@@ -76,12 +76,28 @@ class PedidosService {
    */
   async update(id: number, data: Partial<Pedido>): Promise<Pedido> {
     const pedido = await apiClient.put<Pedido>(endpoints.pedido(id), data);
-    
+
     // Actualizar caché
     const allPedidos = await this.getAll();
     await cacheData(DB_STORES.PEDIDOS, allPedidos);
-    
+
     return pedido;
+  }
+
+  /**
+   * Actualiza el estado de un pedido
+   */
+  async updateStatus(id: number, estado: string, tipoPago?: number): Promise<{ success: boolean }> {
+    const result = await apiClient.put<{ success: boolean }>(`${endpoints.pedido(id)}/estado`, {
+      estado,
+      tipoPago
+    });
+
+    // Actualizar caché
+    const allPedidos = await this.getAll();
+    await cacheData(DB_STORES.PEDIDOS, allPedidos);
+
+    return result;
   }
 
   /**
@@ -89,7 +105,7 @@ class PedidosService {
    */
   async delete(id: number): Promise<void> {
     await apiClient.delete(endpoints.pedido(id));
-    
+
     // Actualizar caché
     const allPedidos = await this.getAll();
     await cacheData(DB_STORES.PEDIDOS, allPedidos);

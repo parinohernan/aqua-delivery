@@ -21,14 +21,15 @@ interface PedidosState {
   isLoading: boolean;
   error: string | null;
   filters: PedidosFilters;
-  
+
   // Actions
-  loadPedidos: () => Promise<void>;
+  loadPedidos: (incluirDetalles?: boolean) => Promise<void>;
   setFilters: (filters: Partial<PedidosFilters>) => void;
   clearFilters: () => void;
   applyFilters: () => void;
   createPedido: (data: Partial<Pedido>) => Promise<void>;
   updatePedido: (id: number, data: Partial<Pedido>) => Promise<void>;
+  updateStatus: (id: number, estado: string, tipoPago?: number) => Promise<void>;
   deletePedido: (id: number) => Promise<void>;
   setError: (error: string | null) => void;
 }
@@ -86,7 +87,7 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
 
   applyFilters: () => {
     const { pedidos, filters } = get();
-    
+
     let filtered = [...pedidos];
 
     // Filtro de búsqueda
@@ -134,6 +135,17 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
       await get().loadPedidos();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error actualizando pedido';
+      set({ error: errorMessage });
+      throw error;
+    }
+  },
+
+  updateStatus: async (id: number, estado: string, tipoPago?: number) => {
+    try {
+      await pedidosService.updateStatus(id, estado, tipoPago);
+      await get().loadPedidos();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error actualizando estado del pedido';
       set({ error: errorMessage });
       throw error;
     }

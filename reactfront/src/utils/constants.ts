@@ -30,10 +30,10 @@ export const API_ENDPOINTS = {
  * Estados de pedidos
  */
 export const PEDIDO_ESTADOS = {
-  PENDIENTE: 'pendiente',
-  EN_ENTREGA: 'en_entrega',
-  ENTREGADO: 'entregado',
-  CANCELADO: 'cancelado',
+  PENDIENTE: 'pendient',
+  EN_PROCESO: 'proceso',
+  ENTREGADO: 'entregad',
+  ANULADO: 'anulado',
 } as const;
 
 /**
