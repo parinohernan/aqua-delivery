@@ -59,7 +59,8 @@ function ProductoCard({ producto }: ProductoCardProps) {
           transition: 'transform 250ms ease, box-shadow 250ms ease',
           transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
           boxShadow: hovered ? '0 8px 24px rgba(0,0,0,0.45)' : '0 2px 8px rgba(0,0,0,0.3)',
-          animation: 'fadeInUp 0.35s ease-out',
+          willChange: 'transform',
+          isolation: 'isolate',
           opacity: activo ? 1 : 0.6,
         }}
       >
@@ -94,7 +95,7 @@ function ProductoCard({ producto }: ProductoCardProps) {
               fontWeight: 600,
               letterSpacing: '0.1em',
               color: activo ? '#22C55E' : '#EF4444',
-              background: activo ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)',
+              background: activo ? 'rgba(34,197,94,0.28)' : 'rgba(239,68,68,0.28)',
               border: `1px solid ${activo ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'}`,
               backdropFilter: 'blur(6px)',
             }}

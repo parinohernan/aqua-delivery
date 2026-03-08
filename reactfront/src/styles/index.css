@@ -34,11 +34,13 @@
   --color-anulado:   #EF4444;
 }
 
-/* Estilos globales */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Estilos globales — dentro de @layer base para que los utilitarios de Tailwind tengan prioridad */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 html {
@@ -127,6 +129,20 @@ body {
 
 .animate-scale-in {
   animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-7px); }
+  30%       { transform: translateX(7px); }
+  45%       { transform: translateX(-5px); }
+  60%       { transform: translateX(5px); }
+  75%       { transform: translateX(-3px); }
+  90%       { transform: translateX(3px); }
+}
+
+.animate-shake {
+  animation: shake 0.55s ease-in-out;
 }
 
 /* Utilidades de Tailwind personalizadas */
