@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useProductosStore } from '../stores/productosStore';
+import { toast } from '@/utils/feedback';
 import type { Producto } from '@/types/entities';
 
 /**
@@ -97,11 +98,11 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
         // Modo edición
         const productoId = producto.codigo || producto.id;
         await updateProducto(Number(productoId), productoData);
-        alert('Producto actualizado exitosamente');
+        toast.success('Producto actualizado exitosamente');
       } else {
         // Modo creación
         await createProducto(productoData);
-        alert('Producto creado exitosamente');
+        toast.success('Producto creado exitosamente');
       }
 
       // Recargar productos

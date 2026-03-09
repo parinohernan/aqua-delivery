@@ -9,6 +9,13 @@
   --color-accent-dim:   rgba(0, 209, 255, 0.15);
   --color-accent-glow:  rgba(0, 209, 255, 0.35);
 
+  /* Primary — usado en botones, focus, etc. */
+  --color-primary-300: #38bdf8;
+  --color-primary-400: #0ea5e9;
+  --color-primary-500: #0284c7;
+  --color-primary-600: #0369a1;
+  --color-primary-700: #075985;
+
   /* Superficies */
   --color-bg-app:       #0B0E11;
   --color-bg-card:      #1E1E1E;

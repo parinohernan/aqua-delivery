@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { usePedidosStore } from '../stores/pedidosStore';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { toast, confirm } from '@/utils/feedback';
 import EntregarPedidoModal from './EntregarPedidoModal';
 import type { Pedido } from '@/types/entities';
 
@@ -72,11 +73,19 @@ function PedidoCard({ pedido }: PedidoCardProps) {
   const isActive = estado === 'pendient' || estado === 'proceso';
 
   const handleCancelar = async () => {
-    if (confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
+    const ok = await confirm({
+      title: 'Cancelar pedido',
+      message: '¿Estás seguro de que quieres cancelar este pedido?',
+      confirmLabel: 'Cancelar pedido',
+      cancelLabel: 'Volver',
+      variant: 'danger',
+    });
+    if (ok) {
       try {
         await updateStatus(pedido.id, 'anulado');
+        toast.success('Pedido cancelado');
       } catch {
-        alert('Error cancelando pedido');
+        toast.error('Error cancelando pedido');
       }
     }
   };

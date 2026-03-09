@@ -6,6 +6,7 @@ import { tiposPagoService } from '../services/tiposPagoService';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { toast } from '@/utils/feedback';
 import type { Pedido, TipoPago, PedidoItem } from '@/types/entities';
 
 /**
@@ -210,8 +211,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
       // Cerrar modal
       handleClose();
 
-      // Mostrar mensaje de éxito
-      alert('Pedido entregado correctamente');
+      toast.success('Pedido entregado correctamente');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error procesando entrega';
       setError(errorMessage);

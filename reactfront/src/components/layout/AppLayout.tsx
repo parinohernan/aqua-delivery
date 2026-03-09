@@ -4,6 +4,8 @@ import Header from './Header';
 import Navigation from './Navigation';
 import MobileNav from './MobileNav';
 import LoadingScreen from './LoadingScreen';
+import Toast from '@/components/ui/Toast';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 // Lazy loading para optimización
 const PedidosSection = lazy(() => import('@/features/pedidos/components/PedidosSection'));
@@ -44,6 +46,10 @@ function AppLayout() {
       
       {/* Navegación Móvil */}
       <MobileNav />
+
+      {/* Toast y Confirm globales */}
+      <Toast />
+      <ConfirmDialog />
     </div>
   );
 }

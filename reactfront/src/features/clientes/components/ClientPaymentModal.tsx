@@ -5,6 +5,7 @@ import { tiposPagoService } from '@/features/pedidos/services/tiposPagoService';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
+import { toast } from '@/utils/feedback';
 import type { Cliente, TipoPago } from '@/types/entities';
 
 /**
@@ -112,17 +113,10 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
       // Cerrar modal
       handleClose();
 
-      // Mostrar mensaje de éxito
-      let mensaje = `Cobro registrado correctamente.\n`;
-      mensaje += `Monto: ${formatCurrency(montoNum)}\n`;
-      mensaje += `Saldo anterior: ${formatCurrency(result.saldoAnterior || cliente.saldo || 0)}\n`;
-      mensaje += `Nuevo saldo: ${formatCurrency(result.nuevoSaldo || 0)}`;
-      
-      if (retornablesDevueltos > 0) {
-        mensaje += `\nRetornables devueltos: ${retornablesDevueltos}`;
-      }
-
-      alert(mensaje);
+      const detalle = retornablesDevueltos > 0
+        ? `Nuevo saldo: ${formatCurrency(result.nuevoSaldo || 0)} · ${retornablesDevueltos} retornable${retornablesDevueltos !== 1 ? 's' : ''} devuelto${retornablesDevueltos !== 1 ? 's' : ''}`
+        : `Nuevo saldo: ${formatCurrency(result.nuevoSaldo || 0)}`;
+      toast.success(`Cobro registrado. ${detalle}`, 5000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error registrando el cobro';
       setError(errorMessage);

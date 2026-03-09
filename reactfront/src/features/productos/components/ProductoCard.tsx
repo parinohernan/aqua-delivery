@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pencil, Trash2, Package, DollarSign, Power, PowerOff } from 'lucide-react';
 import { useProductosStore } from '../stores/productosStore';
 import { formatCurrency } from '@/utils/formatters';
+import { toast, confirm } from '@/utils/feedback';
 import ProductoModal from './ProductoModal';
 import type { Producto } from '@/types/entities';
 
@@ -24,11 +25,19 @@ function ProductoCard({ producto }: ProductoCardProps) {
     'https://res.cloudinary.com/drgs7xuag/image/upload/v1764287946/aqua_product_generic_nwadej.png';
 
   const handleDelete = async () => {
-    if (confirm('¿Estás seguro de eliminar este producto?')) {
+    const ok = await confirm({
+      title: 'Eliminar producto',
+      message: '¿Estás seguro de eliminar este producto?',
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (ok) {
       try {
         await deleteProducto(producto.id);
+        toast.success('Producto eliminado');
       } catch {
-        alert('Error eliminando producto');
+        toast.error('Error eliminando producto');
       }
     }
   };
@@ -36,8 +45,9 @@ function ProductoCard({ producto }: ProductoCardProps) {
   const handleToggleActivo = async () => {
     try {
       await updateProducto(producto.id, { activo: !activo });
+      toast.success(activo ? 'Producto desactivado' : 'Producto activado');
     } catch {
-      alert('Error actualizando producto');
+      toast.error('Error actualizando producto');
     }
   };
 

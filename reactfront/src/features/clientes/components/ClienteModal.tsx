@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useClientesStore } from '../stores/clientesStore';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
+import { MapPicker } from '@/features/mapa';
+import { toast } from '@/utils/feedback';
 import type { Cliente, Zona } from '@/types/entities';
 
 /**
@@ -125,11 +127,11 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
         // El backend espera el código del cliente, no el ID
         const clienteId = cliente.codigo || cliente.id;
         await updateCliente(Number(clienteId), clienteData);
-        alert('Cliente actualizado exitosamente');
+        toast.success('Cliente actualizado exitosamente');
       } else {
         // Modo creación
         await createCliente(clienteData);
-        alert('Cliente creado exitosamente');
+        toast.success('Cliente creado exitosamente');
       }
 
       // Recargar clientes
@@ -315,16 +317,31 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
               </div>
             </div>
             
-            <button
-              type="button"
-              onClick={handleGetLocation}
-              disabled={isLoading}
-              className="w-full px-4 py-2.5 bg-primary-500/20 border border-primary-500/50 text-primary-300 rounded-lg hover:bg-primary-500/30 transition-colors disabled:opacity-50 text-sm backdrop-blur-sm"
-            >
-              📍 Obtener mi ubicación actual
-            </button>
-            <p className="mt-2 text-xs text-white/60">
-              Ingresa las coordenadas manualmente o usa el botón para obtener tu ubicación actual.
+            <div className="flex flex-col sm:flex-row gap-3 mb-3">
+              <button
+                type="button"
+                onClick={handleGetLocation}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2.5 bg-primary-500/20 border border-primary-500/50 text-primary-300 rounded-lg hover:bg-primary-500/30 transition-colors disabled:opacity-50 text-sm backdrop-blur-sm"
+              >
+                📍 Obtener mi ubicación actual
+              </button>
+            </div>
+
+            <div className="mb-2">
+              <MapPicker
+                lat={latitud && !isNaN(parseFloat(latitud)) ? parseFloat(latitud) : null}
+                lng={longitud && !isNaN(parseFloat(longitud)) ? parseFloat(longitud) : null}
+                onSelect={(lat, lng) => {
+                  setLatitud(lat.toFixed(6));
+                  setLongitud(lng.toFixed(6));
+                }}
+                height={200}
+              />
+            </div>
+
+            <p className="text-xs text-white/60">
+              Ingresá las coordenadas manualmente, usá el botón para tu ubicación actual o hacé click en el mapa.
             </p>
           </div>
 

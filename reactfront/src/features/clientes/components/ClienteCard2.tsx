@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
 import { useClientesStore } from '../stores/clientesStore';
+import { toast, confirm } from '@/utils/feedback';
 import ClienteModal from './ClienteModal';
 import ClientPaymentModal from './ClientPaymentModal';
 import type { Cliente } from '@/types/entities';
@@ -27,11 +28,19 @@ function ClienteCard2({ cliente }: ClienteCard2Props) {
   const saldoLabel = saldoPositive ? 'DEBE' : saldoNegative ? 'A FAVOR' : 'AL DÍA';
 
   const handleDelete = async () => {
-    if (confirm('¿Estás seguro de eliminar este cliente?')) {
+    const ok = await confirm({
+      title: 'Eliminar cliente',
+      message: '¿Estás seguro de eliminar este cliente?',
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (ok) {
       try {
         await deleteCliente(cliente.id);
+        toast.success('Cliente eliminado');
       } catch {
-        alert('Error eliminando cliente');
+        toast.error('Error eliminando cliente');
       }
     }
   };

@@ -5,6 +5,7 @@ import { productosService } from '@/features/productos/services/productosService
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
+import { toast } from '@/utils/feedback';
 import type { Cliente, Producto } from '@/types/entities';
 
 /**
@@ -127,7 +128,7 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
 
   const handleAddProduct = () => {
     if (!selectedProductId || productQuantity < 1) {
-      alert('Selecciona un producto y cantidad válida');
+      toast.error('Selecciona un producto y cantidad válida');
       return;
     }
 
@@ -215,7 +216,7 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
       
       // Cerrar modal y resetear
       handleClose();
-      alert('Pedido creado exitosamente');
+      toast.success('Pedido creado exitosamente');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error creando pedido';
       setError(errorMessage);
