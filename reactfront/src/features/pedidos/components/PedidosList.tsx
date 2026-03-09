@@ -1,5 +1,6 @@
 import { usePedidosStore } from '../stores/pedidosStore';
 import PedidoCard from './PedidoCard';
+import { Package } from 'lucide-react';
 
 /**
  * Lista de pedidos mejorada
@@ -28,10 +29,10 @@ function PedidosList({ isLoading }: PedidosListProps) {
   if (filteredPedidos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-        <div className="relative mb-6">
-          <div className="text-8xl opacity-20">📦</div>
+        <div className="relative mb-6 flex items-center justify-center w-28 h-28">
+          <Package size={112} className="text-white/10" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-6xl animate-bounce" style={{ animationDuration: '2s' }}>📦</div>
+            <Package size={72} className="text-white/40 animate-bounce" style={{ animationDuration: '2s' }} />
           </div>
         </div>
         <h4 className="text-2xl font-bold text-white mb-3">

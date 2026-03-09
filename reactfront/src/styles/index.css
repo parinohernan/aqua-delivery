@@ -230,3 +230,60 @@ textarea:focus-visible {
   }
 }
 
+/* Fix corrupción visual en Android Chrome - gradientes + scroll causan artefactos */
+@media (hover: none), (max-width: 768px) {
+  .mobile-solid-bg {
+    background: #0a1628 !important;
+    background-image: none !important;
+  }
+}
+
+/* Mismo fix para tablas de informes (detallado por cliente, productos, resumen) */
+.informes-table-mobile-safe {
+  contain: paint;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* En móvil: flex en lugar de grid para ResumenCards (evita glitches) */
+@media (max-width: 768px) {
+  .informes-cards-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px;
+  }
+}
+
+/* Informe detallado: tarjetas en 2 renglones en móvil */
+.informe-cliente-row {
+  flex-wrap: wrap;
+}
+.informe-cliente-row-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+.informe-cliente-row-stats {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .informe-cliente-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .informe-cliente-row-top {
+    flex: none;
+  }
+  .informe-cliente-row-stats {
+    padding-left: 54px; /* alinear con el nombre (avatar 40px + gap 14px) */
+    justify-content: flex-start;
+    gap: 24px;
+    align-self: flex-start; /* evita que se estire a la derecha */
+  }
+}
+

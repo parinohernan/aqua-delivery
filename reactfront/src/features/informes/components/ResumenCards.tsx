@@ -35,7 +35,7 @@ const STAT_CARDS = (informe: InformeResumen) => [
 
 function ResumenCards({ informe }: ResumenCardsProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+    <div className="informes-table-mobile-safe informes-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
       {STAT_CARDS(informe).map((card) => (
         <div
           key={card.label}

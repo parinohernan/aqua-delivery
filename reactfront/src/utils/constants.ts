@@ -46,6 +46,7 @@ export const ROUTES = {
   CLIENTES: '/clientes',
   PRODUCTOS: '/productos',
   INFORMES: '/informes',
+  MAPA: '/mapa',
 } as const;
 
 /**

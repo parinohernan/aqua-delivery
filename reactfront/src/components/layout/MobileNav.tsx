@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '@/utils/constants';
+import { Package, Users, ShoppingBag, BarChart2 } from 'lucide-react';
 
 /**
  * Navegación móvil
@@ -7,10 +8,10 @@ import { ROUTES } from '@/utils/constants';
  */
 function MobileNav() {
   const navItems = [
-    { path: ROUTES.PEDIDOS, label: 'Pedidos', icon: '📦' },
-    { path: ROUTES.CLIENTES, label: 'Clientes', icon: '👥' },
-    { path: ROUTES.PRODUCTOS, label: 'Productos', icon: '🛍️' },
-    { path: ROUTES.INFORMES, label: 'Informes', icon: '📊' },
+    { path: ROUTES.PEDIDOS,   label: 'Pedidos',   icon: <Package size={22} /> },
+    { path: ROUTES.CLIENTES,  label: 'Clientes',  icon: <Users size={22} /> },
+    { path: ROUTES.PRODUCTOS, label: 'Productos', icon: <ShoppingBag size={22} /> },
+    { path: ROUTES.INFORMES,  label: 'Informes',  icon: <BarChart2 size={22} /> },
   ];
 
   return (
@@ -24,7 +25,7 @@ function MobileNav() {
               `flex flex-col items-center gap-1 px-4 py-3 flex-1 transition-colors ${isActive ? 'text-primary-400' : 'text-white/60'}`
             }
           >
-            <span className="text-2xl">{item.icon}</span>
+            {item.icon}
             <span className="text-xs font-medium">{item.label}</span>
           </NavLink>
         ))}
@@ -34,4 +35,3 @@ function MobileNav() {
 }
 
 export default MobileNav;
-

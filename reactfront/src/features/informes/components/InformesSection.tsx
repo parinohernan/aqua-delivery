@@ -56,9 +56,9 @@ function InformesSection() {
       link.download = `informe-resumen-${fechaDesde}-${fechaHasta}.csv`;
       link.click();
     } else if (tipoInforme === 'detallado' && informeDetallado) {
-      const headers = ['Cliente', 'Teléfono', 'Total Pedidos', 'Total Comprado'];
+      const headers = ['Cliente', 'Total Pedidos', 'Total Comprado'];
       const rows = informeDetallado.clientes.map(c => [
-        `${c.nombre} ${c.apellido}`, c.telefono || '', c.totalPedidos.toString(), c.totalComprado.toString(),
+        `${c.nombre} ${c.apellido}`, c.totalPedidos.toString(), c.totalComprado.toString(),
       ]);
       const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell}"`).join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

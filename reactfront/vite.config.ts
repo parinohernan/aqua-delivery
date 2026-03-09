@@ -83,6 +83,28 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 5 // 5 minutos
               }
             }
+          },
+          {
+            urlPattern: /^https:\/\/(?:[a-z0-9-]+\.)*?(?:openstreetmap|maptiler|demotiles\.maplibre)\.org\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'map-tiles-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 días
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/api\.maptiler\.com\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'maptiler-cache',
+              expiration: {
+                maxEntries: 300,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 días
+              }
+            }
           }
         ]
       }

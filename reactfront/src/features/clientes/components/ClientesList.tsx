@@ -1,6 +1,6 @@
 import { UsersRound } from 'lucide-react';
 import { useClientesStore } from '../stores/clientesStore';
-import ClienteCard from './ClienteCard';
+import ClienteCard2 from './ClienteCard2';
 
 interface ClientesListProps {
   isLoading: boolean;
@@ -69,7 +69,7 @@ function ClientesList({ isLoading }: ClientesListProps) {
       }}
     >
       {filteredClientes.map((cliente) => (
-        <ClienteCard key={cliente.id} cliente={cliente} />
+        <ClienteCard2 key={cliente.id} cliente={cliente} />
       ))}
     </div>
   );

@@ -10,6 +10,7 @@ const PedidosSection = lazy(() => import('@/features/pedidos/components/PedidosS
 const ClientesSection = lazy(() => import('@/features/clientes/components/ClientesSection'));
 const ProductosSection = lazy(() => import('@/features/productos/components/ProductosSection'));
 const InformesSection = lazy(() => import('@/features/informes/components/InformesSection'));
+const MapView = lazy(() => import('@/features/mapa/components/MapView'));
 
 /**
  * Layout principal de la aplicación
@@ -17,7 +18,7 @@ const InformesSection = lazy(() => import('@/features/informes/components/Inform
  */
 function AppLayout() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] to-[#050a14] text-white pb-20 lg:pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] to-[#050a14] mobile-solid-bg text-white pb-20 lg:pb-0">
       <Header />
       
       <div className="flex flex-col lg:flex-row">
@@ -34,6 +35,7 @@ function AppLayout() {
                 <Route path="/clientes" element={<ClientesSection />} />
                 <Route path="/productos" element={<ProductosSection />} />
                 <Route path="/informes" element={<InformesSection />} />
+                <Route path="/mapa" element={<MapView />} />
               </Routes>
             </Suspense>
           </div>

@@ -7,6 +7,8 @@ interface ProductosTableProps {
 }
 
 function ProductosTable({ productos }: ProductosTableProps) {
+  const isTouchDevice = 'ontouchstart' in window;
+
   if (productos.length === 0) {
     return (
       <div style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '24px', textAlign: 'center' }}>
@@ -26,7 +28,7 @@ function ProductosTable({ productos }: ProductosTableProps) {
   };
 
   return (
-    <div style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', overflow: 'hidden' }}>
+    <div className="informes-table-mobile-safe" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <Trophy size={16} color="#F59E0B" />
@@ -51,8 +53,8 @@ function ProductosTable({ productos }: ProductosTableProps) {
               <tr
                 key={index}
                 style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.03)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
+                onMouseEnter={!isTouchDevice ? (e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.03)'; } : undefined}
+                onMouseLeave={!isTouchDevice ? (e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; } : undefined}
               >
                 <td style={{ padding: '12px 16px', fontSize: '0.82rem', color: '#4B5563', fontWeight: 600 }}>
                   {index + 1 <= 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}

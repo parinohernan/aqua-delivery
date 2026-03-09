@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Package } from 'lucide-react';
 import { usePedidosStore } from '../stores/pedidosStore';
 import PedidosToolbar from './PedidosToolbar';
 import PedidosList from './PedidosList';
@@ -21,8 +22,8 @@ function PedidosSection() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-xl shadow-lg shadow-primary-500/30">
-              📦
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/30">
+              <Package size={20} className="text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white leading-tight">

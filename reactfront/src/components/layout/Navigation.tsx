@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '@/utils/constants';
+import { Package, Users, ShoppingBag, BarChart2 } from 'lucide-react';
 
 /**
  * Navegación principal (Desktop)
@@ -7,10 +8,10 @@ import { ROUTES } from '@/utils/constants';
  */
 function Navigation() {
   const navItems = [
-    { path: ROUTES.PEDIDOS, label: 'Pedidos', icon: '📦' },
-    { path: ROUTES.CLIENTES, label: 'Clientes', icon: '👥' },
-    { path: ROUTES.PRODUCTOS, label: 'Productos', icon: '🛍️' },
-    { path: ROUTES.INFORMES, label: 'Informes', icon: '📊' },
+    { path: ROUTES.PEDIDOS,   label: 'Pedidos',   icon: <Package size={20} /> },
+    { path: ROUTES.CLIENTES,  label: 'Clientes',  icon: <Users size={20} /> },
+    { path: ROUTES.PRODUCTOS, label: 'Productos', icon: <ShoppingBag size={20} /> },
+    { path: ROUTES.INFORMES,  label: 'Informes',  icon: <BarChart2 size={20} /> },
   ];
 
   return (
@@ -27,7 +28,7 @@ function Navigation() {
             }`
           }
         >
-          <span className="text-2xl">{item.icon}</span>
+          {item.icon}
           <span className="font-medium">{item.label}</span>
         </NavLink>
       ))}
@@ -36,4 +37,3 @@ function Navigation() {
 }
 
 export default Navigation;
-

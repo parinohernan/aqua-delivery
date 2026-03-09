@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Package } from 'lucide-react';
 import { usePedidosStore } from '../stores/pedidosStore';
 import { pedidosService } from '../services/pedidosService';
 import { tiposPagoService } from '../services/tiposPagoService';
@@ -281,7 +282,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                 <div><strong>💰 Total:</strong> {formatCurrency(totalPedido)}</div>
                 {pedidoItems.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-primary-500/30">
-                    <div className="font-medium mb-1 text-white">📦 Productos:</div>
+                    <div className="font-medium mb-1 text-white flex items-center gap-1.5"><Package size={15} /> Productos:</div>
                     <div className="pl-2 space-y-1">
                       {pedidoItems.slice(0, 5).map((item, idx) => {
                         const esRetornable = (item.producto as any)?.esRetornable === 1 || 

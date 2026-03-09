@@ -1,5 +1,8 @@
 import { usePedidosStore } from '../stores/pedidosStore';
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { PlusCircle, Map } from 'lucide-react';
+import { ROUTES } from '@/utils/constants';
 import NewPedidoModal from './NewPedidoModal';
 
 /**
@@ -8,6 +11,7 @@ import NewPedidoModal from './NewPedidoModal';
  */
 function PedidosToolbar() {
   const { filters, setFilters, clearFilters } = usePedidosStore();
+  const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState(filters.search);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,14 +76,35 @@ function PedidosToolbar() {
       <div className="space-y-4">
         {/* Fila principal: Botón nuevo pedido y búsqueda */}
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Botón Nuevo Pedido - Más prominente */}
-        <button
-          onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-semibold hover:from-primary-600 hover:to-primary-700 transition-all shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50 hover:scale-[1.02] active:scale-[0.98] min-h-[44px]"
-        >
-            <span className="text-lg">➕</span>
-          <span>Nuevo Pedido</span>
-        </button>
+          {/* Botón Nuevo Pedido */}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+              padding: '9px 16px',
+              borderRadius: '10px',
+              border: 'none',
+              background: '#00D1FF',
+              color: '#0B0E11',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'box-shadow 250ms ease',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 1px #00D1FF, 0 0 14px rgba(0,209,255,0.4)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
+            }}
+          >
+            <PlusCircle size={16} />
+            Nuevo Pedido
+          </button>
 
           {/* Búsqueda mejorada */}
           <div className="flex-1 relative">
@@ -108,12 +133,10 @@ function PedidosToolbar() {
 
           {/* Botón Mapa */}
           <button
-            onClick={() => {
-              alert('Funcionalidad de mapa en desarrollo');
-            }}
+            onClick={() => navigate(ROUTES.MAPA)}
             className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02] active:scale-[0.98] min-h-[44px]"
           >
-            <span className="text-lg">🗺️</span>
+            <Map size={20} />
             <span className="hidden sm:inline">Mapa</span>
           </button>
       </div>
@@ -127,7 +150,7 @@ function PedidosToolbar() {
         onChange={(e) => handleEstadoFilterChange(e.target.value)}
               className="appearance-none px-4 py-2.5 pr-10 bg-white/10 border-2 border-white/20 rounded-xl focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 text-white backdrop-blur-sm transition-all hover:border-white/30 cursor-pointer min-h-[44px] font-medium"
       >
-              <option value="pendient" className="bg-[#0f1b2e] text-white">📦 Pendientes</option>
+              <option value="pendient" className="bg-[#0f1b2e] text-white">Pendientes</option>
               <option value="proceso" className="bg-[#0f1b2e] text-white">🔄 En Proceso</option>
               <option value="entregad" className="bg-[#0f1b2e] text-white">✅ Entregados</option>
               <option value="anulado" className="bg-[#0f1b2e] text-white">❌ Anulados</option>
