@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MapPin,
   Calendar,
@@ -6,12 +6,25 @@ import {
   CheckCircle,
   XCircle,
   Truck,
+  Map,
+  Clock,
+  CalendarCheck,
+  Plus,
 } from 'lucide-react';
 import { usePedidosStore } from '../stores/pedidosStore';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { pedidosService } from '../services/pedidosService';
+import { formatCurrency, formatDateTimeShort } from '@/utils/formatters';
 import { toast, confirm } from '@/utils/feedback';
+import { apiClient } from '@/services/api/client';
+import { endpoints } from '@/services/api/endpoints';
 import EntregarPedidoModal from './EntregarPedidoModal';
+import ProgramarEntregaModal from './ProgramarEntregaModal';
 import type { Pedido } from '@/types/entities';
+
+interface Zona {
+  id: number;
+  zona: string;
+}
 
 interface PedidoCardProps {
   pedido: Pedido;
@@ -55,9 +68,17 @@ function getEstadoConfig(estado: string) {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 function PedidoCard({ pedido }: PedidoCardProps) {
-  const { updateStatus } = usePedidosStore();
+  const { updateStatus, loadPedidos } = usePedidosStore();
   const [showEntregarModal, setShowEntregarModal] = useState(false);
+  const [showProgramarModal, setShowProgramarModal] = useState(false);
   const [hovered, setHovered] = useState(false);
+  
+  // Estado para zona
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  const [showZonaDropdown, setShowZonaDropdown] = useState(false);
+  const [nuevaZona, setNuevaZona] = useState('');
+  const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
+  const [isUpdatingZona, setIsUpdatingZona] = useState(false);
 
   const id = pedido.codigo || pedido.id;
   const nombreCliente =
@@ -66,11 +87,68 @@ function PedidoCard({ pedido }: PedidoCardProps) {
       ? `${pedido.cliente.nombre || ''} ${pedido.cliente.apellido || ''}`.trim()
       : 'Cliente sin nombre');
   const direccion = pedido.direccion || null;
+  const zonaActual = pedido.zona || null;
   const total = pedido.total || 0;
   const estado = pedido.estado || 'pendient';
   const estadoCfg = getEstadoConfig(estado);
+  
+  // Fechas
+  const fechaPedido = pedido.fecha_pedido || pedido.fecha;
+  const fechaProgramada = pedido.fecha_programada;
+  const fechaEntrega = pedido.fecha_entrega;
 
   const isActive = estado === 'pendient' || estado === 'proceso';
+
+  // Cargar zonas cuando se abre el dropdown
+  useEffect(() => {
+    if (showZonaDropdown && zonas.length === 0) {
+      loadZonas();
+    }
+  }, [showZonaDropdown]);
+
+  const loadZonas = async () => {
+    try {
+      const data = await apiClient.get<Zona[]>(endpoints.zonas());
+      setZonas(data);
+    } catch (error) {
+      console.error('Error cargando zonas:', error);
+    }
+  };
+
+  const handleZonaChange = async (zona: string) => {
+    setIsUpdatingZona(true);
+    try {
+      await pedidosService.updateZona(Number(id), zona);
+      await loadPedidos();
+      toast.success(`Zona actualizada a "${zona}"`);
+      setShowZonaDropdown(false);
+    } catch (error) {
+      toast.error('Error actualizando zona');
+    } finally {
+      setIsUpdatingZona(false);
+    }
+  };
+
+  const handleCrearZona = async () => {
+    if (!nuevaZona.trim()) return;
+    
+    setIsUpdatingZona(true);
+    try {
+      // Crear la zona
+      await apiClient.post(endpoints.zonas(), { zona: nuevaZona.trim() });
+      // Asignarla al pedido
+      await pedidosService.updateZona(Number(id), nuevaZona.trim());
+      await loadPedidos();
+      toast.success(`Zona "${nuevaZona}" creada y asignada`);
+      setNuevaZona('');
+      setShowNuevaZonaInput(false);
+      setShowZonaDropdown(false);
+    } catch (error) {
+      toast.error('Error creando zona');
+    } finally {
+      setIsUpdatingZona(false);
+    }
+  };
 
   const handleCancelar = async () => {
     const ok = await confirm({
@@ -164,19 +242,216 @@ function PedidoCard({ pedido }: PedidoCardProps) {
 
         {/* ── Info ────────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* Fecha del pedido */}
+          {fechaPedido && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Calendar size={14} color="#94A3B8" />
+              <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>
+                {formatDateTimeShort(fechaPedido)}
+              </span>
+            </div>
+          )}
+          
+          {/* Fecha programada o botón para programar */}
+          {estado === 'entregad' && fechaEntrega ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CalendarCheck size={14} color="#22C55E" />
+              <span style={{ fontSize: '0.82rem', color: '#22C55E' }}>
+                Entregado: {formatDateTimeShort(fechaEntrega)}
+              </span>
+            </div>
+          ) : fechaProgramada ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={14} color="#3B82F6" />
+              <span style={{ fontSize: '0.82rem', color: '#3B82F6' }}>
+                Programado: {formatDateTimeShort(fechaProgramada)}
+              </span>
+              {isActive && (
+                <button
+                  onClick={() => setShowProgramarModal(true)}
+                  style={{
+                    padding: '2px 6px',
+                    fontSize: '0.7rem',
+                    background: 'rgba(59,130,246,0.2)',
+                    border: '1px solid rgba(59,130,246,0.4)',
+                    borderRadius: '4px',
+                    color: '#3B82F6',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cambiar
+                </button>
+              )}
+            </div>
+          ) : isActive ? (
+            <button
+              onClick={() => setShowProgramarModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 10px',
+                fontSize: '0.78rem',
+                background: 'rgba(59,130,246,0.15)',
+                border: '1px solid rgba(59,130,246,0.3)',
+                borderRadius: '8px',
+                color: '#60A5FA',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                width: 'fit-content',
+              }}
+            >
+              <Clock size={14} />
+              Programar entrega
+            </button>
+          ) : null}
+          
+          {/* Zona con dropdown */}
+          <div style={{ position: 'relative' }}>
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: isActive ? 'pointer' : 'default' }}
+              onClick={() => isActive && setShowZonaDropdown(!showZonaDropdown)}
+            >
+              <Map size={14} color="#94A3B8" />
+              <span style={{ fontSize: '0.82rem', color: zonaActual ? '#94A3B8' : '#6B7280' }}>
+                {zonaActual || 'Sin zona'}
+              </span>
+              {isActive && (
+                <span style={{ fontSize: '0.7rem', color: '#6B7280' }}>▼</span>
+              )}
+            </div>
+            
+            {/* Dropdown de zonas */}
+            {showZonaDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: '4px',
+                  background: '#1a1a2e',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '8px',
+                  padding: '4px',
+                  minWidth: '160px',
+                  zIndex: 50,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                }}
+              >
+                {zonas.map((z) => (
+                  <button
+                    key={z.id}
+                    onClick={() => handleZonaChange(z.zona)}
+                    disabled={isUpdatingZona}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      background: z.zona === zonaActual ? 'rgba(59,130,246,0.2)' : 'transparent',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: '#E2E8F0',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {z.zona}
+                  </button>
+                ))}
+                
+                {/* Separador */}
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+                
+                {/* Agregar nueva zona */}
+                {showNuevaZonaInput ? (
+                  <div style={{ padding: '4px' }}>
+                    <input
+                      type="text"
+                      value={nuevaZona}
+                      onChange={(e) => setNuevaZona(e.target.value)}
+                      placeholder="Nombre de zona"
+                      autoFocus
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        fontSize: '0.82rem',
+                        marginBottom: '4px',
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCrearZona();
+                        if (e.key === 'Escape') setShowNuevaZonaInput(false);
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        onClick={handleCrearZona}
+                        disabled={!nuevaZona.trim() || isUpdatingZona}
+                        style={{
+                          flex: 1,
+                          padding: '4px',
+                          background: '#22C55E',
+                          border: 'none',
+                          borderRadius: '4px',
+                          color: '#fff',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Crear
+                      </button>
+                      <button
+                        onClick={() => setShowNuevaZonaInput(false)}
+                        style={{
+                          padding: '4px 8px',
+                          background: 'transparent',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '4px',
+                          color: '#94A3B8',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowNuevaZonaInput(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      width: '100%',
+                      padding: '8px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: '#60A5FA',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <Plus size={14} />
+                    Agregar zona
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          
           {direccion && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
               <MapPin size={14} color="#94A3B8" style={{ marginTop: '2px', flexShrink: 0 }} />
               <span style={{ fontSize: '0.82rem', color: '#94A3B8', lineHeight: 1.4 }}>
                 {direccion}
-              </span>
-            </div>
-          )}
-          {pedido.fecha && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={14} color="#94A3B8" />
-              <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>
-                {formatDate(pedido.fecha)}
               </span>
             </div>
           )}
@@ -317,6 +592,13 @@ function PedidoCard({ pedido }: PedidoCardProps) {
         isOpen={showEntregarModal}
         pedido={pedido}
         onClose={() => setShowEntregarModal(false)}
+      />
+      
+      {/* Modal de Programar */}
+      <ProgramarEntregaModal
+        isOpen={showProgramarModal}
+        pedido={pedido}
+        onClose={() => setShowProgramarModal(false)}
       />
     </>
   );

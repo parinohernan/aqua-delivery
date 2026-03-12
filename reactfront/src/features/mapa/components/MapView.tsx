@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup } from 'react-map-gl/maplibre';
 import type { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -6,7 +7,8 @@ import { useMapPedidos } from '../hooks/useMapPedidos';
 import { usePedidosStore } from '@/features/pedidos/stores/pedidosStore';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { formatCurrency } from '@/utils/formatters';
-import { Package, Navigation } from 'lucide-react';
+import { Package, Navigation, X } from 'lucide-react';
+import { ROUTES } from '@/utils/constants';
 import type { Pedido } from '@/types/entities';
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
@@ -30,6 +32,7 @@ function parseCoord(value: number | string | undefined): number | null {
 }
 
 function MapView() {
+  const navigate = useNavigate();
   const pedidosConCoords = useMapPedidos();
   const loadPedidos = usePedidosStore((s) => s.loadPedidos);
   const { coordinates: userLocation } = useGeolocation();
@@ -40,6 +43,7 @@ function MapView() {
     loadPedidos(false);
   }, [loadPedidos]);
 
+  // Centrar en la ubicación del usuario cuando esté disponible
   useEffect(() => {
     if (userLocation && mapRef.current) {
       mapRef.current.flyTo({
@@ -65,16 +69,29 @@ function MapView() {
           <Package size={20} />
           Mapa de Pedidos
         </h2>
-        <span className="text-sm text-white/70">
-          {pedidosConCoords.length} pedido
-          {pedidosConCoords.length !== 1 ? 's' : ''} con ubicación
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-white/70">
+            {pedidosConCoords.length} pedido
+            {pedidosConCoords.length !== 1 ? 's' : ''} con ubicación
+          </span>
+          <button
+            onClick={() => navigate(ROUTES.PEDIDOS)}
+            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all backdrop-blur-sm"
+            title="Cerrar mapa"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       <Map
         ref={mapRef}
         mapStyle={MAP_STYLE}
-        initialViewState={DEFAULT_CENTER}
+        initialViewState={
+          userLocation
+            ? { longitude: userLocation.longitude, latitude: userLocation.latitude, zoom: 14 }
+            : DEFAULT_CENTER
+        }
         style={{ width: '100%', height: '100%' }}
       >
         {userLocation && (

@@ -110,6 +110,38 @@ class PedidosService {
     const allPedidos = await this.getAll();
     await cacheData(DB_STORES.PEDIDOS, allPedidos);
   }
+
+  /**
+   * Programa la fecha de entrega de un pedido
+   */
+  async programar(id: number, fechaProgramada: string): Promise<{ success: boolean; fechaProgramada: string }> {
+    const result = await apiClient.put<{ success: boolean; fechaProgramada: string }>(
+      `${endpoints.pedido(id)}/programar`,
+      { fechaProgramada }
+    );
+
+    // Actualizar caché
+    const allPedidos = await this.getAll();
+    await cacheData(DB_STORES.PEDIDOS, allPedidos);
+
+    return result;
+  }
+
+  /**
+   * Actualiza la zona de un pedido
+   */
+  async updateZona(id: number, zona: string): Promise<{ success: boolean }> {
+    const result = await apiClient.put<{ success: boolean }>(
+      `${endpoints.pedido(id)}/zona`,
+      { zona }
+    );
+
+    // Actualizar caché
+    const allPedidos = await this.getAll();
+    await cacheData(DB_STORES.PEDIDOS, allPedidos);
+
+    return result;
+  }
 }
 
 export const pedidosService = new PedidosService();

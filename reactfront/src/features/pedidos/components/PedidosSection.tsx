@@ -18,34 +18,24 @@ function PedidosSection() {
 
   return (
     <div className="min-h-screen bg-transparent">
-      {/* Header más compacto y con mejor jerarquía */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/30">
-              <Package size={20} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white leading-tight">
-          Gestión de Pedidos
-              </h1>
-              <p className="text-white/60 text-sm mt-0.5">
-          Administra y rastrea todos tus pedidos de entrega
-        </p>
-            </div>
+      {/* Header compacto */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/30">
+            <Package size={16} className="text-white" />
           </div>
+          <h1 className="text-xl font-bold text-white">Pedidos</h1>
           {filteredPedidos.length > 0 && (
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-              <span className="text-white/70 text-sm">Total:</span>
-              <span className="text-white font-bold text-lg">{filteredPedidos.length}</span>
-            </div>
+            <span className="text-white/50 text-sm font-medium">
+              ({filteredPedidos.length})
+            </span>
           )}
         </div>
       </div>
 
-      {/* Toolbar con mejor espaciado */}
-      <div className="mb-6">
-      <PedidosToolbar />
+      {/* Toolbar */}
+      <div className="mb-4">
+        <PedidosToolbar />
       </div>
 
       {/* Mensaje de error mejorado */}

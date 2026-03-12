@@ -63,6 +63,10 @@ export interface Pedido {
   vendedorId?: number;
   estado: 'pendient' | 'proceso' | 'entregad' | 'anulado';
   fecha?: string;
+  fecha_pedido?: string;
+  fecha_programada?: string;
+  fecha_entrega?: string;
+  zona?: string;
   direccion?: string;
   latitud?: number | string;
   longitud?: number | string;

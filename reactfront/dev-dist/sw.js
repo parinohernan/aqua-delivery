@@ -82,7 +82,7 @@ define(['./workbox-f87553f6'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.i3l0nurmr5g"
+    "revision": "0.0jrpt7c488o"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -100,6 +100,20 @@ define(['./workbox-f87553f6'], (function (workbox) { 'use strict';
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 100,
       maxAgeSeconds: 300
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/(?:[a-z0-9-]+\.)*?(?:openstreetmap|maptiler|demotiles\.maplibre)\.org\/.*/, new workbox.CacheFirst({
+    "cacheName": "map-tiles-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 200,
+      maxAgeSeconds: 604800
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/api\.maptiler\.com\/.*/, new workbox.CacheFirst({
+    "cacheName": "maptiler-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 300,
+      maxAgeSeconds: 604800
     })]
   }), 'GET');
 

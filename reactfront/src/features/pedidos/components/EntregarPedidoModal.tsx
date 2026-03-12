@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react';
 import { usePedidosStore } from '../stores/pedidosStore';
 import { pedidosService } from '../services/pedidosService';
@@ -21,6 +21,7 @@ interface EntregarPedidoModalProps {
 
 function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalProps) {
   const { loadPedidos } = usePedidosStore();
+  const dialogRef = useRef<HTMLDialogElement>(null);
   
   const [tiposPago, setTiposPago] = useState<TipoPago[]>([]);
   const [selectedTipoPago, setSelectedTipoPago] = useState<number | ''>('');
@@ -33,10 +34,16 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar tipos de pago y datos del pedido cuando se abre el modal
+  // Controlar apertura/cierre del dialog nativo
   useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
     if (isOpen && pedido) {
+      dialog.showModal();
       loadData();
+    } else {
+      dialog.close();
     }
   }, [isOpen, pedido]);
 
@@ -229,24 +236,24 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
     onClose();
   };
 
-  if (!isOpen || !pedido) return null;
-
   const tipoPago = getSelectedTipoPago();
-  const totalPedido = pedido.total || 0;
+  const totalPedido = pedido?.total || 0;
   const monto = parseFloat(montoCobrado) || 0;
   const diferencia = totalPedido - monto;
   const retornablesNoDevueltos = totalRetornables - retornablesDevueltos;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-md"
-        onClick={handleClose}
-      />
+    <dialog
+      ref={dialogRef}
+      onClose={handleClose}
+      className="bg-transparent p-0 m-0 max-w-none max-h-none w-full h-full backdrop:bg-black/80 backdrop:backdrop-blur-md"
+    >
+      <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        {/* Click en el área vacía cierra el modal */}
+        <div className="absolute inset-0" onClick={handleClose} />
 
-      {/* Modal - Mejorado para mostrar contenido completo */}
-      <div className="relative bg-[#0f1b2e] backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border-2 border-white/20 w-full max-w-2xl my-auto z-[101] flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        {/* Modal - Mejorado para mostrar contenido completo */}
+        <div className="relative bg-[#0f1b2e] backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border-2 border-white/20 w-full max-w-2xl my-auto flex flex-col max-h-[95vh] sm:max-h-[90vh]">
         {/* Header sticky */}
         <div className="sticky top-0 bg-[#0f1b2e]/95 backdrop-blur-xl border-b-2 border-white/20 px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
           <h3 className="text-lg sm:text-xl font-bold text-white">🚚 Entregar Pedido</h3>
@@ -493,8 +500,9 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
               </button>
             </div>
         )}
+        </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 

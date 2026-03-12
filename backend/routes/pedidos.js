@@ -16,6 +16,8 @@ router.get('/', verifyToken, async (req, res) => {
         let sql = `
             SELECT p.codigo as id,
                    p.fechaPedido as fecha_pedido,
+                   p.FechaProgramada as fecha_programada,
+                   p.FechaEntrega as fecha_entrega,
                    p.total,
                    p.estado,
                    p.zona,
@@ -43,6 +45,8 @@ router.get('/', verifyToken, async (req, res) => {
             sql = `
                 SELECT p.codigo as id,
                        p.fechaPedido as fecha_pedido,
+                       p.FechaProgramada as fecha_programada,
+                       p.FechaEntrega as fecha_entrega,
                        p.total,
                        p.estado,
                        p.zona,
@@ -172,11 +176,13 @@ router.get('/:id', verifyToken, async (req, res) => {
 
         // 1. Obtener datos del pedido con cliente
         const pedido = await query(`
-            SELECT 
+            SELECT
                 p.codigo as id,
                 p.codigo as codigo,
                 p.codigoCliente,
                 p.fechaPedido as fecha_pedido,
+                p.FechaProgramada as fecha_programada,
+                p.FechaEntrega as fecha_entrega,
                 p.total,
                 p.estado,
                 p.zona,
@@ -630,6 +636,55 @@ router.put('/:id/zona', verifyToken, async (req, res) => {
         res.json({ success: true });
 
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Programar fecha de entrega de pedido
+router.put('/:id/programar', verifyToken, async (req, res) => {
+    try {
+        const { fechaProgramada } = req.body;
+        const pedidoId = req.params.id;
+
+        console.log(`📅 Programando entrega para pedido ${pedidoId}:`, fechaProgramada);
+
+        // Validar que se proporcione una fecha
+        if (!fechaProgramada) {
+            return res.status(400).json({ error: 'La fecha programada es requerida' });
+        }
+
+        // Validar que la fecha sea válida
+        const fecha = new Date(fechaProgramada);
+        if (isNaN(fecha.getTime())) {
+            return res.status(400).json({ error: 'La fecha programada no es válida' });
+        }
+
+        // Verificar que el pedido existe y pertenece a la empresa
+        const pedido = await query(
+            'SELECT codigo, estado FROM pedidos WHERE codigo = ? AND codigoEmpresa = ?',
+            [pedidoId, req.user.codigoEmpresa]
+        );
+
+        if (pedido.length === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+
+        // Verificar que el pedido no esté entregado o anulado
+        if (pedido[0].estado === 'entregad' || pedido[0].estado === 'anulado') {
+            return res.status(400).json({ error: 'No se puede programar un pedido entregado o anulado' });
+        }
+
+        // Actualizar la fecha programada
+        await query(
+            'UPDATE pedidos SET FechaProgramada = ? WHERE codigo = ? AND codigoEmpresa = ?',
+            [fechaProgramada, pedidoId, req.user.codigoEmpresa]
+        );
+
+        console.log(`✅ Pedido ${pedidoId} programado para: ${fechaProgramada}`);
+        res.json({ success: true, fechaProgramada });
+
+    } catch (error) {
+        console.error('❌ Error programando pedido:', error);
         res.status(500).json({ error: error.message });
     }
 });

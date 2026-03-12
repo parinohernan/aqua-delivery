@@ -108,11 +108,17 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
     // Filtro de fecha
     if (filters.fecha) {
       filtered = filtered.filter((pedido) => {
-        if (!pedido.fecha) return false;
-        const pedidoDate = new Date(pedido.fecha).toDateString();
+        const fechaBase = pedido.fecha_pedido || pedido.fecha;
+        if (!fechaBase) return false;
+        const pedidoDate = new Date(fechaBase).toDateString();
         const filterDate = new Date(filters.fecha).toDateString();
         return pedidoDate === filterDate;
       });
+    }
+
+    // Filtro de zona
+    if (filters.zona) {
+      filtered = filtered.filter((pedido) => pedido.zona === filters.zona);
     }
 
     set({ filteredPedidos: filtered });

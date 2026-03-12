@@ -32,7 +32,7 @@ function AppLayout() {
           <div className="max-w-7xl mx-auto">
             <Suspense fallback={<LoadingScreen />}>
               <Routes>
-                <Route path="/" element={<Navigate to="/clientes" replace />} />
+                <Route path="/" element={<Navigate to="/pedidos" replace />} />
                 <Route path="/pedidos" element={<PedidosSection />} />
                 <Route path="/clientes" element={<ClientesSection />} />
                 <Route path="/productos" element={<ProductosSection />} />
