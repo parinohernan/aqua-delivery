@@ -31,14 +31,6 @@ router.get('/', verifyToken, async (req, res) => {
         sql += ' ORDER BY activo DESC, descripcion';
 
         const productos = await query(sql, params);
-
-        console.log('✅ Productos encontrados:', productos.length);
-        if (productos.length > 0) {
-            console.log('📋 Columnas disponibles:', Object.keys(productos[0]));
-            console.log('📸 imageURL del primer producto:', productos[0].imageURL);
-            console.log('📋 Primer producto completo:', productos[0]);
-        }
-
         res.json(productos);
 
     } catch (error) {
@@ -75,11 +67,14 @@ router.put('/:id', verifyToken, async (req, res) => {
     try {
         const { descripcion, precio, stock, esRetornable, activo, imageURL } = req.body;
 
-        console.log('📝 Actualizando producto:', req.params.id, { descripcion, precio, stock, esRetornable, activo, imageURL });
+        // Normalizar activo a 0 o 1 (puede llegar como boolean o string desde el frontend)
+        const activoValue = (activo === true || activo === 1 || activo === '1') ? 1 : 0;
+
+        console.log('📝 Actualizando producto:', req.params.id, { descripcion, precio, stock, esRetornable, activo: activoValue, imageURL });
 
         await query(
             'UPDATE productos SET descripcion = ?, precio = ?, stock = ?, esRetornable = ?, activo = ?, imageURL = ? WHERE codigo = ? AND codigoEmpresa = ?',
-            [descripcion, precio, stock, esRetornable, activo, imageURL || null, req.params.id, req.user.codigoEmpresa]
+            [descripcion, precio, stock, esRetornable ? 1 : 0, activoValue, imageURL || null, req.params.id, req.user.codigoEmpresa]
         );
 
         const producto = await query(

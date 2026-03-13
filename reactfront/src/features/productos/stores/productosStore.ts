@@ -87,7 +87,7 @@ export const useProductosStore = create<ProductosState>((set, get) => ({
     // Filtro de estado activo
     if (filters.activo !== 'todos') {
       filtered = filtered.filter((producto) => {
-        const activo = producto.activo !== false;
+        const activo = Boolean(producto.activo);
         return filters.activo === 'activos' ? activo : !activo;
       });
     }

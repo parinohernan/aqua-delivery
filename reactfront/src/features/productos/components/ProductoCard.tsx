@@ -18,7 +18,7 @@ function ProductoCard({ producto }: ProductoCardProps) {
   const nombre = producto.descripcion || producto.nombre || 'Sin nombre';
   const precio = producto.precio || 0;
   const stock = producto.stock || 0;
-  const activo = producto.activo !== false;
+  const activo = Boolean(producto.activo);
   const imagen = (producto.imageURL || producto.imagen || '') as string;
   const imagenUrl =
     imagen ||

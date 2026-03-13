@@ -36,7 +36,7 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
         setStock(producto.stock?.toString() || '');
         setImageURL(producto.imagen || producto.imageURL || '');
         setEsRetornable(producto.esRetornable === true || producto.esRetornable === 1);
-        setActivo(producto.activo !== false);
+        setActivo(Boolean(producto.activo));
       } else {
         // Modo creación: limpiar formulario
         resetForm();
@@ -79,14 +79,13 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
     try {
       setIsSubmitting(true);
 
-      // Preparar datos para el backend
-      // El backend espera: descripcion, precio, stock, esRetornable, activo, imageURL
-      const productoData: any = {
+      // Preparar datos para el backend (activo como 1/0 para que no se pierda al serializar)
+      const productoData: Record<string, unknown> = {
         descripcion: descripcion.trim(),
         precio: precioNum,
         stock: stockNum,
         esRetornable: esRetornable,
-        activo: activo,
+        activo: activo ? 1 : 0,
       };
 
       // Agregar imagen si está disponible

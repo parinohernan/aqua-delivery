@@ -104,8 +104,9 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
         apiClient.get<Array<{ id: number; nombre: string }>>(endpoints.zonas()),
       ]);
 
-      setClientes(clientesData);
-      setProductos(productosData.filter(p => p.activo !== false));
+      // Solo clientes y productos activos para crear pedido
+      setClientes(clientesData.filter((c) => Boolean(c.activo)));
+      setProductos(productosData.filter((p) => Boolean(p.activo)));
       setZonas(zonasData);
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -337,14 +338,14 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
                 ))}
               </select>
               
-              <input
+              {/* <input
                 type="number"
                 value={productQuantity}
                 onChange={(e) => setProductQuantity(Number(e.target.value))}
                 min="1"
                 placeholder="Cant."
                 className="w-full sm:w-20 px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
-              />
+              /> */}
               
               <button
                 type="button"
