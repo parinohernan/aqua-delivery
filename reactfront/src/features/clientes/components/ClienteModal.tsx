@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Plus } from 'lucide-react';
 import { useClientesStore } from '../stores/clientesStore';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { MapPicker } from '@/features/mapa';
 import { toast } from '@/utils/feedback';
 import type { Cliente, Zona } from '@/types/entities';
+
+/** Zona desde API: tiene id y zona (nombre) */
+type ZonaApi = { id: number; zona: string; [k: string]: unknown };
 
 /**
  * Modal para crear o editar un cliente
@@ -23,11 +27,13 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
-  const [zonaId, setZonaId] = useState<number | ''>('');
+  const [zona, setZona] = useState('');
   const [latitud, setLatitud] = useState<string>('');
   const [longitud, setLongitud] = useState<string>('');
   
-  const [zonas, setZonas] = useState<Zona[]>([]);
+  const [zonas, setZonas] = useState<ZonaApi[]>([]);
+  const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
+  const [nuevaZona, setNuevaZona] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,12 +44,13 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
       loadZonas();
       
       if (cliente) {
-        // Modo edición: cargar datos del cliente
+        // Modo edición: cargar datos del cliente (backend devuelve zona como string)
         setNombre(cliente.nombre || '');
         setApellido(cliente.apellido || '');
         setTelefono(cliente.telefono || '');
         setDireccion(cliente.direccion || '');
-        setZonaId(cliente.zonaId || cliente.zona?.id || '');
+        const zonaVal = (cliente as { zona?: string | { nombre?: string; zona?: string } }).zona;
+        setZona(typeof zonaVal === 'string' ? zonaVal : (zonaVal && typeof zonaVal === 'object' ? (zonaVal.nombre ?? zonaVal.zona ?? '') : '') || '');
         const lat = cliente.latitud?.toString() || '';
         const lng = cliente.longitud?.toString() || '';
         setLatitud(lat);
@@ -57,14 +64,11 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
 
   const loadZonas = async () => {
     try {
-      setIsLoading(true);
-      const zonasData = await apiClient.get<Zona[]>(endpoints.zonas());
+      const zonasData = await apiClient.get<ZonaApi[]>(endpoints.zonas());
       setZonas(zonasData);
-    } catch (error) {
-      console.error('Error cargando zonas:', error);
-      setError('Error cargando zonas');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      console.error('Error cargando zonas:', err);
+      setZonas([]);
     }
   };
 
@@ -73,10 +77,27 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     setApellido('');
     setTelefono('');
     setDireccion('');
-    setZonaId('');
+    setZona('');
+    setNuevaZona('');
+    setShowNuevaZonaInput(false);
     setLatitud('');
     setLongitud('');
     setError(null);
+  };
+
+  const handleCrearZona = async () => {
+    if (!nuevaZona.trim()) return;
+    try {
+      await apiClient.post(endpoints.zonas(), { zona: nuevaZona.trim() });
+      await loadZonas();
+      setZona(nuevaZona.trim());
+      setNuevaZona('');
+      setShowNuevaZonaInput(false);
+      toast.success(`Zona "${nuevaZona.trim()}" creada`);
+    } catch (err) {
+      toast.error('Error creando zona');
+      console.error(err);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,14 +113,13 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     try {
       setIsSubmitting(true);
 
-      // Preparar datos para el backend
-      // El backend espera: nombre, apellido, direccion, zona (ID de zona), telefono, saldoDinero, saldoRetornables, latitud, longitud
-      const clienteData: any = {
+      // Preparar datos para el backend (zona es el nombre de la zona, string)
+      const clienteData: Record<string, unknown> = {
         nombre: nombre.trim(),
         apellido: apellido.trim() || '',
         telefono: telefono.trim() || '',
         direccion: direccion.trim() || '',
-        zona: zonaId ? Number(zonaId) : null,
+        zona: zona.trim() || null,
       };
 
       // Si es edición, mantener saldo y retornables actuales (no se editan desde aquí)
@@ -266,23 +286,65 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
             />
           </div>
 
-          {/* Zona */}
+          {/* Zona (mismo criterio que en Pedidos: nombre de zona, listado + agregar nueva) */}
           <div>
             <label className="block text-sm font-medium text-white mb-2">
               Zona
             </label>
             <select
-              value={zonaId}
-              onChange={(e) => setZonaId(e.target.value ? Number(e.target.value) : '')}
+              value={zona}
+              onChange={(e) => setZona(e.target.value)}
               className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm"
             >
-              <option value="" className="bg-[#0f1b2e]">Seleccionar zona (opcional)</option>
-              {zonas.map((zona) => (
-                <option key={zona.id} value={zona.id} className="bg-[#0f1b2e]">
-                  {zona.nombre}
+              <option value="" className="bg-[#0f1b2e]">Sin zona</option>
+              {zonas.map((z) => (
+                <option key={z.id} value={z.zona} className="bg-[#0f1b2e]">
+                  {z.zona}
                 </option>
               ))}
+              {zona && !zonas.some((z) => z.zona === zona) && (
+                <option value={zona} className="bg-[#0f1b2e]">{zona} (actual)</option>
+              )}
             </select>
+            <button
+              type="button"
+              onClick={() => setShowNuevaZonaInput((s) => !s)}
+              className="mt-2 flex items-center gap-1.5 text-sm text-primary-300 hover:text-primary-200"
+            >
+              <Plus size={14} />
+              Agregar zona
+            </button>
+            {showNuevaZonaInput && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={nuevaZona}
+                  onChange={(e) => setNuevaZona(e.target.value)}
+                  placeholder="Nombre de la zona"
+                  className="flex-1 min-w-[140px] px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-primary-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleCrearZona(); }
+                    if (e.key === 'Escape') setShowNuevaZonaInput(false);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleCrearZona}
+                  disabled={!nuevaZona.trim()}
+                  className="px-4 py-2 rounded-lg bg-primary-500 text-white font-medium hover:bg-primary-600 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Plus size={16} />
+                  Crear zona
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowNuevaZonaInput(false); setNuevaZona(''); }}
+                  className="px-3 py-2 rounded-lg border border-white/20 text-white/80 hover:bg-white/10"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Coordenadas */}

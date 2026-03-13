@@ -73,9 +73,8 @@ function PedidoCard({ pedido }: PedidoCardProps) {
   const [showProgramarModal, setShowProgramarModal] = useState(false);
   const [hovered, setHovered] = useState(false);
   
-  // Estado para zona
+  // Estado para zona (select nativo = más rápido y simple en móvil)
   const [zonas, setZonas] = useState<Zona[]>([]);
-  const [showZonaDropdown, setShowZonaDropdown] = useState(false);
   const [nuevaZona, setNuevaZona] = useState('');
   const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
   const [isUpdatingZona, setIsUpdatingZona] = useState(false);
@@ -99,21 +98,14 @@ function PedidoCard({ pedido }: PedidoCardProps) {
 
   const isActive = estado === 'pendient' || estado === 'proceso';
 
-  // Cargar zonas cuando se abre el dropdown
+  // Cargar zonas al montar para que el select tenga opciones listas (mejor en móvil)
   useEffect(() => {
-    if (showZonaDropdown && zonas.length === 0) {
-      loadZonas();
-    }
-  }, [showZonaDropdown]);
-
-  const loadZonas = async () => {
-    try {
-      const data = await apiClient.get<Zona[]>(endpoints.zonas());
-      setZonas(data);
-    } catch (error) {
-      console.error('Error cargando zonas:', error);
-    }
-  };
+    let cancelled = false;
+    apiClient.get<Zona[]>(endpoints.zonas()).then((data) => {
+      if (!cancelled) setZonas(data);
+    }).catch((err) => { if (!cancelled) console.error(err); });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleZonaChange = async (zona: string) => {
     setIsUpdatingZona(true);
@@ -121,7 +113,6 @@ function PedidoCard({ pedido }: PedidoCardProps) {
       await pedidosService.updateZona(Number(id), zona);
       await loadPedidos();
       toast.success(`Zona actualizada a "${zona}"`);
-      setShowZonaDropdown(false);
     } catch (error) {
       toast.error('Error actualizando zona');
     } finally {
@@ -131,18 +122,16 @@ function PedidoCard({ pedido }: PedidoCardProps) {
 
   const handleCrearZona = async () => {
     if (!nuevaZona.trim()) return;
-    
     setIsUpdatingZona(true);
     try {
-      // Crear la zona
       await apiClient.post(endpoints.zonas(), { zona: nuevaZona.trim() });
-      // Asignarla al pedido
       await pedidosService.updateZona(Number(id), nuevaZona.trim());
+      const data = await apiClient.get<Zona[]>(endpoints.zonas());
+      setZonas(data);
       await loadPedidos();
       toast.success(`Zona "${nuevaZona}" creada y asignada`);
       setNuevaZona('');
       setShowNuevaZonaInput(false);
-      setShowZonaDropdown(false);
     } catch (error) {
       toast.error('Error creando zona');
     } finally {
@@ -306,144 +295,111 @@ function PedidoCard({ pedido }: PedidoCardProps) {
             </button>
           ) : null}
           
-          {/* Zona con dropdown */}
-          <div style={{ position: 'relative' }}>
-            <div 
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: isActive ? 'pointer' : 'default' }}
-              onClick={() => isActive && setShowZonaDropdown(!showZonaDropdown)}
-            >
-              <Map size={14} color="#94A3B8" />
-              <span style={{ fontSize: '0.82rem', color: zonaActual ? '#94A3B8' : '#6B7280' }}>
-                {zonaActual || 'Sin zona'}
-              </span>
-              {isActive && (
-                <span style={{ fontSize: '0.7rem', color: '#6B7280' }}>▼</span>
-              )}
-            </div>
-            
-            {/* Dropdown de zonas */}
-            {showZonaDropdown && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  marginTop: '4px',
-                  background: '#1a1a2e',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: '8px',
-                  padding: '4px',
-                  minWidth: '160px',
-                  zIndex: 50,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                }}
-              >
-                {zonas.map((z) => (
-                  <button
-                    key={z.id}
-                    onClick={() => handleZonaChange(z.zona)}
-                    disabled={isUpdatingZona}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      background: z.zona === zonaActual ? 'rgba(59,130,246,0.2)' : 'transparent',
-                      border: 'none',
-                      borderRadius: '4px',
-                      color: '#E2E8F0',
-                      fontSize: '0.82rem',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {z.zona}
-                  </button>
-                ))}
-                
-                {/* Separador */}
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
-                
-                {/* Agregar nueva zona */}
-                {showNuevaZonaInput ? (
-                  <div style={{ padding: '4px' }}>
+          {/* Zona: select nativo (rápido y simple en móvil) + botón agregar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Map size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
+            {isActive ? (
+              <>
+                <select
+                  value={zonaActual || ''}
+                  onChange={(e) => handleZonaChange(e.target.value || '')}
+                  disabled={isUpdatingZona}
+                  style={{
+                    flex: 1,
+                    minWidth: '120px',
+                    padding: '8px 10px',
+                    fontSize: '0.82rem',
+                    color: '#E2E8F0',
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="" style={{ background: '#1a1a2e' }}>Sin zona</option>
+                  {zonas.map((z) => (
+                    <option key={z.id} value={z.zona} style={{ background: '#1a1a2e' }}>
+                      {z.zona}
+                    </option>
+                  ))}
+                  {zonaActual && !zonas.some((z) => z.zona === zonaActual) && (
+                    <option value={zonaActual} style={{ background: '#1a1a2e' }}>{zonaActual}</option>
+                  )}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowNuevaZonaInput((s) => !s)}
+                  style={{
+                    padding: '6px 8px',
+                    background: 'transparent',
+                    border: '1px solid rgba(96,165,250,0.5)',
+                    borderRadius: '8px',
+                    color: '#60A5FA',
+                    cursor: 'pointer',
+                  }}
+                  title="Agregar zona"
+                >
+                  <Plus size={16} />
+                </button>
+                {showNuevaZonaInput && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', marginTop: '4px' }}>
                     <input
                       type="text"
                       value={nuevaZona}
                       onChange={(e) => setNuevaZona(e.target.value)}
                       placeholder="Nombre de zona"
-                      autoFocus
                       style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        background: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: '4px',
-                        color: '#fff',
+                        flex: 1,
+                        padding: '6px 10px',
                         fontSize: '0.82rem',
-                        marginBottom: '4px',
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '8px',
+                        color: '#fff',
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleCrearZona();
                         if (e.key === 'Escape') setShowNuevaZonaInput(false);
                       }}
                     />
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button
-                        onClick={handleCrearZona}
-                        disabled={!nuevaZona.trim() || isUpdatingZona}
-                        style={{
-                          flex: 1,
-                          padding: '4px',
-                          background: '#22C55E',
-                          border: 'none',
-                          borderRadius: '4px',
-                          color: '#fff',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Crear
-                      </button>
-                      <button
-                        onClick={() => setShowNuevaZonaInput(false)}
-                        style={{
-                          padding: '4px 8px',
-                          background: 'transparent',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          borderRadius: '4px',
-                          color: '#94A3B8',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCrearZona}
+                      disabled={!nuevaZona.trim() || isUpdatingZona}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#22C55E',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Crear
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowNuevaZonaInput(false); setNuevaZona(''); }}
+                      style={{
+                        padding: '6px 10px',
+                        background: 'transparent',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '8px',
+                        color: '#94A3B8',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ×
+                    </button>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => setShowNuevaZonaInput(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      width: '100%',
-                      padding: '8px 12px',
-                      background: 'transparent',
-                      border: 'none',
-                      borderRadius: '4px',
-                      color: '#60A5FA',
-                      fontSize: '0.82rem',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    <Plus size={14} />
-                    Agregar zona
-                  </button>
                 )}
-              </div>
+              </>
+            ) : (
+              <span style={{ fontSize: '0.82rem', color: zonaActual ? '#94A3B8' : '#6B7280' }}>
+                {zonaActual || 'Sin zona'}
+              </span>
             )}
           </div>
           

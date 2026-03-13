@@ -77,18 +77,18 @@ function PedidosToolbar() {
     }
   }, [showSearch]);
 
-  // Cargar zonas cuando se abre el dropdown
+  // Cargar zonas al montar para que el dropdown abra con opciones listas
   useEffect(() => {
-    if (showZonas && zonas.length === 0 && !loadingZonas) {
-      setLoadingZonas(true);
-      apiClient.get<Zona[]>(endpoints.zonas())
-        .then(setZonas)
-        .catch(console.error)
-        .finally(() => setLoadingZonas(false));
-    }
-  }, [showZonas, zonas.length, loadingZonas]);
+    let cancelled = false;
+    setLoadingZonas(true);
+    apiClient.get<Zona[]>(endpoints.zonas())
+      .then((data) => { if (!cancelled) setZonas(data); })
+      .catch((err) => { if (!cancelled) console.error(err); })
+      .finally(() => { if (!cancelled) setLoadingZonas(false); });
+    return () => { cancelled = true; };
+  }, []);
 
-  // Cerrar dropdown de zonas al hacer click fuera
+  // Cerrar dropdown de zonas al hacer click fuera (click en vez de mousedown para móvil)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (zonasRef.current && !zonasRef.current.contains(e.target as Node)) {
@@ -96,9 +96,9 @@ function PedidosToolbar() {
       }
     };
     if (showZonas) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('click', handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, [showZonas]);
 
   const handleZonaSelect = (zona: string | null) => {
@@ -189,16 +189,18 @@ function PedidosToolbar() {
                     ) : (
                       <>
                         <button
+                          type="button"
                           onClick={() => handleZonaSelect(null)}
-                          className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors ${!filters.zona ? 'text-primary-400 bg-primary-500/10' : 'text-white/80'}`}
+                          className={`w-full px-3 min-h-[44px] flex items-center text-left text-sm hover:bg-white/10 active:bg-white/15 transition-colors touch-manipulation ${!filters.zona ? 'text-primary-400 bg-primary-500/10' : 'text-white/80'}`}
                         >
                           Todas las zonas
                         </button>
                         {zonas.map((z) => (
                           <button
+                            type="button"
                             key={z.id}
                             onClick={() => handleZonaSelect(z.zona)}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors ${filters.zona === z.zona ? 'text-primary-400 bg-primary-500/10' : 'text-white/80'}`}
+                            className={`w-full px-3 min-h-[44px] flex items-center text-left text-sm hover:bg-white/10 active:bg-white/15 transition-colors touch-manipulation ${filters.zona === z.zona ? 'text-primary-400 bg-primary-500/10' : 'text-white/80'}`}
                           >
                             {z.zona}
                           </button>
