@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
   PEDIDOS: '/api/pedidos',
   PAGOS: '/api/pagos',
   ZONAS: '/api/zonas',
+  RUTAS: '/api/rutas',
   TIPOS_PAGO: '/api/tiposdepago',
   INFORMES: '/api/informes',
 } as const;
@@ -47,6 +48,7 @@ export const ROUTES = {
   PRODUCTOS: '/productos',
   INFORMES: '/informes',
   MAPA: '/mapa',
+  RUTAS: '/rutas',
 } as const;
 
 /**

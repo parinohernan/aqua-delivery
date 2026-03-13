@@ -325,9 +325,9 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                 Tipo de Pago *
               </label>
               <select
+                name="tipoPago"
                 value={selectedTipoPago}
                 onChange={(e) => setSelectedTipoPago(e.target.value ? Number(e.target.value) : '')}
-                required
                 className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm disabled:opacity-50"
                 disabled={tiposPago.length === 0 && isLoading}
               >
@@ -360,11 +360,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">$</span>
                   <input
                     type="number"
+                    name="montoCobrado"
                     value={montoCobrado}
                     onChange={(e) => setMontoCobrado(e.target.value)}
                     step="0.01"
                     min="0"
-                    required
                     className="w-full pl-8 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
                     placeholder="0.00"
                   />
@@ -474,15 +474,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                 Cancelar
               </button>
               <button
-                type="submit"
-              form="entregar-pedido-form"
-              onClick={(e) => {
-                e.preventDefault();
-                const form = document.getElementById('entregar-pedido-form') as HTMLFormElement;
-                if (form) {
-                  form.requestSubmit();
-                }
-              }}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSubmit(e as unknown as React.FormEvent);
+                }}
                 disabled={isSubmitting || isLoading}
               className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30 font-bold min-h-[48px] hover:scale-[1.02] active:scale-[0.98]"
               >

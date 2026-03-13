@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '@/utils/constants';
-import { Package, Users, ShoppingBag, BarChart2 } from 'lucide-react';
+import { Package, Users, ShoppingBag, BarChart2, Route } from 'lucide-react';
 
 /**
  * Navegación principal (Desktop)
@@ -9,6 +9,7 @@ import { Package, Users, ShoppingBag, BarChart2 } from 'lucide-react';
 function Navigation() {
   const navItems = [
     { path: ROUTES.PEDIDOS,   label: 'Pedidos',   icon: <Package size={20} /> },
+    { path: ROUTES.RUTAS,     label: 'Rutas',     icon: <Route size={20} /> },
     { path: ROUTES.CLIENTES,  label: 'Clientes',  icon: <Users size={20} /> },
     { path: ROUTES.PRODUCTOS, label: 'Productos', icon: <ShoppingBag size={20} /> },
     { path: ROUTES.INFORMES,  label: 'Informes',  icon: <BarChart2 size={20} /> },

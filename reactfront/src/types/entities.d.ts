@@ -126,3 +126,25 @@ export interface Zona {
   [key: string]: unknown;
 }
 
+/**
+ * Item de ruta (orden de reparto por zona)
+ */
+export interface RutaItem {
+  codigoCliente: number;
+  orden: number;
+}
+
+/**
+ * Cliente con orden en la ruta (para planificar reparto)
+ */
+export interface ClienteConOrden {
+  codigoCliente: number;
+  nombre: string;
+  apellido?: string;
+  direccion?: string;
+  telefono?: string;
+  zona?: string;
+  orden: number;
+  pedidosPendientes?: number;
+}
+

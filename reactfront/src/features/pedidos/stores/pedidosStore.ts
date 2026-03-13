@@ -52,9 +52,10 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { filters } = get();
-      // Cargar pedidos con filtro de estado desde el backend para mejor rendimiento
       const estado = filters.estado !== 'todos' ? filters.estado : undefined;
-      const pedidos = await pedidosService.getAll(incluirDetalles, estado);
+      const zona = filters.zona?.trim() || undefined;
+      const ordenarPorRuta = Boolean(zona);
+      const pedidos = await pedidosService.getAll(incluirDetalles, estado, zona, ordenarPorRuta);
       set({ pedidos });
       get().applyFilters();
     } catch (error) {
@@ -68,9 +69,9 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
   setFilters: (newFilters: Partial<PedidosFilters>) => {
     set((state) => {
       const newState = { ...state.filters, ...newFilters };
-      // Si cambió el estado, recargar desde el backend
-      if (newFilters.estado !== undefined && newFilters.estado !== state.filters.estado) {
-        // Recargar pedidos con el nuevo filtro de estado
+      const estadoChanged = newFilters.estado !== undefined && newFilters.estado !== state.filters.estado;
+      const zonaChanged = newFilters.zona !== undefined && newFilters.zona !== state.filters.zona;
+      if (estadoChanged || zonaChanged) {
         setTimeout(() => {
           get().loadPedidos(false);
         }, 0);

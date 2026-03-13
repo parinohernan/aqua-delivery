@@ -13,6 +13,7 @@ const ClientesSection = lazy(() => import('@/features/clientes/components/Client
 const ProductosSection = lazy(() => import('@/features/productos/components/ProductosSection'));
 const InformesSection = lazy(() => import('@/features/informes/components/InformesSection'));
 const MapView = lazy(() => import('@/features/mapa/components/MapView'));
+const RutasSection = lazy(() => import('@/features/rutas/components/RutasSection'));
 
 /**
  * Layout principal de la aplicación
@@ -38,6 +39,7 @@ function AppLayout() {
                 <Route path="/productos" element={<ProductosSection />} />
                 <Route path="/informes" element={<InformesSection />} />
                 <Route path="/mapa" element={<MapView />} />
+                <Route path="/rutas" element={<RutasSection />} />
               </Routes>
             </Suspense>
           </div>

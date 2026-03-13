@@ -70,6 +70,7 @@ app.use('/api/productos', require('./routes/productos'));
 app.use('/api/pedidos', require('./routes/pedidos'));
 app.use('/api/pagos', require('./routes/pagos'));
 app.use('/api/zonas', require('./routes/zonas'));
+app.use('/api/rutas', require('./routes/rutas'));
 app.use('/api/tiposdepago', require('./routes/tiposdepago'));
 app.use('/api/informes', require('./routes/informes'));
 app.use('/api/push', require('./routes/push'));

@@ -1,6 +1,7 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { verifyToken } = require('./auth');
+const { actualizarRutasPorCambioZona } = require('../lib/rutasHelper');
 const router = express.Router();
 
 // Obtener clientes de la empresa
@@ -203,8 +204,16 @@ router.post('/', verifyToken, async (req, res) => {
 router.put('/:id', verifyToken, async (req, res) => {
     try {
         const { nombre, apellido, direccion, zona, telefono, saldoDinero, saldoRetornables, latitud, longitud } = req.body;
+        const clienteId = req.params.id;
 
-        console.log('👤 Actualizando cliente:', req.params.id, { nombre, apellido, telefono, direccion, zona, saldoDinero, saldoRetornables, latitud, longitud });
+        console.log('👤 Actualizando cliente:', clienteId, { nombre, apellido, telefono, direccion, zona, saldoDinero, saldoRetornables, latitud, longitud });
+
+        // Obtener zona actual antes de actualizar (para rutas)
+        const clienteActual = await query(
+            'SELECT zona FROM clientes WHERE codigo = ? AND codigoEmpresa = ?',
+            [clienteId, req.user.codigoEmpresa]
+        );
+        const zonaAnterior = clienteActual.length > 0 ? clienteActual[0].zona : null;
 
         // Verificar si las columnas latitud y longitud existen
         let hasLocationColumns = false;
@@ -220,18 +229,27 @@ router.put('/:id', verifyToken, async (req, res) => {
         let sql, params;
         if (hasLocationColumns && latitud !== null && longitud !== null && latitud !== undefined && longitud !== undefined) {
             sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, zona = ?, telefono = ?, saldo = ?, retornables = ?, latitud = ?, longitud = ? WHERE codigo = ? AND codigoEmpresa = ?';
-            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, req.params.id, req.user.codigoEmpresa];
+            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, latitud, longitud, clienteId, req.user.codigoEmpresa];
         } else {
             sql = 'UPDATE clientes SET nombre = ?, apellido = ?, direccion = ?, zona = ?, telefono = ?, saldo = ?, retornables = ? WHERE codigo = ? AND codigoEmpresa = ?';
-            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, req.params.id, req.user.codigoEmpresa];
+            params = [nombre, apellido, direccion, zona || null, telefono, saldoDinero || 0, saldoRetornables || 0, clienteId, req.user.codigoEmpresa];
         }
 
         const updateResult = await query(sql, params);
         console.log('✅ Cliente actualizado. Filas afectadas:', updateResult.affectedRows);
+
+        const zonaNueva = zona != null && String(zona).trim() !== '' ? String(zona).trim() : null;
+        if (zonaAnterior !== zonaNueva) {
+            try {
+                await actualizarRutasPorCambioZona(req.user.codigoEmpresa, Number(clienteId), zonaAnterior, zonaNueva);
+            } catch (err) {
+                console.error('⚠️ Error actualizando rutas por cambio de zona:', err.message);
+            }
+        }
         
         const cliente = await query(
             'SELECT * FROM clientes WHERE codigo = ? AND codigoEmpresa = ?',
-            [req.params.id, req.user.codigoEmpresa]
+            [clienteId, req.user.codigoEmpresa]
         );
         
         res.json(cliente[0]);

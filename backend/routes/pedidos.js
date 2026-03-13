@@ -1,6 +1,7 @@
 const express = require('express');
 const { query, transaction } = require('../config/database');
 const { verifyToken } = require('./auth');
+const { actualizarRutasPorCambioZona } = require('../lib/rutasHelper');
 const router = express.Router();
 
 // Obtener pedidos
@@ -9,7 +10,7 @@ router.get('/', verifyToken, async (req, res) => {
         console.log('📦 Obteniendo pedidos para usuario:', req.user.telegramId);
         console.log('🏢 Código empresa:', req.user.codigoEmpresa);
 
-        const { clienteId, fecha, zona, search, estado, incluirDetalles } = req.query;
+        const { clienteId, fecha, zona, search, estado, incluirDetalles, ordenarPorRuta } = req.query;
         const cargarDetalles = incluirDetalles !== 'false'; // Por defecto true para compatibilidad
 
         // Consulta base sin columnas de ubicación
@@ -96,7 +97,15 @@ router.get('/', verifyToken, async (req, res) => {
             params.push(searchParam, searchParam, searchParam);
         }
 
-        sql += ' ORDER BY p.fechaPedido DESC';
+        if (zona && ordenarPorRuta === '1') {
+            sql = sql.replace(
+                /WHERE p\.codigoEmpresa/,
+                'LEFT JOIN rutas r ON r.codigoEmpresa = p.codigoEmpresa AND r.zona = p.zona AND r.codigoCliente = p.codigoCliente WHERE p.codigoEmpresa'
+            );
+            sql += ' ORDER BY COALESCE(r.orden, 9999) ASC, p.fechaPedido DESC';
+        } else {
+            sql += ' ORDER BY p.fechaPedido DESC';
+        }
 
         console.log('📋 Ejecutando consulta SQL:', sql);
         console.log('📋 Parámetros:', params);
@@ -307,9 +316,9 @@ router.get('/:id', verifyToken, async (req, res) => {
 // Crear pedido
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { clienteId, productos, total } = req.body;
+        const { clienteId, productos, total, zona: zonaPedido } = req.body;
 
-        console.log('📦 Creando pedido:', { clienteId, productos: productos?.length, total });
+        console.log('📦 Creando pedido:', { clienteId, productos: productos?.length, total, zona: zonaPedido });
 
         // Validaciones
         if (!clienteId) {
@@ -329,7 +338,9 @@ router.post('/', verifyToken, async (req, res) => {
             return res.status(400).json({ error: 'Cliente no encontrado' });
         }
 
+        // Usar zona enviada en el body o, si no, la zona del cliente
         const clienteZona = cliente[0].zona;
+        const zonaFinal = (zonaPedido != null && String(zonaPedido).trim() !== '') ? String(zonaPedido).trim() : (clienteZona || null);
 
         // Verificar que los productos existen (sin validar stock)
         for (const item of productos) {
@@ -348,15 +359,28 @@ router.post('/', verifyToken, async (req, res) => {
             }
         }
 
-        // Crear pedido con estado "pendient" y zona del cliente
-        // Estados posibles: "pendient", "anulado", "entregad"
+        // Crear pedido con estado "pendient" y zona (del body o del cliente)
         const result = await query(
             'INSERT INTO pedidos (codigoEmpresa, codigoCliente, codigoVendedorPedido, total, zona, FechaPedido, estado) VALUES (?, ?, ?, ?, ?, NOW(), "pendient")',
-            [req.user.codigoEmpresa, clienteId, req.user.vendedorId, total, clienteZona]
+            [req.user.codigoEmpresa, clienteId, req.user.vendedorId, total, zonaFinal]
         );
 
         const codigoPedido = result.insertId;
         console.log('✅ Pedido creado con código:', codigoPedido);
+
+        // Actualizar también la zona del cliente y la tabla rutas
+        if (zonaFinal) {
+            await query(
+                'UPDATE clientes SET zona = ? WHERE codigo = ? AND codigoEmpresa = ?',
+                [zonaFinal, clienteId, req.user.codigoEmpresa]
+            );
+            console.log(`   📍 Zona del cliente ${clienteId} actualizada a: ${zonaFinal}`);
+            try {
+                await actualizarRutasPorCambioZona(req.user.codigoEmpresa, Number(clienteId), clienteZona || null, zonaFinal);
+            } catch (err) {
+                console.error('⚠️ Error actualizando rutas por cambio de zona:', err.message);
+            }
+        }
 
         // Agregar productos al pedido y actualizar stock
         for (const item of productos) {
@@ -623,15 +647,48 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
     }
 });
 
-// Actualizar zona de pedido
+// Actualizar zona de pedido (y del cliente asociado)
 router.put('/:id/zona', verifyToken, async (req, res) => {
     try {
         const { zona } = req.body;
+        const pedidoId = req.params.id;
+
+        // Obtener el cliente del pedido y su zona actual
+        const pedido = await query(
+            'SELECT codigoCliente FROM pedidos WHERE codigo = ? AND codigoEmpresa = ?',
+            [pedidoId, req.user.codigoEmpresa]
+        );
+
+        if (pedido.length === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+
+        const codigoCliente = pedido[0].codigoCliente;
+        let zonaAnterior = null;
+        if (codigoCliente != null) {
+            const cliente = await query(
+                'SELECT zona FROM clientes WHERE codigo = ? AND codigoEmpresa = ?',
+                [codigoCliente, req.user.codigoEmpresa]
+            );
+            zonaAnterior = cliente.length > 0 ? cliente[0].zona : null;
+        }
 
         await query(
             'UPDATE pedidos SET zona = ? WHERE codigo = ? AND codigoEmpresa = ?',
-            [zona, req.params.id, req.user.codigoEmpresa]
+            [zona, pedidoId, req.user.codigoEmpresa]
         );
+
+        if (codigoCliente != null) {
+            await query(
+                'UPDATE clientes SET zona = ? WHERE codigo = ? AND codigoEmpresa = ?',
+                [zona, codigoCliente, req.user.codigoEmpresa]
+            );
+            try {
+                await actualizarRutasPorCambioZona(req.user.codigoEmpresa, Number(codigoCliente), zonaAnterior, zona);
+            } catch (err) {
+                console.error('⚠️ Error actualizando rutas por cambio de zona:', err.message);
+            }
+        }
 
         res.json({ success: true });
 

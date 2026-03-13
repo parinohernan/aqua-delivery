@@ -27,6 +27,11 @@ export const endpoints = {
   zonas: () => API_ENDPOINTS.ZONAS,
   zona: (id: number) => `${API_ENDPOINTS.ZONAS}/${id}`,
   
+  // Rutas de reparto
+  rutas: () => API_ENDPOINTS.RUTAS,
+  rutasByZona: (zona: string) => `${API_ENDPOINTS.RUTAS}?zona=${encodeURIComponent(zona)}`,
+  rutasClientes: (zona: string) => `${API_ENDPOINTS.RUTAS}/clientes?zona=${encodeURIComponent(zona)}`,
+  
   // Tipos de pago
   tiposPago: () => API_ENDPOINTS.TIPOS_PAGO,
   tipoPago: (id: number) => `${API_ENDPOINTS.TIPOS_PAGO}/${id}`,

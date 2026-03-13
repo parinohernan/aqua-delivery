@@ -13,8 +13,15 @@ class PedidosService {
    * Obtiene todos los pedidos
    * @param incluirDetalles - Si es false, no carga los detalles de items (más rápido)
    * @param estado - Filtrar por estado (pendient, proceso, entregad, anulado)
+   * @param zona - Filtrar por zona; si se pasa, puede usarse ordenarPorRuta para orden por ruta
+   * @param ordenarPorRuta - Si true y hay zona, el backend ordena por orden de reparto
    */
-  async getAll(incluirDetalles: boolean = true, estado?: string): Promise<Pedido[]> {
+  async getAll(
+    incluirDetalles: boolean = true,
+    estado?: string,
+    zona?: string,
+    ordenarPorRuta?: boolean
+  ): Promise<Pedido[]> {
     try {
       const params = new URLSearchParams();
       if (!incluirDetalles) {
@@ -22,6 +29,12 @@ class PedidosService {
       }
       if (estado && estado !== 'todos') {
         params.append('estado', estado);
+      }
+      if (zona && zona.trim()) {
+        params.append('zona', zona.trim());
+        if (ordenarPorRuta) {
+          params.append('ordenarPorRuta', '1');
+        }
       }
 
       const queryString = params.toString();

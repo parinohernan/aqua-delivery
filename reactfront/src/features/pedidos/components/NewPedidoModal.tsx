@@ -33,7 +33,8 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [zonas, setZonas] = useState<Array<{ id: number; nombre: string }>>([]);
+  const [zonas, setZonas] = useState<Array<{ id: number; zona: string }>>([]);
+  const [selectedZona, setSelectedZona] = useState<string>('');
   
   const [clientSearch, setClientSearch] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -101,7 +102,7 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
       const [clientesData, productosData, zonasData] = await Promise.all([
         clientesService.getAll(),
         productosService.getAll(),
-        apiClient.get<Array<{ id: number; nombre: string }>>(endpoints.zonas()),
+        apiClient.get<Array<{ id: number; zona: string }>>(endpoints.zonas()),
       ]);
 
       // Solo clientes y productos activos para crear pedido
@@ -116,14 +117,23 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
     }
   };
 
+  const getZonaNombre = (c: Cliente): string => {
+    const z = (c as unknown as { zona?: string | { zona?: string } }).zona;
+    return (typeof z === 'string' ? z : z?.zona) ?? '';
+  };
+
+  const clientZonaNombre = selectedCliente ? getZonaNombre(selectedCliente) : '';
+
   const handleSelectCliente = (cliente: Cliente) => {
     setSelectedCliente(cliente);
+    setSelectedZona(getZonaNombre(cliente));
     setClientSearch('');
     setShowClientDropdown(false);
   };
 
   const handleClearCliente = () => {
     setSelectedCliente(null);
+    setSelectedZona('');
     setClientSearch('');
   };
 
@@ -206,6 +216,7 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
           precio: item.precio,
         })),
         total: calculateTotal(),
+        ...(selectedZona.trim() && { zona: selectedZona.trim() }),
       };
       
       console.log('📦 Creando pedido con datos:', pedidoData);
@@ -229,6 +240,7 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
 
   const handleClose = () => {
     setSelectedCliente(null);
+    setSelectedZona('');
     setClientSearch('');
     setOrderItems([]);
     setSelectedProductId('');
@@ -317,6 +329,37 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
               </div>
             )}
           </div>
+
+          {/* Zona del pedido (por defecto la del cliente) */}
+          {selectedCliente && (
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Zona del pedido
+              </label>
+              <select
+                value={selectedZona}
+                onChange={(e) => setSelectedZona(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm"
+              >
+                <option value="" className="bg-[#0f1b2e]">
+                  Sin zona
+                </option>
+                {clientZonaNombre && !zonas.some((z) => z.zona === clientZonaNombre) && (
+                  <option value={clientZonaNombre} className="bg-[#0f1b2e]">
+                    {clientZonaNombre} (del cliente)
+                  </option>
+                )}
+                {zonas.map((z) => (
+                  <option key={z.id} value={z.zona} className="bg-[#0f1b2e]">
+                    {z.zona}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-white/50 mt-1">
+                Por defecto se usa la zona del cliente. Podés cambiarla si hace falta.
+              </p>
+            </div>
+          )}
 
           {/* Agregar Productos */}
           <div>
