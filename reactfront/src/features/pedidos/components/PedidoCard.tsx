@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   MapPin,
   Calendar,
@@ -73,11 +73,14 @@ function PedidoCard({ pedido }: PedidoCardProps) {
   const [showProgramarModal, setShowProgramarModal] = useState(false);
   const [hovered, setHovered] = useState(false);
   
-  // Estado para zona (select nativo = más rápido y simple en móvil)
+  // Estado para zona: en card solo texto; al tocar se abre popover (opción 4)
   const [zonas, setZonas] = useState<Zona[]>([]);
   const [nuevaZona, setNuevaZona] = useState('');
   const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
+  const [showZonaPopover, setShowZonaPopover] = useState(false);
   const [isUpdatingZona, setIsUpdatingZona] = useState(false);
+  const zonaTriggerRef = useRef<HTMLDivElement>(null);
+  const zonaPopoverRef = useRef<HTMLDivElement>(null);
 
   const id = pedido.codigo || pedido.id;
   const nombreCliente =
@@ -113,6 +116,7 @@ function PedidoCard({ pedido }: PedidoCardProps) {
       await pedidosService.updateZona(Number(id), zona);
       await loadPedidos();
       toast.success(`Zona actualizada a "${zona}"`);
+      setShowZonaPopover(false);
     } catch (error) {
       toast.error('Error actualizando zona');
     } finally {
@@ -132,12 +136,28 @@ function PedidoCard({ pedido }: PedidoCardProps) {
       toast.success(`Zona "${nuevaZona}" creada y asignada`);
       setNuevaZona('');
       setShowNuevaZonaInput(false);
+      setShowZonaPopover(false);
     } catch (error) {
       toast.error('Error creando zona');
     } finally {
       setIsUpdatingZona(false);
     }
   };
+
+  // Cerrar popover de zona al hacer click fuera
+  useEffect(() => {
+    if (!showZonaPopover) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        zonaTriggerRef.current?.contains(target) ||
+        zonaPopoverRef.current?.contains(target)
+      ) return;
+      setShowZonaPopover(false);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showZonaPopover]);
 
   const handleCancelar = async () => {
     const ok = await confirm({
@@ -210,36 +230,34 @@ function PedidoCard({ pedido }: PedidoCardProps) {
           </span>
         </div>
 
-        {/* ── Badge de estado ─────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span
-            style={{
-              display: 'inline-block',
-              padding: '3px 10px',
-              borderRadius: '999px',
-              fontSize: '0.65rem',
-              fontWeight: 600,
-              letterSpacing: '0.1em',
-              color: estadoCfg.color,
-              background: estadoCfg.bg,
-              border: `1px solid ${estadoCfg.color}40`,
-            }}
-          >
-            {estadoCfg.label}
-          </span>
-        </div>
-
         {/* ── Info ────────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* Fecha del pedido */}
-          {fechaPedido && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={14} color="#94A3B8" />
-              <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>
-                {formatDateTimeShort(fechaPedido)}
-              </span>
-            </div>
-          )}
+          {/* Fecha del pedido y estado en la misma línea */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+            {fechaPedido ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={14} color="#94A3B8" />
+                <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>
+                  {formatDateTimeShort(fechaPedido)}
+                </span>
+              </div>
+            ) : <span />}
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '3px 10px',
+                borderRadius: '999px',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                letterSpacing: '0.1em',
+                color: estadoCfg.color,
+                background: estadoCfg.bg,
+                border: `1px solid ${estadoCfg.color}40`,
+              }}
+            >
+              {estadoCfg.label}
+            </span>
+          </div>
           
           {/* Fecha programada o botón para programar */}
           {estado === 'entregad' && fechaEntrega ? (
@@ -250,63 +268,86 @@ function PedidoCard({ pedido }: PedidoCardProps) {
               </span>
             </div>
           ) : fechaProgramada ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              role={isActive ? 'button' : undefined}
+              onClick={isActive ? () => setShowProgramarModal(true) : undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: isActive ? 'pointer' : 'default',
+                opacity: isActive ? 1 : 0.9,
+              }}
+              title={isActive ? 'Tocá para cambiar fecha programada' : undefined}
+            >
               <Clock size={14} color="#3B82F6" />
               <span style={{ fontSize: '0.82rem', color: '#3B82F6' }}>
                 Programado: {formatDateTimeShort(fechaProgramada)}
               </span>
-              {isActive && (
-                <button
-                  onClick={() => setShowProgramarModal(true)}
-                  style={{
-                    padding: '2px 6px',
-                    fontSize: '0.7rem',
-                    background: 'rgba(59,130,246,0.2)',
-                    border: '1px solid rgba(59,130,246,0.4)',
-                    borderRadius: '4px',
-                    color: '#3B82F6',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cambiar
-                </button>
-              )}
             </div>
-          ) : isActive ? (
-            <button
-              onClick={() => setShowProgramarModal(true)}
+          ) : (
+            <div
+              role={isActive ? 'button' : undefined}
+              onClick={isActive ? () => setShowProgramarModal(true) : undefined}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 10px',
-                fontSize: '0.78rem',
-                background: 'rgba(59,130,246,0.15)',
-                border: '1px solid rgba(59,130,246,0.3)',
-                borderRadius: '8px',
-                color: '#60A5FA',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
+                gap: '8px',
+                cursor: isActive ? 'pointer' : 'default',
+              }}
+              title={isActive ? 'Tocá para programar entrega' : undefined}
+            >
+              <Clock size={14} color="#6B7280" />
+              <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>
+                Sin programar
+              </span>
+            </div>
+          )}
+          
+          {/* Zona: solo texto; al tocar (activo) abre popover con select y agregar (opción 4) */}
+          <div style={{ position: 'relative' }}>
+            <div
+              ref={zonaTriggerRef}
+              role={isActive ? 'button' : undefined}
+              onClick={isActive ? (e) => { e.stopPropagation(); setShowZonaPopover((v) => !v); } : undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: isActive ? 'pointer' : 'default',
                 width: 'fit-content',
               }}
+              title={isActive ? 'Tocá para cambiar zona' : undefined}
             >
-              <Clock size={14} />
-              Programar entrega
-            </button>
-          ) : null}
-          
-          {/* Zona: select nativo (rápido y simple en móvil) + botón agregar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <Map size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
-            {isActive ? (
-              <>
+              <Map size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.82rem', color: zonaActual ? '#94A3B8' : '#6B7280' }}>
+                {zonaActual || 'Sin zona'}
+              </span>
+            </div>
+            {showZonaPopover && isActive && (
+              <div
+                ref={zonaPopoverRef}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: '100%',
+                  marginTop: '6px',
+                  minWidth: '200px',
+                  padding: '10px',
+                  background: '#1a1a2e',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '10px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  zIndex: 60,
+                }}
+              >
+                <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginBottom: '8px' }}>Zona</div>
                 <select
                   value={zonaActual || ''}
                   onChange={(e) => handleZonaChange(e.target.value || '')}
                   disabled={isUpdatingZona}
                   style={{
-                    flex: 1,
-                    minWidth: '120px',
+                    width: '100%',
                     padding: '8px 10px',
                     fontSize: '0.82rem',
                     color: '#E2E8F0',
@@ -314,6 +355,7 @@ function PedidoCard({ pedido }: PedidoCardProps) {
                     border: '1px solid rgba(255,255,255,0.2)',
                     borderRadius: '8px',
                     cursor: 'pointer',
+                    marginBottom: '8px',
                   }}
                 >
                   <option value="" style={{ background: '#1a1a2e' }}>Sin zona</option>
@@ -326,80 +368,87 @@ function PedidoCard({ pedido }: PedidoCardProps) {
                     <option value={zonaActual} style={{ background: '#1a1a2e' }}>{zonaActual}</option>
                   )}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => setShowNuevaZonaInput((s) => !s)}
-                  style={{
-                    padding: '6px 8px',
-                    background: 'transparent',
-                    border: '1px solid rgba(96,165,250,0.5)',
-                    borderRadius: '8px',
-                    color: '#60A5FA',
-                    cursor: 'pointer',
-                  }}
-                  title="Agregar zona"
-                >
-                  <Plus size={16} />
-                </button>
-                {showNuevaZonaInput && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', marginTop: '4px' }}>
+                {showNuevaZonaInput ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <input
                       type="text"
                       value={nuevaZona}
                       onChange={(e) => setNuevaZona(e.target.value)}
                       placeholder="Nombre de zona"
                       style={{
-                        flex: 1,
+                        width: '100%',
                         padding: '6px 10px',
                         fontSize: '0.82rem',
                         background: 'rgba(255,255,255,0.08)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         borderRadius: '8px',
                         color: '#fff',
+                        boxSizing: 'border-box',
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleCrearZona();
                         if (e.key === 'Escape') setShowNuevaZonaInput(false);
                       }}
                     />
-                    <button
-                      type="button"
-                      onClick={handleCrearZona}
-                      disabled={!nuevaZona.trim() || isUpdatingZona}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#22C55E',
-                        border: 'none',
-                        borderRadius: '8px',
-                        color: '#fff',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Crear
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowNuevaZonaInput(false); setNuevaZona(''); }}
-                      style={{
-                        padding: '6px 10px',
-                        background: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: '8px',
-                        color: '#94A3B8',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ×
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={handleCrearZona}
+                        disabled={!nuevaZona.trim() || isUpdatingZona}
+                        style={{
+                          flex: 1,
+                          padding: '6px 10px',
+                          background: '#22C55E',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: '#fff',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Crear
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNuevaZonaInput(false); setNuevaZona(''); }}
+                        style={{
+                          padding: '6px 10px',
+                          background: 'transparent',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '8px',
+                          color: '#94A3B8',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowNuevaZonaInput(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      width: '100%',
+                      padding: '6px 10px',
+                      background: 'transparent',
+                      border: '1px solid rgba(96,165,250,0.5)',
+                      borderRadius: '8px',
+                      color: '#60A5FA',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Plus size={14} />
+                    Agregar zona
+                  </button>
                 )}
-              </>
-            ) : (
-              <span style={{ fontSize: '0.82rem', color: zonaActual ? '#94A3B8' : '#6B7280' }}>
-                {zonaActual || 'Sin zona'}
-              </span>
+              </div>
             )}
           </div>
           
@@ -441,12 +490,12 @@ function PedidoCard({ pedido }: PedidoCardProps) {
 
         {/* ── Acciones ────────────────────────────────────────────────────── */}
         {isActive && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
             {/* Botón Entregar — protagonista con glow */}
             <button
               onClick={() => setShowEntregarModal(true)}
               style={{
-                width: '100%',
+                flex: 1,
                 padding: '12px',
                 borderRadius: '10px',
                 border: 'none',
@@ -481,7 +530,7 @@ function PedidoCard({ pedido }: PedidoCardProps) {
               <button
                 onClick={handleCancelar}
                 style={{
-                  width: '100%',
+                  flex: 1,
                   padding: '10px',
                   borderRadius: '10px',
                   border: '1px solid rgba(239,68,68,0.4)',
