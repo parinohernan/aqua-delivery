@@ -77,8 +77,13 @@ function ClienteCard2({ cliente }: ClienteCard2Props) {
           </p>
         )}
         {retornables > 0 && (
-          <p style={{ fontSize: '0.82rem', color: '#94A3B8', margin: '0 0 12px 0' }}>
+          <p style={{ fontSize: '0.82rem', color: '#94A3B8', margin: '0 0 6px 0' }}>
             {retornables} retornable{retornables !== 1 ? 's' : ''}
+          </p>
+        )}
+        {retornables < 0 && (
+          <p style={{ fontSize: '0.82rem', color: '#22C55E', fontWeight: 500, margin: '0 0 12px 0' }}>
+            {Math.abs(retornables)} envase{Math.abs(retornables) !== 1 ? 's' : ''} a favor
           </p>
         )}
 

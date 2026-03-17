@@ -143,6 +143,14 @@ function ClienteCard({ cliente }: ClienteCardProps) {
               </span>
             </div>
           )}
+          {retornables < 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <RotateCcw size={14} color="#22C55E" />
+              <span style={{ fontSize: '0.82rem', color: '#22C55E', fontWeight: 500 }}>
+                {Math.abs(retornables)} envase{Math.abs(retornables) !== 1 ? 's' : ''} a favor
+              </span>
+            </div>
+          )}
         </div>
 
         {/* ── Acciones ───────────────────────────────────────────── */}

@@ -26,7 +26,8 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
   const [tiposPago, setTiposPago] = useState<TipoPago[]>([]);
   const [selectedTipoPago, setSelectedTipoPago] = useState<number | ''>('');
   const [montoCobrado, setMontoCobrado] = useState<string>('');
-  const [retornablesDevueltos, setRetornablesDevueltos] = useState<number>(0);
+  const [retornablesDevueltosInput, setRetornablesDevueltosInput] = useState<string>('');
+  const [usarSaldoAFavor, setUsarSaldoAFavor] = useState(false);
   const [pedidoItems, setPedidoItems] = useState<PedidoItem[]>([]);
   const [totalRetornables, setTotalRetornables] = useState<number>(0);
   
@@ -56,7 +57,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
         if (aplicaSaldo) {
           setMontoCobrado('0');
         } else if (pedido && (!montoCobrado || montoCobrado === '0.00')) {
-          setMontoCobrado((pedido.total || 0).toFixed(2));
+          setMontoCobrado((Number(pedido.total) || 0).toFixed(2));
         }
       }
     }
@@ -76,7 +77,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
       }, 0);
       
       setTotalRetornables(total);
-      setRetornablesDevueltos(total); // Por defecto, devolver todos
+      // Sin valor por defecto: el usuario debe ingresar cuántos entrega
     }
   }, [pedidoItems, pedido]);
 
@@ -97,13 +98,8 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
 
     try {
       // Inicializar monto cobrado con el total del pedido (hacerlo primero, síncrono)
-      // Asegurar que total sea un número antes de usar toFixed
-      const totalPedido = typeof pedido.total === 'number' 
-        ? pedido.total 
-        : typeof pedido.total === 'string' 
-          ? parseFloat(pedido.total) || 0 
-          : 0;
-      setMontoCobrado(totalPedido.toFixed(2));
+      const totalPedidoInicial = Number(pedido.total) || 0;
+      setMontoCobrado(totalPedidoInicial.toFixed(2));
 
       // Cargar detalles del pedido solo si no están disponibles
       // Si el pedido ya tiene items, usamos esos datos
@@ -189,6 +185,18 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
       return;
     }
 
+    const retornablesDevueltosNum = totalRetornables > 0
+      ? (parseInt(retornablesDevueltosInput, 10) || 0)
+      : 0;
+    if (totalRetornables > 0 && (retornablesDevueltosInput === '' || Number.isNaN(parseInt(retornablesDevueltosInput, 10)))) {
+      setError('Ingresá cuántos retornables entregó el cliente');
+      return;
+    }
+    if (totalRetornables > 0 && retornablesDevueltosNum < 0) {
+      setError('Los retornables entregados no pueden ser negativos');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -196,14 +204,16 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
       const pedidoId = pedido.codigo || pedido.id;
       const tipoPagoId = Number(selectedTipoPago);
       const monto = parseFloat(montoCobrado) || 0;
-      const totalPedido = pedido.total || 0;
+      const totalPedidoNum = Number(pedido.total) || 0;
 
+      const pagoConSaldoAFavor = showMontoCobrado() && usarSaldoAFavor;
       const entregaData = {
         tipoPago: tipoPagoId,
-        montoCobrado: aplicaSaldo() ? 0 : monto,
-        retornablesDevueltos: retornablesDevueltos,
+        montoCobrado: aplicaSaldo() ? 0 : (pagoConSaldoAFavor ? 0 : monto),
+        retornablesDevueltos: retornablesDevueltosNum,
         totalRetornables: totalRetornables,
-        totalPedido: totalPedido,
+        totalPedido: totalPedidoNum,
+        ...(pagoConSaldoAFavor ? { usarSaldoAFavor: true } : {}),
       };
 
       console.log('🚚 Procesando entrega:', entregaData);
@@ -231,16 +241,30 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
   const handleClose = () => {
     setSelectedTipoPago('');
     setMontoCobrado('');
-    setRetornablesDevueltos(0);
+    setRetornablesDevueltosInput('');
+    setUsarSaldoAFavor(false);
     setError(null);
     onClose();
   };
 
   const tipoPago = getSelectedTipoPago();
-  const totalPedido = pedido?.total || 0;
+  const totalPedido = Number(pedido?.total) || 0;
   const monto = parseFloat(montoCobrado) || 0;
   const diferencia = totalPedido - monto;
+  const retornablesDevueltos = totalRetornables > 0 ? (parseInt(retornablesDevueltosInput, 10) || 0) : 0;
   const retornablesNoDevueltos = totalRetornables - retornablesDevueltos;
+  // Saldo del cliente: > 0 = debe, < 0 = a favor
+  const saldoCliente = Number(pedido?.cliente_saldo ?? pedido?.cliente?.saldo ?? 0);
+  const tieneDeuda = saldoCliente > 0;
+  const tieneSaldoAFavor = saldoCliente < 0;
+  const mostrarBloqueSaldo = tieneDeuda || tieneSaldoAFavor;
+  const totalConDeuda = totalPedido + saldoCliente; // con deuda: suma; con crédito: totalPedido + (negativo) = resto a pagar
+  const totalAPagarConCredito = Math.max(0, totalPedido + saldoCliente);
+  // Nuevo saldo del cliente después del cobro: saldo + total pedido - monto cobrado
+  const nuevoSaldoCliente = saldoCliente + totalPedido - monto;
+  // Saldo retornables: > 0 = adeudados, < 0 = a favor
+  const saldoRetornables = Number(pedido?.cliente_retornables ?? pedido?.cliente?.retornables ?? 0);
+  const saldoRetornablesDespues = saldoRetornables + totalRetornables - retornablesDevueltos;
 
   return (
     <dialog
@@ -287,6 +311,28 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                   <div><strong>📅 Fecha:</strong> {formatDate(pedido.fecha)}</div>
                 )}
                 <div><strong>💰 Total:</strong> {formatCurrency(totalPedido)}</div>
+                {mostrarBloqueSaldo && tieneDeuda && (
+                  <>
+                    <div className="text-amber-300"><strong>📋 Deuda anterior:</strong> {formatCurrency(saldoCliente)}</div>
+                    <div className="text-amber-300 font-medium"><strong>💵 Total con deuda:</strong> {formatCurrency(totalConDeuda)}</div>
+                  </>
+                )}
+                {mostrarBloqueSaldo && tieneSaldoAFavor && (
+                  <>
+                    <div className="text-emerald-300"><strong>📋 Saldo a favor:</strong> {formatCurrency(Math.abs(saldoCliente))}</div>
+                    <div className="text-emerald-300 font-medium"><strong>💵 Total a pagar (después de descontar crédito):</strong> {formatCurrency(totalAPagarConCredito)}</div>
+                  </>
+                )}
+                {(saldoRetornables !== 0 || (pedidoItems.length > 0 && totalRetornables > 0)) && (
+                  <div className={saldoRetornables > 0 ? 'text-yellow-300' : saldoRetornables < 0 ? 'text-emerald-300' : 'text-white/90'}>
+                    <strong>🔄 Saldo de retornables:</strong>{' '}
+                    {saldoRetornables > 0
+                      ? `${saldoRetornables} envase${saldoRetornables !== 1 ? 's' : ''} adeudados`
+                      : saldoRetornables < 0
+                        ? `${Math.abs(saldoRetornables)} envase${Math.abs(saldoRetornables) !== 1 ? 's' : ''} a favor`
+                        : '0'}
+                  </div>
+                )}
                 {pedidoItems.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-primary-500/30">
                     <div className="font-medium mb-1 text-white flex items-center gap-1.5"><Package size={15} /> Productos:</div>
@@ -353,9 +399,43 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
             {/* Monto Cobrado (solo si no aplica saldo) */}
             {showMontoCobrado() && (
               <div>
+                {tieneSaldoAFavor && (
+                  <label className="flex items-center gap-2 mb-3 p-3 bg-emerald-500/20 border border-emerald-500/50 rounded-lg cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={usarSaldoAFavor}
+                      onChange={(e) => {
+                        setUsarSaldoAFavor(e.target.checked);
+                        if (e.target.checked) setMontoCobrado('0');
+                      }}
+                      className="rounded border-white/30 bg-white/10 text-emerald-500 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-emerald-200 font-medium">Usar saldo a favor para este pedido</span>
+                  </label>
+                )}
                 <label className="block text-sm font-medium text-white mb-2">
-                  Monto Cobrado *
+                  Monto Cobrado {usarSaldoAFavor ? '(no aplica)' : '*'}
                 </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button
+                    type="button"
+                    disabled={usarSaldoAFavor}
+                    onClick={() => setMontoCobrado(totalPedido.toFixed(2))}
+                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Total del pedido ({formatCurrency(totalPedido)})
+                  </button>
+                  {mostrarBloqueSaldo && (
+                    <button
+                      type="button"
+                      disabled={usarSaldoAFavor}
+                      onClick={() => setMontoCobrado(Math.max(0, totalPedido + saldoCliente).toFixed(2))}
+                      className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {tieneDeuda ? `Total con deuda (${formatCurrency(totalConDeuda)})` : `Total a pagar (${formatCurrency(totalAPagarConCredito)})`}
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">$</span>
                   <input
@@ -365,13 +445,16 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                     onChange={(e) => setMontoCobrado(e.target.value)}
                     step="0.01"
                     min="0"
-                    className="w-full pl-8 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
+                    disabled={usarSaldoAFavor}
+                    className="w-full pl-8 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm disabled:opacity-60"
                     placeholder="0.00"
                   />
                 </div>
-                <p className="mt-1 text-xs text-white/60">
-                  Total del pedido: {formatCurrency(totalPedido)}. Puede cobrar más o menos del total.
-                </p>
+                {!usarSaldoAFavor && (
+                  <p className="mt-1 text-xs text-white/60">
+                    Ingreso manual. Total del pedido: {formatCurrency(totalPedido)}.
+                  </p>
+                )}
               </div>
             )}
 
@@ -380,7 +463,14 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
               <div>
                 <div className="p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg mb-3 backdrop-blur-sm">
                   <p className="text-sm text-yellow-300">
-                    <strong>🔄 El pedido tiene {totalRetornables} retornables</strong>
+                    <strong>🔄 Saldo retornables:</strong>{' '}
+                    {saldoRetornables > 0
+                      ? `${saldoRetornables} adeudados`
+                      : saldoRetornables < 0
+                        ? `${Math.abs(saldoRetornables)} a favor`
+                        : '0'}
+                    <span className="text-yellow-200/90"> · Envases del pedido: {totalRetornables}</span>
+                    <span className="text-yellow-100 font-semibold">. Neto antes de esta entrega: {totalRetornables + saldoRetornables}</span>
                   </p>
                 </div>
                 
@@ -390,21 +480,18 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
-                    value={retornablesDevueltos}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 0;
-                      setRetornablesDevueltos(Math.max(0, Math.min(value, totalRetornables)));
-                    }}
+                    value={retornablesDevueltosInput}
+                    onChange={(e) => setRetornablesDevueltosInput(e.target.value)}
                     min="0"
-                    max={totalRetornables}
-                    className="w-24 px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white backdrop-blur-sm"
+                    placeholder="—"
+                    className="w-24 px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/40 backdrop-blur-sm"
                   />
                   <span className="text-sm text-white/70">
-                    de {totalRetornables} retornables adeudados
+                    del pedido: {totalRetornables}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-white/60">
-                  Los retornables no entregados quedarán como adeudados en la cuenta del cliente.
+                  Podés ingresar más de {totalRetornables} si el cliente devuelve envases de pedidos anteriores; el saldo de envases puede quedar a favor.
                 </p>
               </div>
             )}
@@ -423,12 +510,38 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                         <strong>💰 Monto:</strong> {formatCurrency(totalPedido)} (se sumará al saldo del cliente)
                       </div>
                     </>
+                  ) : usarSaldoAFavor ? (
+                    <>
+                      <div>
+                        <strong>💳 Pago:</strong> {tipoPago?.pago || tipoPago?.nombre} - Con saldo a favor
+                      </div>
+                      <div className="text-emerald-200">
+                        <strong>💵 Se usará el saldo a favor</strong> para pagar este pedido ({formatCurrency(totalPedido)}). No se cobra efectivo.
+                      </div>
+                    </>
                   ) : (
                     <>
                       <div>
                         <strong>💰 Pago:</strong> {tipoPago?.pago || tipoPago?.nombre} - {formatCurrency(monto)}
                       </div>
-                      {diferencia !== 0 && (
+                      {tieneDeuda && monto >= totalPedido && monto <= totalConDeuda && monto > totalPedido && (
+                        <div className="text-white/90">
+                          <strong>📋 Aplica a deuda anterior:</strong> {formatCurrency(monto - totalPedido)}
+                        </div>
+                      )}
+                      {tieneDeuda && monto > totalConDeuda && (
+                        <div className="text-green-300">
+                          <strong>📊 Vuelto:</strong> {formatCurrency(monto - totalConDeuda)}
+                        </div>
+                      )}
+                      {(tieneDeuda || tieneSaldoAFavor) && (
+                        <div className={nuevoSaldoCliente > 0 ? 'text-amber-300' : nuevoSaldoCliente < 0 ? 'text-emerald-300' : 'text-white/90'}>
+                          <strong>📊 Nuevo saldo:</strong>{' '}
+                          {formatCurrency(Math.abs(nuevoSaldoCliente))}
+                          {nuevoSaldoCliente > 0 ? ' a cobrar' : nuevoSaldoCliente < 0 ? ' a favor' : ''}
+                        </div>
+                      )}
+                      {!tieneDeuda && !tieneSaldoAFavor && diferencia !== 0 && (
                         <div className={diferencia > 0 ? 'text-red-300' : 'text-green-300'}>
                           <strong>📊 Diferencia:</strong> {formatCurrency(Math.abs(diferencia))} {diferencia > 0 ? '(faltante)' : '(vuelto)'}
                         </div>
@@ -436,16 +549,33 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
                     </>
                   )}
                   
-                  {totalRetornables > 0 && (
+                  {(totalRetornables > 0 || saldoRetornables !== 0) && (
                     <>
                       <div>
-                        <strong>🔄 Retornables devueltos:</strong> {retornablesDevueltos} de {totalRetornables}
+                        <strong>🔄 Saldo retornables (actual):</strong>{' '}
+                        {saldoRetornables > 0
+                          ? `${saldoRetornables} envase${saldoRetornables !== 1 ? 's' : ''} adeudados`
+                          : saldoRetornables < 0
+                            ? `${Math.abs(saldoRetornables)} envase${Math.abs(saldoRetornables) !== 1 ? 's' : ''} a favor`
+                            : '0'}
                       </div>
-                      {retornablesNoDevueltos > 0 && (
-                        <div className="text-yellow-300">
-                          <strong>⚠️ Retornables pendientes:</strong> {retornablesNoDevueltos} (se sumarán al saldo del cliente)
+                      {totalRetornables > 0 && (
+                        <div>
+                          <strong>🔄 Retornables devueltos:</strong> {retornablesDevueltosInput === '' ? '—' : retornablesDevueltos} {retornablesDevueltos >= totalRetornables ? `(del pedido: ${totalRetornables})` : `de ${totalRetornables}`}
+                          {retornablesNoDevueltos < 0 && (
+                            <span className="text-emerald-300"> · El cliente devolvió más de lo que debía</span>
+                          )}
                         </div>
                       )}
+                      <div className="text-white/90">
+                        <strong>🔄 Saldo retornables después de esta entrega:</strong>{' '}
+                        {saldoRetornablesDespues >= 0
+                          ? `${saldoRetornablesDespues} adeudados`
+                          : `${Math.abs(saldoRetornablesDespues)} a favor`}
+                        {totalRetornables > 0 && retornablesNoDevueltos > 0 && (
+                          <span className="text-yellow-300"> ({retornablesNoDevueltos} pendiente{retornablesNoDevueltos !== 1 ? 's' : ''} de este pedido se sumarán al saldo)</span>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>

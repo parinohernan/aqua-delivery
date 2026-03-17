@@ -22,7 +22,7 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
   
   const [tiposPago, setTiposPago] = useState<TipoPago[]>([]);
   const [selectedTipoPago, setSelectedTipoPago] = useState<number | ''>('');
-  const [monto, setMonto] = useState<string>('');
+  const [monto, setMonto] = useState<string>('0');
   const [retornablesDevueltos, setRetornablesDevueltos] = useState<number>(0);
   const [observaciones, setObservaciones] = useState<string>('');
   
@@ -35,9 +35,9 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
     if (isOpen) {
       loadTiposPago();
       if (cliente) {
-        // Inicializar retornables devueltos en 0
+        // Inicializar retornables devueltos en 0; monto en 0 (caso típico: devolución de retornables sin abonar)
         setRetornablesDevueltos(0);
-        setMonto('');
+        setMonto('0');
         setObservaciones('');
         setSelectedTipoPago('');
       }

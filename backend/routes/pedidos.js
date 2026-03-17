@@ -16,6 +16,7 @@ router.get('/', verifyToken, async (req, res) => {
         // Consulta base sin columnas de ubicación
         let sql = `
             SELECT p.codigo as id,
+                   p.codigoCliente,
                    p.fechaPedido as fecha_pedido,
                    p.FechaProgramada as fecha_programada,
                    p.FechaEntrega as fecha_entrega,
@@ -27,6 +28,8 @@ router.get('/', verifyToken, async (req, res) => {
                    c.apellido,
                    c.direccion,
                    c.telefono,
+                   COALESCE(c.saldo, 0) as cliente_saldo,
+                   COALESCE(c.retornables, 0) as cliente_retornables,
                    NULL as latitud,
                    NULL as longitud,
                    v1.nombre as vendedor_pedido,
@@ -45,6 +48,7 @@ router.get('/', verifyToken, async (req, res) => {
 
             sql = `
                 SELECT p.codigo as id,
+                       p.codigoCliente,
                        p.fechaPedido as fecha_pedido,
                        p.FechaProgramada as fecha_programada,
                        p.FechaEntrega as fecha_entrega,
@@ -56,6 +60,8 @@ router.get('/', verifyToken, async (req, res) => {
                        c.apellido,
                        c.direccion,
                        c.telefono,
+                       COALESCE(c.saldo, 0) as cliente_saldo,
+                       COALESCE(c.retornables, 0) as cliente_retornables,
                        c.latitud,
                        c.longitud,
                        v1.nombre as vendedor_pedido,
@@ -200,7 +206,9 @@ router.get('/:id', verifyToken, async (req, res) => {
                 c.apellido as cliente_apellido,
                 c.telefono as cliente_telefono,
                 c.direccion as cliente_direccion,
-                c.zona as cliente_zona
+                c.zona as cliente_zona,
+                COALESCE(c.saldo, 0) as cliente_saldo,
+                COALESCE(c.retornables, 0) as cliente_retornables
             FROM pedidos p
             JOIN clientes c ON p.codigoCliente = c.codigo
             WHERE p.codigo = ? AND p.codigoEmpresa = ?
@@ -248,8 +256,12 @@ router.get('/:id', verifyToken, async (req, res) => {
                 apellido: pedidoData.cliente_apellido,
                 telefono: pedidoData.cliente_telefono,
                 direccion: pedidoData.cliente_direccion,
-                zona: pedidoData.cliente_zona
+                zona: pedidoData.cliente_zona,
+                saldo: parseFloat(pedidoData.cliente_saldo || 0),
+                retornables: parseInt(pedidoData.cliente_retornables || 0, 10)
             },
+            cliente_saldo: parseFloat(pedidoData.cliente_saldo || 0),
+            cliente_retornables: parseInt(pedidoData.cliente_retornables || 0, 10),
             // Campos adicionales para compatibilidad
             cliente_nombre: pedidoData.cliente_nombre,
             cliente_apellido: pedidoData.cliente_apellido,
@@ -797,11 +809,16 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             montoCobrado,
             retornablesDevueltos,
             totalRetornables,
-            totalPedido
+            totalPedido,
+            usarSaldoAFavor
         } = req.body;
 
+        const montoCobradoNum = parseFloat(montoCobrado) || 0;
+        const totalPedidoNum = parseFloat(totalPedido) || 0;
+        const pagoConSaldoAFavor = Boolean(usarSaldoAFavor);
+
         console.log('🚚 Procesando entrega del pedido:', pedidoId);
-        console.log('📋 Datos de entrega:', { tipoPago, montoCobrado, retornablesDevueltos, totalRetornables, totalPedido });
+        console.log('📋 Datos de entrega:', { tipoPago, montoCobrado: montoCobradoNum, retornablesDevueltos, totalRetornables, totalPedido: totalPedidoNum, usarSaldoAFavor: pagoConSaldoAFavor });
 
         // Verificar que el pedido existe y pertenece a la empresa
         const pedido = await query(
@@ -909,7 +926,7 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
         console.log(`   📋 Pedido: ${pedidoId}`);
         console.log(`   💳 Tipo de pago: ${tipoPagoData.pago} (ID: ${tipoPago})`);
         console.log(`   💰 Aplica saldo: ${aplicaSaldo}`);
-        console.log(`   💵 Total pedido: $${totalPedido}`);
+        console.log(`   💵 Total pedido: $${totalPedidoNum}`);
         console.log(`   🔄 Retornables: ${totalRetornables} total, ${retornablesDevueltos} devueltos`);
 
         // Ejecutar transacción
@@ -918,7 +935,7 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             console.log(`   📋 Pedido: ${pedidoId}`);
             console.log(`   👤 Cliente: ${clienteId}`);
             console.log(`   💰 Aplica saldo: ${aplicaSaldo}`);
-            console.log(`   💵 Total pedido: ${totalPedido}`);
+            console.log(`   💵 Total pedido: ${totalPedidoNum}`);
             console.log(`   🔄 Retornables: ${totalRetornables} total, ${retornablesDevueltos} devueltos`);
 
             // Verificar estado inicial del cliente
@@ -941,12 +958,12 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             // 2. Procesar pago
             if (aplicaSaldo) {
                 console.log(`💳 PROCESANDO CUENTA CORRIENTE...`);
-                console.log(`   💰 Sumando $${totalPedido} al saldo del cliente ${clienteId}`);
+                console.log(`   💰 Sumando $${totalPedidoNum} al saldo del cliente ${clienteId}`);
 
                 // Cuenta corriente: sumar al saldo del cliente
                 const resultadoSaldo = await transactionQuery(
                     'UPDATE clientes SET saldo = saldo + ? WHERE codigo = ?',
-                    [totalPedido, clienteId]
+                    [totalPedidoNum, clienteId]
                 );
                 console.log(`   ✅ Resultado UPDATE saldo:`, resultadoSaldo);
 
@@ -957,43 +974,54 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 );
                 console.log(`   💳 Saldo después de actualización: $${clienteDespuesSaldo[0]?.saldo || 0}`);
 
+            } else if (pagoConSaldoAFavor && montoCobradoNum === 0) {
+                console.log(`💳 PAGO CON SALDO A FAVOR...`);
+                // Usar crédito del cliente para pagar el pedido: saldo = saldo + totalPedido (reduce el crédito)
+                await transactionQuery(
+                    'UPDATE clientes SET saldo = saldo + ? WHERE codigo = ?',
+                    [totalPedidoNum, clienteId]
+                );
+                console.log(`   💰 Crédito aplicado: $${totalPedidoNum} al pedido (saldo del cliente actualizado)`);
+
             } else {
                 console.log(`💰 PROCESANDO PAGO INMEDIATO...`);
-                // Pago inmediato: registrar cobro
+                // Pago inmediato: registrar cobro y descontar del saldo del cliente
                 const codigoCobro = Date.now().toString().slice(-6) + clienteId.toString().padStart(3, '0');
                 await transactionQuery(
                     'INSERT INTO cobros (codigo, codigoCliente, codigoVendedor, codigoEmpresa, total, pagoTipo, fechaCobro) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-                    [codigoCobro, clienteId, req.user.vendedorId, req.user.codigoEmpresa, montoCobrado, tipoPago]
+                    [codigoCobro, clienteId, req.user.vendedorId, req.user.codigoEmpresa, montoCobradoNum, tipoPago]
                 );
-                console.log(`💰 Cobro registrado: $${montoCobrado} (código: ${codigoCobro})`);
+                console.log(`💰 Cobro registrado: $${montoCobradoNum} (código: ${codigoCobro})`);
+                // El cobro primero paga el pedido; el resto reduce la deuda (o genera crédito)
+                // saldo_nuevo = saldo_viejo + totalPedido - montoCobrado
+                await transactionQuery(
+                    'UPDATE clientes SET saldo = saldo + ? - ? WHERE codigo = ?',
+                    [totalPedidoNum, montoCobradoNum, clienteId]
+                );
+                console.log(`   💳 Saldo del cliente actualizado: +$${totalPedidoNum} - $${montoCobradoNum}`);
             }
 
-            // 3. Procesar retornables
-            if (totalRetornables > 0) {
-                const retornablesNoDevueltos = totalRetornables - (retornablesDevueltos || 0);
+            // 3. Procesar retornables (delta = total del pedido - devueltos; puede ser negativo = saldo a favor)
+            const totalRetornablesNum = Number(totalRetornables) || 0;
+            const retornablesDevueltosNum = Number(retornablesDevueltos) || 0;
+            if (totalRetornablesNum > 0 || retornablesDevueltosNum > 0) {
+                const deltaRetornables = totalRetornablesNum - retornablesDevueltosNum;
                 console.log(`🔄 PROCESANDO RETORNABLES...`);
-                console.log(`   📦 Total: ${totalRetornables}, Devueltos: ${retornablesDevueltos}, No devueltos: ${retornablesNoDevueltos}`);
+                console.log(`   📦 Total pedido: ${totalRetornablesNum}, Devueltos: ${retornablesDevueltosNum}, Delta: ${deltaRetornables}`);
 
-                if (retornablesNoDevueltos > 0) {
-                    console.log(`   🔄 Sumando ${retornablesNoDevueltos} retornables al cliente ${clienteId}`);
+                const resultadoRetornables = await transactionQuery(
+                    'UPDATE clientes SET retornables = COALESCE(retornables, 0) + ? WHERE codigo = ?',
+                    [deltaRetornables, clienteId]
+                );
+                console.log(`   ✅ Resultado UPDATE retornables:`, resultadoRetornables);
 
-                    const resultadoRetornables = await transactionQuery(
-                        'UPDATE clientes SET retornables = COALESCE(retornables, 0) + ? WHERE codigo = ?',
-                        [retornablesNoDevueltos, clienteId]
-                    );
-                    console.log(`   ✅ Resultado UPDATE retornables:`, resultadoRetornables);
-
-                    // Verificar retornables después de la actualización
-                    const clienteDespuesRetornables = await transactionQuery(
-                        'SELECT saldo, COALESCE(retornables, 0) as retornables FROM clientes WHERE codigo = ?',
-                        [clienteId]
-                    );
-                    console.log(`   🔄 Retornables después de actualización: ${clienteDespuesRetornables[0]?.retornables || 0}`);
-                } else {
-                    console.log(`   ✅ No hay retornables pendientes para agregar`);
-                }
+                const clienteDespuesRetornables = await transactionQuery(
+                    'SELECT saldo, COALESCE(retornables, 0) as retornables FROM clientes WHERE codigo = ?',
+                    [clienteId]
+                );
+                console.log(`   🔄 Retornables después de actualización: ${clienteDespuesRetornables[0]?.retornables ?? 0}`);
             } else {
-                console.log(`🔄 No hay retornables en este pedido`);
+                console.log(`🔄 No hay retornables en esta entrega`);
             }
 
             console.log('✅ TRANSACCIÓN COMPLETADA');
@@ -1003,10 +1031,11 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 message: 'Pedido entregado correctamente',
                 pedidoId: pedidoId,
                 tipoPago: tipoPago,
-                montoCobrado: aplicaSaldo ? 0 : montoCobrado,
+                montoCobrado: aplicaSaldo ? 0 : (pagoConSaldoAFavor ? 0 : montoCobradoNum),
                 retornablesDevueltos: retornablesDevueltos,
                 retornablesNoDevueltos: totalRetornables - (retornablesDevueltos || 0),
-                aplicaSaldo: aplicaSaldo
+                aplicaSaldo: aplicaSaldo,
+                usarSaldoAFavor: pagoConSaldoAFavor
             };
         });
 
