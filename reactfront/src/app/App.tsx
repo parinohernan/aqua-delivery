@@ -7,10 +7,7 @@ import LoginPage from '@/features/auth/components/LoginPage';
 import AppLayout from '@/components/layout/AppLayout';
 
 // Lazy loading de componentes pesados para optimización
-const ClientesSection = lazy(() => import('@/features/clientes/components/ClientesSection'));
-const PedidosSection = lazy(() => import('@/features/pedidos/components/PedidosSection'));
-const ProductosSection = lazy(() => import('@/features/productos/components/ProductosSection'));
-const InformesSection = lazy(() => import('@/features/informes/components/InformesSection'));
+const LandingPage = lazy(() => import('@/features/landing/components/LandingPage'));
 
 /**
  * Componente raíz de la aplicación
@@ -30,16 +27,19 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
-      />
-      <Route
-        path="/*"
-        element={isAuthenticated ? <AppLayout /> : <Navigate to="/login" replace />}
-      />
-    </Routes>
+    <Suspense fallback={<LoadingScreen />}>
+      <Routes>
+        <Route path="/info" element={<LandingPage />} />
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+        />
+        <Route
+          path="/*"
+          element={isAuthenticated ? <AppLayout /> : <Navigate to="/login" replace />}
+        />
+      </Routes>
+    </Suspense>
   );
 }
 

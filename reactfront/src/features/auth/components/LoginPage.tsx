@@ -210,6 +210,19 @@ function LoginPage() {
               </div>
             </div>
 
+            {/* ── Footer / Más Info ── */}
+            <div className="pt-4 pb-6 text-center">
+              <button 
+                onClick={() => navigate('/info')}
+                className="text-xs text-blue-400/60 hover:text-blue-400 transition-colors flex items-center justify-center gap-1.5 mx-auto"
+              >
+                <span>¿No tenés cuenta? Conocé AquaDelivery</span>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+            </div>
+
           </div>
         </div>
       </div>

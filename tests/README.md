@@ -41,17 +41,23 @@ cd tests
 npm install
 ```
 
-### 2. Obtener token de autenticación
-1. Abre el navegador y ve a la aplicación
-2. Abre las herramientas de desarrollador (F12)
-3. Ve a la pestaña Network
-4. Haz login y busca una request a `/api/`
-5. Copia el token del header `Authorization`
-6. Reemplaza `TEST_TOKEN` en los archivos de test
+### 2. Configurar .env (URL y token)
+El backend corre por defecto en el **puerto 8001**. Para no hardcodear el token en los archivos:
+
+1. Copia el ejemplo y crea tu `.env`:
+   ```bash
+   cd tests
+   cp .env.example .env
+   ```
+2. Edita `tests/.env` y pega tu token en `TEST_TOKEN`.
+3. Para obtener el token: haz login en la app, abre DevTools (F12) > Network, busca una request a `/api/` y copia el valor del header `Authorization` (solo el JWT, sin "Bearer ").
+4. Si el backend usa otro puerto o host, ajusta `API_BASE_URL` en `.env` (por defecto `http://localhost:8001/api`).
+
+El archivo `.env` no se sube a git; cuando el token cambie, solo actualizas `TEST_TOKEN` en `.env`.
 
 ### 3. Verificar que el backend esté corriendo
 ```bash
-# El backend debe estar corriendo en http://localhost:3000
+# El backend debe estar corriendo en http://localhost:8001
 ```
 
 ## 🧪 Casos de Test

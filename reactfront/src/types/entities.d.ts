@@ -57,9 +57,14 @@ export interface Producto {
 export interface Pedido {
   id: number;
   codigo?: string;
-  clienteId: number;
+  clienteId?: number;
+  codigoCliente?: number;
   cliente?: Cliente;
   cliente_nombre?: string;
+  /** Saldo/deuda anterior del cliente (cuando viene del backend) */
+  cliente_saldo?: number;
+  /** Envases retornables que el cliente adeuda (cuando viene del backend) */
+  cliente_retornables?: number;
   vendedorId?: number;
   estado: 'pendient' | 'proceso' | 'entregad' | 'anulado';
   fecha?: string;
