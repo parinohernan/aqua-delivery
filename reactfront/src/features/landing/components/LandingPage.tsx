@@ -4,6 +4,7 @@ import ProblemSection from './sections/ProblemSection';
 import SolutionSection from './sections/SolutionSection';
 import FeaturesSection from './sections/FeaturesSection';
 import BenefitsSection from './sections/BenefitsSection';
+import TrustSection from './sections/TrustSection';
 import PricingSection from './sections/PricingSection';
 import FAQSection from './sections/FAQSection';
 import FinalCTASection from './sections/FinalCTASection';
@@ -20,6 +21,7 @@ const LandingPage = () => {
         <SolutionSection />
         <FeaturesSection />
         <BenefitsSection />
+        <TrustSection />
         <PricingSection />
         <FAQSection />
         <FinalCTASection />

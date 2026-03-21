@@ -1,27 +1,71 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import LegalModal from '../LegalModal';
 
 const LandingFooter = () => {
   const navigate = useNavigate();
+  const [modalType, setModalType] = useState<'terms' | 'privacy' | null>(null);
+
+  const openModal = (type: 'terms' | 'privacy') => {
+    setModalType(type);
+  };
+
+  const closeModal = () => {
+    setModalType(null);
+  };
 
   return (
-    <footer className="py-12 px-6 border-t border-white/5 text-center bg-[#050a14]">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <img src="/logo2-min.webp" alt="Logo" className="w-8 h-8" />
-          <span className="font-bold text-lg tracking-tight text-white">Aqua314</span>
+    <footer className="py-24 px-6 border-t border-white/5 text-center bg-[#050a14] relative overflow-hidden">
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <img src="/logo2-min.webp" alt="Logo" className="w-10 h-10 opacity-70 group-hover:opacity-100 transition-opacity" />
+          <span className="font-bold text-xl tracking-tight text-white/90">Aqua314</span>
         </div>
-        <p className="text-white/30 text-xs tracking-widest uppercase mb-4">
+        
+        <p className="text-white/30 text-xs tracking-widest uppercase mb-6 font-bold">
           Aqua Delivery Manager • Hecho en Argentina
         </p>
-        <p className="text-white/20 text-[10px]">
-          Para repartidores y distribuidoras de agua • La Pampa y todo el país.
+        
+        <p className="text-white/20 text-[10px] max-w-sm mx-auto leading-relaxed mb-10">
+          Software de gestión profesional para repartidores y distribuidoras de agua. 
+          Desarrollado con ❤️ para La Pampa y todo el país.
         </p>
-        <div className="mt-8 flex justify-center gap-6 text-[10px] text-white/40 uppercase font-bold tracking-tighter">
-          <button onClick={() => navigate('/login')} className="hover:text-white transition-colors">ACCESO CLIENTES</button>
-          <a href="#" className="hover:text-white transition-colors">TÉRMINOS</a>
-          <a href="#" className="hover:text-white transition-colors">PRIVACIDAD</a>
+
+        <div className="flex flex-wrap justify-center gap-8 text-[11px] text-white/40 uppercase font-black tracking-widest border-t border-white/5 pt-10">
+          <button 
+            onClick={() => navigate('/login')} 
+            className="hover:text-blue-400 transition-all hover:scale-105"
+          >
+            ACCESO CLIENTES
+          </button>
+          
+          <button 
+            onClick={() => openModal('terms')} 
+            className="hover:text-white transition-all hover:scale-105"
+          >
+            TÉRMINOS
+          </button>
+          
+          <button 
+            onClick={() => openModal('privacy')} 
+            className="hover:text-white transition-all hover:scale-105"
+          >
+            PRIVACIDAD
+          </button>
+        </div>
+        
+        <div className="mt-16 opacity-20 hover:opacity-100 transition-opacity">
+           <p className="text-[9px] text-white/30 tracking-tighter uppercase">
+             © 2026 ADM - Todos los derechos reservados.
+           </p>
         </div>
       </div>
+
+      <LegalModal 
+        isOpen={modalType !== null} 
+        onClose={closeModal} 
+        type={modalType || 'terms'} 
+      />
     </footer>
   );
 };
