@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '@/utils/constants';
+import { preloadAppSection } from '@/app/routePreloads';
 import { Package, Users, ShoppingBag, BarChart2, Route } from 'lucide-react';
 
 /**
@@ -23,6 +24,8 @@ function MobileNav() {
             key={item.path}
             to={item.path}
             title={item.label}
+            onTouchStart={() => preloadAppSection(item.path)}
+            onFocus={() => preloadAppSection(item.path)}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-2 px-1 rounded-lg transition-colors min-h-[48px] touch-manipulation ${isActive ? 'text-primary-400' : 'text-white/60 active:bg-white/10'}`
             }

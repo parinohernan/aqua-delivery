@@ -1,11 +1,13 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Header from './Header';
 import Navigation from './Navigation';
 import MobileNav from './MobileNav';
-import LoadingScreen from './LoadingScreen';
+import SectionLoadingFallback from './SectionLoadingFallback';
 import Toast from '@/components/ui/Toast';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { preloadAppSection } from '@/app/routePreloads';
+import { ROUTES } from '@/utils/constants';
 
 // Lazy loading para optimización
 const PedidosSection = lazy(() => import('@/features/pedidos/components/PedidosSection'));
@@ -20,6 +22,10 @@ const RutasSection = lazy(() => import('@/features/rutas/components/RutasSection
  * Contiene el header, navegación y el contenido principal
  */
 function AppLayout() {
+  useEffect(() => {
+    preloadAppSection(ROUTES.PEDIDOS);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a1628] to-[#050a14] mobile-solid-bg text-white pb-20 lg:pb-0">
       <Header />
@@ -31,7 +37,7 @@ function AppLayout() {
         {/* Contenido principal */}
         <main className="flex-1 p-4 lg:p-6">
           <div className="max-w-7xl mx-auto">
-            <Suspense fallback={<LoadingScreen />}>
+            <Suspense fallback={<SectionLoadingFallback />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/pedidos" replace />} />
                 <Route path="/pedidos" element={<PedidosSection />} />

@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '@/utils/constants';
+import { preloadAppSection } from '@/app/routePreloads';
 import { Package, Users, ShoppingBag, BarChart2, Route } from 'lucide-react';
 
 /**
@@ -21,6 +22,8 @@ function Navigation() {
         <NavLink
           key={item.path}
           to={item.path}
+          onMouseEnter={() => preloadAppSection(item.path)}
+          onFocus={() => preloadAppSection(item.path)}
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
               isActive
