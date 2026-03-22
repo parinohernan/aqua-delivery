@@ -14,11 +14,11 @@ const HeroSection = () => {
         {/* componente con camion en movimiento */}
 
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight animate-slide-up text-white">
-          ¿Seguís perdiendo bidones, tiempo y plata con <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">cuadernos y garabatos?</span>
+          Transforma tu reparto de agua en una <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">logística profesional.</span>
         </h1>
 
         <p className="text-lg md:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          Aqua Delivery Manager es el software en la nube que organiza todo tu reparto: pedidos, clientes, productos, rutas, envases y cuentas.
+          El control total de tu negocio, deudas y envases, <span className="text-blue-400 font-bold italic">siempre en tu bolsillo.</span>
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
