@@ -77,6 +77,8 @@ export interface Pedido {
   longitud?: number | string;
   total?: number;
   items?: PedidoItem[];
+  /** Orden en tabla rutas cuando la lista se pidió con ordenarPorRuta (9999 = sin fila en rutas) */
+  orden_reparto?: number;
   [key: string]: unknown;
 }
 

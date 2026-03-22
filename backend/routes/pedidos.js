@@ -32,6 +32,7 @@ router.get('/', verifyToken, async (req, res) => {
                    COALESCE(c.retornables, 0) as cliente_retornables,
                    NULL as latitud,
                    NULL as longitud,
+                   NULL as orden_reparto,
                    v1.nombre as vendedor_pedido,
                    v2.nombre as vendedor_entrega
             FROM pedidos p
@@ -64,6 +65,7 @@ router.get('/', verifyToken, async (req, res) => {
                        COALESCE(c.retornables, 0) as cliente_retornables,
                        c.latitud,
                        c.longitud,
+                       NULL as orden_reparto,
                        v1.nombre as vendedor_pedido,
                        v2.nombre as vendedor_entrega
                 FROM pedidos p
@@ -107,6 +109,10 @@ router.get('/', verifyToken, async (req, res) => {
             sql = sql.replace(
                 /WHERE p\.codigoEmpresa/,
                 'LEFT JOIN rutas r ON r.codigoEmpresa = p.codigoEmpresa AND r.zona = p.zona AND r.codigoCliente = p.codigoCliente WHERE p.codigoEmpresa'
+            );
+            sql = sql.replace(
+                /NULL as orden_reparto/g,
+                'COALESCE(r.orden, 9999) as orden_reparto'
             );
             sql += ' ORDER BY COALESCE(r.orden, 9999) ASC, p.fechaPedido DESC';
         } else {

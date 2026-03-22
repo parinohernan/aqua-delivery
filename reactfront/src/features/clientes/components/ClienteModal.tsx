@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus } from 'lucide-react';
 import { useClientesStore } from '../stores/clientesStore';
@@ -6,10 +6,58 @@ import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { MapPicker } from '@/features/mapa';
 import { toast } from '@/utils/feedback';
-import type { Cliente, Zona } from '@/types/entities';
+import type { Cliente } from '@/types/entities';
 
 /** Zona desde API: tiene id y zona (nombre) */
 type ZonaApi = { id: number; zona: string; [k: string]: unknown };
+
+type ClienteFormSnapshot = {
+  nombre: string;
+  apellido: string;
+  telefono: string;
+  direccion: string;
+  zona: string;
+  latitud: string;
+  longitud: string;
+};
+
+function zonaDisplayFromCliente(cliente: Cliente): string {
+  const zonaVal = (cliente as { zona?: string | { nombre?: string; zona?: string } }).zona;
+  if (typeof zonaVal === 'string') return zonaVal;
+  if (zonaVal && typeof zonaVal === 'object') return zonaVal.nombre ?? zonaVal.zona ?? '';
+  return '';
+}
+
+function buildSnapshotFromCliente(cliente: Cliente): ClienteFormSnapshot {
+  return {
+    nombre: cliente.nombre || '',
+    apellido: cliente.apellido || '',
+    telefono: cliente.telefono || '',
+    direccion: cliente.direccion || '',
+    zona: zonaDisplayFromCliente(cliente),
+    latitud: cliente.latitud != null ? String(cliente.latitud) : '',
+    longitud: cliente.longitud != null ? String(cliente.longitud) : '',
+  };
+}
+
+function coordsEquivalent(a: string, b: string): boolean {
+  const fa = parseFloat(a.trim());
+  const fb = parseFloat(b.trim());
+  if (!Number.isNaN(fa) && !Number.isNaN(fb)) return Math.abs(fa - fb) < 1e-8;
+  return (a.trim() || '') === (b.trim() || '');
+}
+
+function snapshotsEqual(current: ClienteFormSnapshot, initial: ClienteFormSnapshot): boolean {
+  return (
+    current.nombre.trim() === initial.nombre.trim() &&
+    current.apellido.trim() === initial.apellido.trim() &&
+    current.telefono.trim() === initial.telefono.trim() &&
+    current.direccion.trim() === initial.direccion.trim() &&
+    current.zona.trim() === initial.zona.trim() &&
+    coordsEquivalent(current.latitud, initial.latitud) &&
+    coordsEquivalent(current.longitud, initial.longitud)
+  );
+}
 
 /**
  * Modal para crear o editar un cliente
@@ -22,7 +70,10 @@ interface ClienteModalProps {
 
 function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   const { createCliente, updateCliente, loadClientes } = useClientesStore();
-  
+  const formRef = useRef<HTMLFormElement>(null);
+  const initialSnapshotRef = useRef<ClienteFormSnapshot | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -41,22 +92,21 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   // Cargar zonas cuando se abre el modal
   useEffect(() => {
     if (isOpen) {
+      setShowUnsavedDialog(false);
       loadZonas();
-      
+
       if (cliente) {
-        // Modo edición: cargar datos del cliente (backend devuelve zona como string)
-        setNombre(cliente.nombre || '');
-        setApellido(cliente.apellido || '');
-        setTelefono(cliente.telefono || '');
-        setDireccion(cliente.direccion || '');
-        const zonaVal = (cliente as { zona?: string | { nombre?: string; zona?: string } }).zona;
-        setZona(typeof zonaVal === 'string' ? zonaVal : (zonaVal && typeof zonaVal === 'object' ? (zonaVal.nombre ?? zonaVal.zona ?? '') : '') || '');
-        const lat = cliente.latitud?.toString() || '';
-        const lng = cliente.longitud?.toString() || '';
-        setLatitud(lat);
-        setLongitud(lng);
+        const snap = buildSnapshotFromCliente(cliente);
+        initialSnapshotRef.current = snap;
+        setNombre(snap.nombre);
+        setApellido(snap.apellido);
+        setTelefono(snap.telefono);
+        setDireccion(snap.direccion);
+        setZona(snap.zona);
+        setLatitud(snap.latitud);
+        setLongitud(snap.longitud);
       } else {
-        // Modo creación: limpiar formulario
+        initialSnapshotRef.current = null;
         resetForm();
       }
     }
@@ -169,8 +219,41 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   };
 
   const handleClose = () => {
+    setShowUnsavedDialog(false);
     resetForm();
     onClose();
+  };
+
+  const currentSnapshot = (): ClienteFormSnapshot => ({
+    nombre,
+    apellido,
+    telefono,
+    direccion,
+    zona,
+    latitud,
+    longitud,
+  });
+
+  const isDirtyEdit =
+    Boolean(cliente && initialSnapshotRef.current) &&
+    !snapshotsEqual(currentSnapshot(), initialSnapshotRef.current!);
+
+  /** Cerrar desde la X, overlay o Cancelar: en edición con cambios, preguntar primero */
+  const requestClose = () => {
+    if (!cliente || !isDirtyEdit) {
+      handleClose();
+      return;
+    }
+    setShowUnsavedDialog(true);
+  };
+
+  const handleDiscardChanges = () => {
+    handleClose();
+  };
+
+  const handleSaveFromDialog = () => {
+    setShowUnsavedDialog(false);
+    formRef.current?.requestSubmit();
   };
 
   const handleGetLocation = () => {
@@ -207,7 +290,13 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/85 backdrop-blur-md"
-        onClick={handleClose}
+        onClick={() => {
+          if (showUnsavedDialog) {
+            setShowUnsavedDialog(false);
+            return;
+          }
+          requestClose();
+        }}
         style={{ zIndex: 1 }}
       />
 
@@ -221,14 +310,16 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
             {isEditMode ? '✏️ Editar Cliente' : '➕ Nuevo Cliente'}
           </h3>
           <button
-            onClick={handleClose}
+            type="button"
+            onClick={requestClose}
             className="text-white/60 hover:text-white text-2xl sm:text-3xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Cerrar"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Nombre */}
           <div>
             <label className="block text-sm font-medium text-white mb-2">
@@ -418,7 +509,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
           <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-white/10">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={requestClose}
               disabled={isSubmitting}
               className="w-full sm:w-auto px-6 py-2.5 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 border border-white/20 backdrop-blur-sm"
             >
@@ -433,6 +524,54 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
             </button>
           </div>
         </form>
+
+        {showUnsavedDialog && (
+          <div
+            className="absolute inset-0 z-[20] flex items-center justify-center p-4 rounded-xl sm:rounded-2xl bg-black/50 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unsaved-cliente-title"
+            onClick={() => setShowUnsavedDialog(false)}
+          >
+            <div
+              className="relative w-full max-w-md rounded-xl border-2 border-amber-500/40 bg-[#0a2e1a] p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 id="unsaved-cliente-title" className="text-lg font-bold text-white mb-2">
+                ¿Guardar cambios?
+              </h4>
+              <p className="text-sm text-white/70 mb-6">
+                Hay cambios sin guardar en este cliente. ¿Querés guardarlos antes de cerrar?
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowUnsavedDialog(false)}
+                  disabled={isSubmitting}
+                  className="order-3 sm:order-1 px-4 py-2.5 rounded-lg border border-white/20 text-white/90 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Seguir editando
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscardChanges}
+                  disabled={isSubmitting}
+                  className="order-2 px-4 py-2.5 rounded-lg bg-white/10 text-white border border-white/20 hover:bg-white/20 disabled:opacity-50"
+                >
+                  Descartar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveFromDialog}
+                  disabled={isSubmitting}
+                  className="order-1 sm:order-3 px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary-400 to-primary-600 text-white font-medium hover:from-primary-500 hover:to-primary-700 disabled:opacity-50 shadow-lg shadow-primary-500/20"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

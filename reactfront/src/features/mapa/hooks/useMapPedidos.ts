@@ -1,22 +1,19 @@
 import { useMemo } from 'react';
 import { usePedidosStore } from '@/features/pedidos/stores/pedidosStore';
-import type { Pedido } from '@/types/entities';
+import { buildRouteStops, type MapRouteStop } from '../utils/routeStops';
+
+export type { MapRouteStop } from '../utils/routeStops';
 
 /**
- * Hook que retorna pedidos con coordenadas válidas para mostrar en el mapa
+ * Paradas del mapa: pedidos filtrados del store, orden conservado, coords agrupadas.
  */
-export function useMapPedidos(): Pedido[] {
+export function useMapRouteStops(): MapRouteStop[] {
   const filteredPedidos = usePedidosStore((s) => s.filteredPedidos);
+  return useMemo(() => buildRouteStops(filteredPedidos), [filteredPedidos]);
+}
 
-  return useMemo(
-    () =>
-      filteredPedidos.filter(
-        (p) =>
-          p.latitud != null &&
-          p.longitud != null &&
-          p.latitud !== '' &&
-          p.longitud !== ''
-      ),
-    [filteredPedidos]
-  );
+/** @deprecated Usar useMapRouteStops; devuelve pedidos planos por compatibilidad. */
+export function useMapPedidos() {
+  const stops = useMapRouteStops();
+  return useMemo(() => stops.flatMap((s) => s.pedidos), [stops]);
 }
