@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_MAP_STYLE_URL?: string;
   /** OpenRouteService — ruta por calles en el mapa de pedidos (opcional) */
   readonly VITE_ORS_API_KEY?: string;
+  /** WhatsApp (solo dígitos, ej. 5492924406159) */
+  readonly VITE_WHATSAPP_NUMBER?: string;
 }
 
 interface ImportMeta {

@@ -1,6 +1,5 @@
 import LandingNavbar from './sections/LandingNavbar';
 import HeroSection from './sections/HeroSection';
-import ProblemSection from './sections/ProblemSection';
 import ComparisonSection from './sections/ComparisonSection';
 import SolutionSection from './sections/SolutionSection';
 import FeaturesSection from './sections/FeaturesSection';
@@ -44,7 +43,6 @@ const LandingPage = () => {
 
       <main>
         <HeroSection />
-        <ProblemSection />
         <ComparisonSection />
         <SolutionSection />
         <FeaturesSection />

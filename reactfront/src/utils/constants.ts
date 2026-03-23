@@ -5,6 +5,10 @@
 /**
  * Configuración de la aplicación
  */
+/** Solo dígitos, para enlaces wa.me */
+export const WHATSAPP_NUMBER_DIGITS =
+  import.meta.env.VITE_WHATSAPP_NUMBER || '5492924406159';
+
 export const APP_CONFIG = {
   NAME: import.meta.env.VITE_APP_NAME || 'AquaDelivery',
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001',

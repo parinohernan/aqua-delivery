@@ -9,12 +9,12 @@ const BenefitsSection = () => {
         </h2>
         <div className="grid sm:grid-cols-2 gap-x-12 gap-y-8">
           {[
-            "Ahorrás horas diarias dejando el cuaderno",
-            "Recuperás plata de envases perdidos",
-            "Reducís km y nafta con rutas inteligentes",
-            "Tenés informes claros para el negocio",
-            "Escalás sin drama (más repartidores)",
-            "Múltiples usuarios por empresa"
+            "Tranquilidad Total: Cada bidón y cada peso bajo control.",
+            "Delegación Real: Tu negocio funciona sin que estés 24/7.",
+            "Imagen Profesional: Captá mejores clientes con un servicio prolijo.",
+            "Crecimiento Escalable: Sumá camiones sin duplicar el desorden.",
+            "Recuperación de Capital: Basta de perder miles en envases.",
+            "Libertad de Horarios: Cierres de caja automáticos en segundos."
           ].map((benefit, i) => (
             <div key={i} className="flex items-center gap-4 group">
               <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">
@@ -25,8 +25,9 @@ const BenefitsSection = () => {
           ))}
         </div>
         <div className="mt-16 text-center">
-          <p className="text-2xl font-bold text-blue-400 italic">Más control = más tranquilidad y más ganancias.</p>
-          <p className="text-2xl font-bold text-blue-400 italic">Mejor atencion al cliente.</p>
+          <p className="text-2xl font-extrabold text-blue-400 italic">
+            "Software no es lo que vendemos. Vendemos Tranquilidad, Tiempo y Control."
+          </p>
         </div>
       </div>
     </section>

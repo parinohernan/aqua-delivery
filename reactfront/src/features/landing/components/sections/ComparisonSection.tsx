@@ -39,10 +39,11 @@ const ComparisonSection = () => {
             <ul className="space-y-4">
               {[
                 "Cuadernos mojados, tachados y perdidos.",
-                "Discusiones por deudas que \"no anotaste\".",
-                "Envases que salen y nunca vuelven.",
-                "Horas de cierre de caja cada noche.",
-                "Falta de control total sobre el chofer."
+                "Saldos confusos y deudas que \"no anotaste\".",
+                "Envases que salen y nunca vuelven (un capital perdido).",
+                "Rutas improvisadas que te hacen quemar combustible.",
+                "Horas de cierre de caja manual cada noche.",
+                "Pedidos que se olvidan o no se entregan."
               ].map((text, i) => (
                 <li key={i} className="flex gap-3 text-white/40 text-sm leading-relaxed italic">
                   <span>•</span> {text}
@@ -74,11 +75,12 @@ const ComparisonSection = () => {
             
             <ul className="space-y-4">
               {[
-                "Información en la nube para siempre.",
+                "Información segura en la nube para siempre.",
                 "Saldos claros por WhatsApp al instante.",
-                "Recuperación garantizada de envases.",
+                "Control automático de cada envase.",
+                "Rutas optimizadas con un solo click.",
                 "Cierre de caja automático (ahorro de 2hs).",
-                "Control satelital de cada entrega."
+                "Recordatorios de pedidos pendientes."
               ].map((text, i) => (
                 <li key={i} className="flex gap-3 text-white/80 text-sm font-medium leading-relaxed">
                   <CheckCircle size={16} className="text-blue-400 mt-0.5 flex-shrink-0" /> {text}

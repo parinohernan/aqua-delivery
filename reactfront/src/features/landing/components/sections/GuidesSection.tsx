@@ -12,14 +12,14 @@ const GuidesSection = () => {
     {
       id: "perdida-envases",
       title: "Cómo reducir la pérdida de envases",
-      desc: "Estrategias probadas para controlar tu capital y evitar el 'goteo' de bidones perdidos.",
+      desc: "Estrategias probadas para controlar tu capital y evitar bidones perdidos.",
       tag: "Gestión",
       time: "5 min lectura"
     },
     {
       id: "digitalizacion",
       title: "Del Cuaderno a la App en 7 días",
-      desc: "Una guía paso a paso para digitalizar tu sodería sin interrumpir el reparto diario.",
+      desc: "Una guía paso a paso para digitalizar tu reparto sin interrumpir el flujo de trabajo.",
       tag: "Digitalización",
       time: "8 min lectura"
     },
@@ -53,7 +53,7 @@ const GuidesSection = () => {
               No solo te damos el software. Te damos el conocimiento para que tu distribuidora sea imparable.
             </p>
           </div>
-          <button 
+          <button
             onClick={() => setShowLeadCapture(true)}
             className="flex items-center gap-2 text-blue-400 font-bold hover:text-blue-300 transition-colors group"
           >
@@ -63,8 +63,8 @@ const GuidesSection = () => {
 
         <div className="grid md:grid-cols-3 gap-8">
           {guides.map((guide, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               onClick={() => handleOpenGuide(guide.id)}
               className="group p-8 rounded-[40px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer relative overflow-hidden"
             >
@@ -99,14 +99,14 @@ const GuidesSection = () => {
       </div>
 
       {/* Modals */}
-      <GuideModal 
-        guide={selectedGuide} 
-        onClose={() => setSelectedGuide(null)} 
+      <GuideModal
+        guide={selectedGuide}
+        onClose={() => setSelectedGuide(null)}
         onOpenLeadCapture={handleOpenLeadCapture}
       />
-      
-      <LeadCaptureModal 
-        isOpen={showLeadCapture} 
+
+      <LeadCaptureModal
+        isOpen={showLeadCapture}
         onClose={() => setShowLeadCapture(false)}
         source={selectedGuide?.id}
       />

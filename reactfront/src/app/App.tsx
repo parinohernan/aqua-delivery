@@ -8,6 +8,8 @@ import AppLayout from '@/components/layout/AppLayout';
 
 // Lazy loading de componentes pesados para optimización
 const LandingPage = lazy(() => import('@/features/landing/components/LandingPage'));
+const StartNowPage = lazy(() => import('@/features/startnow/StartNowPage'));
+const GetCodePage = lazy(() => import('@/features/startnow/GetCodePage'));
 
 /**
  * Componente raíz de la aplicación
@@ -30,6 +32,13 @@ function App() {
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/info" element={<LandingPage />} />
+        <Route
+          path="/startnow"
+          element={
+            isAuthenticated ? <Navigate to="/" replace /> : <StartNowPage />
+          }
+        />
+        <Route path="/getcode" element={<GetCodePage />} />
         <Route
           path="/login"
           element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}

@@ -13,34 +13,58 @@ export const GUIDES_CONTENT: Record<string, GuideContent> = {
     title: "Estrategias para reducir la pérdida de envases",
     sections: [
       {
-        h: "El Capital del Distribuidor",
-        p: "Los bidones son el activo más valioso de tu logística. Perderlos es perder rentabilidad directa. La clave está en la conciliación diaria."
+        h: "1. Conciliación Diaria: El 'Cierre de Envases'",
+        p: "No esperes al fin de mes. El camión debe volver con la misma suma de (Llenos + Vacíos) con la que salió. ADM automatiza este conteo para que el repartidor no pueda 'olvidarse' bidones en el camino."
       },
       {
-        h: "Control por Cliente",
-        p: "ADM te permite asignar saldos de envases a cada cliente. Al llegar, el repartidor sabe exactamente cuántos bidones debe retirar."
+        h: "2. Gestión de Comodatos Digitales",
+        p: "El comodato no puede ser de palabra. Registrá en el sistema exactamente cuántos envases tiene cada cliente 'prestados'. Al momento de la visita, la App le recuerda al chofer cuántos tiene que retirar."
       },
       {
-        h: "Depósitos en Garantía",
-        p: "Para nuevos clientes, el sistema facilita el registro de depósitos, asegurando que el envase siempre tenga un respaldo económico."
+        h: "3. Depósitos en Garantía Planificados",
+        p: "Para clientes nuevos o de baja rotación, el depósito en garantía es vital. ADM te permite registrar estos pagos y asociarlos al envase, protegiendo tu capital desde el día uno."
+      },
+      {
+        h: "4. Educación al Cliente por WhatsApp",
+        p: "Muchos clientes no saben el valor de reposición de un bidón. Usá la integración de ADM para enviar recordatorios prolijos donde se detalle el saldo de envases pendientes de devolución."
+      },
+      {
+        h: "5. Incentivos al Repartidor",
+        p: "Convertí a tu chofer en un custodio del stock. Usá los informes técnicos de ADM para premiar a los repartidores que mantienen sus rutas con 0% de pérdida de envases al final de la semana."
       }
     ]
   },
   "digitalizacion": {
     id: "digitalizacion",
-    title: "Manual de Digitalización: Del Cuaderno a la App",
+    title: "Hoja de Ruta: Del Cuaderno a la App en 7 Días",
     sections: [
       {
-        h: "Elimina la Doble Carga",
-        p: "No más pasar en limpio al final del día. Con la App, cada venta conciliada en la calle ya está en tu sistema de gestión."
+        h: "Día 1: Limpieza y Orden del Cuaderno",
+        p: "No pases el caos al software. Agarrá el cuaderno y marcá quién debe envases hoy, quién tiene deuda de plata y quiénes son tus clientes activos. Este es el cimiento de tu nueva logística profesional."
       },
       {
-        h: "Transición sin Vueltas",
-        p: "Manejamos la carga inicial de tus clientes. Empieza a usar el sistema en paralelo 3 días y verás la diferencia en el orden."
+        h: "Día 2: Configura tu 'Cerebro' Logístico",
+        p: "Cargá tus productos (Bidón 12L, 20L, Dispenser, Sifón) y definí tus rutas. En ADM es tan simple como crear la lista de precios que querés aplicar en la calle."
       },
       {
-        h: "Facilidad para el Repartidor",
-        p: "La App es intuitiva y está diseñada para ser usada con una sola mano, bajo el sol o la lluvia, sin complicaciones."
+        h: "Día 3: Del Mapa de Papel al Mapa Digital",
+        p: "Cargá las direcciones de tus clientes. Por primera vez vas a visualizar dónde está tu capital (los envases) distribuido geográficamente. ADM te permite importar tu lista de contactos fácilmente."
+      },
+      {
+        h: "Día 4: Dale Poder a tu Repartidor",
+        p: "Descargá la App en el celular del chofer. Mostrale cómo marcar una entrega con dos toques. Sin papeles que se vuelan, sin lapiceras que no escriben. El chofer es tu mejor aliado en esta etapa."
+      },
+      {
+        h: "Día 5: El Primer Reparto en Paralelo",
+        p: "Hacé un día de reparto usando la App y anotando lo básico en papel 'por si las dudas'. Vas a notar que el cierre de caja de ese día es 10 veces más rápido y sin errores manuales."
+      },
+      {
+        h: "Día 6: 100% Digital (Adiós al Papel)",
+        p: "Hoy el camión sale solo con la App. Registro en tiempo real de envases que entran y salen. Control total desde tu celular (el tuyo, el del dueño) viendo el avance del reparto minuto a minuto."
+      },
+      {
+        h: "Día 7: Analizá tu Primer Cierre de Caja Real",
+        p: "Mirá tu primer informe de ventas y deudas generado automáticamente. Descubrí cuántos envases recuperaste y cuánto combustible ahorraste. ¡Felicidades, ya sos un soderío del futuro!"
       }
     ]
   },
@@ -49,16 +73,20 @@ export const GUIDES_CONTENT: Record<string, GuideContent> = {
     title: "Optimización de Rutas y Ahorro de combustible",
     sections: [
       {
-        h: "Rutas Inteligentes",
-        p: "Agrupa tus clientes por zonas lógicas. ADM te ayuda a no cruzar la ciudad de punta a punta sin sentido."
+        h: "1. Zonificación Inteligente del Reparto",
+        p: "No cruces la ciudad de punta a punta. Dividí tu zona de influencia en cuadrantes por día de la semana. ADM te permite asignar clientes a rutas fijas para que el camión no dé vueltas innecesarias."
       },
       {
-        h: "Carga Exacta del Camión",
-        p: "Saber cuánto vas a vender hoy te permite cargar solo lo necesario, reduciendo el peso y el consumo del vehículo."
+        h: "2. Secuencia Lógica de Entrega (Última Milla)",
+        p: "El orden de los factores sí altera el gasto de combustible. Organizá tu ruta de forma que el camión recorra la menor distancia entre el cliente A y el B. ADM optimiza ese listado con un solo click."
       },
       {
-        h: "Días de Visita Fijos",
-        p: "Establece frecuencias de paso profesionales. El sistema les avisa a tus repartidores quiénes son prioridad cada día."
+        h: "3. Optimización de Carga y Peso",
+        p: "Cada bidón de 20L pesa lo mismo que un bidón de nafta en términos de consumo. Saber exactamente cuánto vas a vender hoy por ruta te permite cargar solo lo necesario, reduciendo el peso muerto y el desgaste de cubiertas."
+      },
+      {
+        h: "4. Control Satelital de Movimientos",
+        p: "Evitá desvíos para trámites personales o tiempos muertos con el motor encendido. Con el seguimiento GPS por reparto de ADM, podés auditar el recorrido real y detectar ineficiencias de forma inmediata."
       }
     ]
   }

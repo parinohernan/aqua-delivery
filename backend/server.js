@@ -74,6 +74,7 @@ app.use('/api/rutas', require('./routes/rutas'));
 app.use('/api/tiposdepago', require('./routes/tiposdepago'));
 app.use('/api/informes', require('./routes/informes'));
 app.use('/api/push', require('./routes/push'));
+app.use('/api/startnow', require('./routes/startnow'));
 
 // Health check
 app.get('/health', (req, res) => {
