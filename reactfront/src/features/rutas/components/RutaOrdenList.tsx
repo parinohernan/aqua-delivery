@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
   closestCenter,
@@ -16,8 +17,12 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Save } from 'lucide-react';
+import { GripVertical, Save, ArrowRightLeft } from 'lucide-react';
 import { formatFullName } from '@/utils/formatters';
+import { toast } from '@/utils/feedback';
+import { rutasService } from '../services/rutasService';
+import { reorderClientesRuta, type MoverModo } from '../utils/reorderRuta';
+import type { ClienteConOrden } from '@/types/entities';
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -27,16 +32,12 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-/** Normaliza teléfono para enlace WhatsApp: solo dígitos (wa.me/5491112345678) */
 function whatsappHref(telefono: string | undefined): string | null {
   if (!telefono || !telefono.trim()) return null;
   const digits = telefono.replace(/\D/g, '');
   if (digits.length < 8) return null;
   return `https://wa.me/${digits}`;
 }
-import { toast } from '@/utils/feedback';
-import { rutasService } from '../services/rutasService';
-import type { ClienteConOrden } from '@/types/entities';
 
 interface RutaOrdenListProps {
   zona: string;
@@ -44,12 +45,198 @@ interface RutaOrdenListProps {
   onSaved: () => void;
 }
 
+type MoverTab = MoverModo;
+
+function MoverModal({
+  cliente,
+  clientes,
+  onClose,
+  onApply,
+}: {
+  cliente: ClienteConOrden;
+  clientes: ClienteConOrden[];
+  onClose: () => void;
+  onApply: (modo: MoverTab, refCodigo: number | undefined, positionN: number | undefined) => void;
+}) {
+  const [tab, setTab] = useState<MoverTab>('after');
+  const [refCodigo, setRefCodigo] = useState<string>('');
+  const [posStr, setPosStr] = useState<string>('');
+
+  const otros = clientes.filter((c) => c.codigoCliente !== cliente.codigoCliente);
+  const nombreMover = formatFullName(cliente.nombre, cliente.apellido);
+
+  const handleAplicar = () => {
+    if (tab === 'position') {
+      const n = parseInt(posStr, 10);
+      if (!Number.isFinite(n) || n < 1 || n > clientes.length) {
+        toast.error(`Ingresá una posición entre 1 y ${clientes.length}`);
+        return;
+      }
+      onApply('position', undefined, n);
+      onClose();
+      return;
+    }
+    const ref = parseInt(refCodigo, 10);
+    if (!Number.isFinite(ref)) {
+      toast.error('Elegí un cliente de referencia');
+      return;
+    }
+    if (ref === cliente.codigoCliente) {
+      toast.error('Elegí otro cliente');
+      return;
+    }
+    onApply(tab, ref, undefined);
+    onClose();
+  };
+
+  const modal = (
+    <div
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mover-ruta-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+        aria-label="Cerrar"
+        onClick={onClose}
+      />
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-white/15 bg-[#0f1b2e] shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[#0f1b2e] border-b border-white/10 px-4 py-3 flex items-center justify-between">
+          <h2 id="mover-ruta-title" className="text-lg font-bold text-white pr-2">
+            Mover: {nombreMover}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white/60 hover:text-white text-2xl leading-none w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-white/65">
+            Elegí cómo reubicar en la ruta (recordá guardar el orden después).
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-white/10 bg-white/5 cursor-pointer has-[:checked]:border-primary-500/50 has-[:checked]:bg-primary-500/10">
+              <input
+                type="radio"
+                name="mover-tab"
+                checked={tab === 'before'}
+                onChange={() => setTab('before')}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-white block">Antes de…</span>
+                <span className="text-xs text-white/55">Queda inmediatamente antes del cliente que elijas</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-white/10 bg-white/5 cursor-pointer has-[:checked]:border-primary-500/50 has-[:checked]:bg-primary-500/10">
+              <input
+                type="radio"
+                name="mover-tab"
+                checked={tab === 'after'}
+                onChange={() => setTab('after')}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-white block">Después de…</span>
+                <span className="text-xs text-white/55">Queda inmediatamente después del cliente que elijas</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-white/10 bg-white/5 cursor-pointer has-[:checked]:border-primary-500/50 has-[:checked]:bg-primary-500/10">
+              <input
+                type="radio"
+                name="mover-tab"
+                checked={tab === 'position'}
+                onChange={() => setTab('position')}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-white block">A la posición #</span>
+                <span className="text-xs text-white/55">Número de parada en la lista (1 = primero)</span>
+              </span>
+            </label>
+          </div>
+
+          {(tab === 'before' || tab === 'after') && (
+            <div>
+              <label htmlFor="mover-ref-cliente" className="block text-sm font-medium text-white mb-2">
+                Cliente de referencia
+              </label>
+              <select
+                id="mover-ref-cliente"
+                value={refCodigo}
+                onChange={(e) => setRefCodigo(e.target.value)}
+                className="w-full px-3 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-base"
+              >
+                <option value="">Elegir…</option>
+                {otros.map((c) => (
+                  <option key={c.codigoCliente} value={String(c.codigoCliente)} className="bg-[#0f1b2e]">
+                    {formatFullName(c.nombre, c.apellido)}
+                    {c.direccion ? ` — ${c.direccion}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {tab === 'position' && (
+            <div>
+              <label htmlFor="mover-pos" className="block text-sm font-medium text-white mb-2">
+                Posición (1 a {clientes.length})
+              </label>
+              <input
+                id="mover-pos"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={clientes.length}
+                value={posStr}
+                onChange={(e) => setPosStr(e.target.value)}
+                placeholder="Ej: 5"
+                className="w-full px-3 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-lg placeholder-white/40"
+              />
+            </div>
+          )}
+
+          <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl border border-white/20 text-white hover:bg-white/10"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleAplicar}
+              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-400 to-primary-600 text-white font-semibold hover:from-primary-500 hover:to-primary-700"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(modal, document.body);
+}
+
 function SortableRow({
   cliente,
   index,
+  onMover,
 }: {
   cliente: ClienteConOrden;
   index: number;
+  onMover: () => void;
 }) {
   const {
     attributes,
@@ -71,7 +258,7 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       className={`
-        flex items-center gap-3 p-3 rounded-xl border
+        flex items-center gap-2 sm:gap-3 p-3 rounded-xl border
         ${isDragging
           ? 'bg-primary-500/30 border-primary-500/60 shadow-lg z-50 opacity-95'
           : 'bg-white/5 border-white/10'
@@ -80,14 +267,14 @@ function SortableRow({
     >
       <button
         type="button"
-        className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 touch-none cursor-grab active:cursor-grabbing"
+        className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 touch-none cursor-grab active:cursor-grabbing flex-shrink-0"
         {...attributes}
         {...listeners}
         aria-label="Arrastrar para reordenar"
       >
         <GripVertical size={20} />
       </button>
-      <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-500/30 text-primary-300 font-bold text-sm flex-shrink-0">
+      <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-500/30 text-primary-300 font-bold text-sm flex-shrink-0 tabular-nums">
         {index + 1}
       </span>
       <div className="flex-1 min-w-0">
@@ -103,6 +290,15 @@ function SortableRow({
             : 'Sin pedidos pendientes'}
         </p>
       </div>
+      <button
+        type="button"
+        onClick={onMover}
+        className="flex-shrink-0 p-2.5 rounded-xl bg-white/10 text-primary-300 hover:bg-white/15 border border-white/10"
+        title="Mover con precisión"
+        aria-label="Mover a otra posición"
+      >
+        <ArrowRightLeft size={18} />
+      </button>
       {waUrl && (
         <a
           href={waUrl}
@@ -122,6 +318,7 @@ function SortableRow({
 function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenListProps) {
   const [clientes, setClientes] = useState<ClienteConOrden[]>(initialClientes);
   const [isSaving, setIsSaving] = useState(false);
+  const [moverCliente, setMoverCliente] = useState<ClienteConOrden | null>(null);
 
   useEffect(() => {
     setClientes(initialClientes);
@@ -144,6 +341,13 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
     if (oldIndex === -1 || newIndex === -1) return;
     const reordered = arrayMove(clientes, oldIndex, newIndex);
     setClientes(reordered.map((c, i) => ({ ...c, orden: i })));
+  };
+
+  const handleMoverApply = (modo: MoverTab, refCodigo: number | undefined, positionN: number | undefined) => {
+    if (!moverCliente) return;
+    const next = reorderClientesRuta(clientes, moverCliente.codigoCliente, modo, refCodigo, positionN);
+    setClientes(next);
+    toast.success('Orden actualizado (guardá para persistir)');
   };
 
   const handleGuardar = async () => {
@@ -172,11 +376,22 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
 
   return (
     <div className="space-y-3">
+      {moverCliente && (
+        <MoverModal
+          cliente={moverCliente}
+          clientes={clientes}
+          onClose={() => setMoverCliente(null)}
+          onApply={handleMoverApply}
+        />
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-sm text-white/60">
-          Arrastrá cada fila para cambiar el orden. El número indica la parada en la ruta.
+        <p className="text-sm text-white/60 max-w-xl">
+          Usá <strong className="text-white/80">Mover</strong> para colocar antes, después o en un número de parada.
+          También podés arrastrar filas. El número es el orden de visita.
         </p>
         <button
+          type="button"
           onClick={handleGuardar}
           disabled={isSaving}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-xl font-semibold hover:from-primary-500 hover:to-primary-600 disabled:opacity-50 shadow-lg shadow-primary-500/30"
@@ -197,7 +412,12 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
         >
           <ul className="space-y-2">
             {clientes.map((cliente, index) => (
-              <SortableRow key={cliente.codigoCliente} cliente={cliente} index={index} />
+              <SortableRow
+                key={cliente.codigoCliente}
+                cliente={cliente}
+                index={index}
+                onMover={() => setMoverCliente(cliente)}
+              />
             ))}
           </ul>
         </SortableContext>
