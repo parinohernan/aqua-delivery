@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const os = require('os');
+const { startAlquileresScheduler } = require('./jobs/alquileresScheduler');
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -50,7 +51,9 @@ app.use(cors({
       origin.endsWith('.janus314.com.ar') ||
       origin === 'https://aquadeliverymanager.netlify.app' ||
       origin === 'https://aqua.janus314.com.ar' ||
-      origin === 'https://aqua-api.janus314.com.ar') {
+      origin === 'https://aqua-api.janus314.com.ar' ||
+      origin === 'https://aquadm.com.ar'
+    ) {
       callback(null, true);
     } else {
       console.log('CORS bloqueado para origen:', origin);
@@ -58,7 +61,7 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json());
@@ -75,6 +78,7 @@ app.use('/api/tiposdepago', require('./routes/tiposdepago'));
 app.use('/api/informes', require('./routes/informes'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/startnow', require('./routes/startnow'));
+app.use('/api/alquileres', require('./routes/alquileres'));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -86,4 +90,5 @@ app.listen(PORT, '0.0.0.0', () => {
   const localIP = getLocalIP();
   console.log(`🚀 API Backend corriendo en http://localhost:${PORT}`);
   console.log(`📱 Accesible desde la red en http://${localIP}:${PORT}`);
+  startAlquileresScheduler();
 });

@@ -5,7 +5,7 @@ import { useClientesStore } from '../stores/clientesStore';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { MapPicker } from '@/features/mapa';
-import { toast } from '@/utils/feedback';
+import { toast, confirm } from '@/utils/feedback';
 import type { Cliente } from '@/types/entities';
 
 /** Zona desde API: tiene id y zona (nombre) */
@@ -69,7 +69,7 @@ interface ClienteModalProps {
 }
 
 function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
-  const { createCliente, updateCliente, loadClientes } = useClientesStore();
+  const { createCliente, updateCliente, loadClientes, toggleClienteStatus } = useClientesStore();
   const formRef = useRef<HTMLFormElement>(null);
   const initialSnapshotRef = useRef<ClienteFormSnapshot | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -275,6 +275,31 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
       );
     } else {
       setError('La geolocalización no está disponible en este navegador');
+    }
+  };
+
+  const handleDisableCliente = async () => {
+    if (!cliente) return;
+    const ok = await confirm({
+      title: 'Deshabilitar cliente',
+      message: 'El cliente quedará inactivo y no aparecerá en listas activas. ¿Continuar?',
+      confirmLabel: 'Deshabilitar',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      setIsSubmitting(true);
+      const clienteId = Number(cliente.codigo || cliente.id);
+      await toggleClienteStatus(clienteId, false);
+      toast.success('Cliente deshabilitado');
+      handleClose();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo deshabilitar el cliente';
+      setError(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -507,6 +532,16 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
 
           {/* Botones */}
           <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-white/10">
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={handleDisableCliente}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto px-6 py-2.5 border border-red-400/40 text-red-300 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50"
+              >
+                Deshabilitar cliente
+              </button>
+            )}
             <button
               type="button"
               onClick={requestClose}

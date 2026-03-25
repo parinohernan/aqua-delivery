@@ -163,18 +163,8 @@ function PedidosToolbar() {
               >
                 <MapPin size={18} />
               </button>
-              {filters.zona && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleZonaSelect(null);
-                  }}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs"
-                >
-                  ×
-                </button>
-              )}
-              
+              {/* Quitar filtro: usar chip "Filtrando" abajo (el círculo rojo flotante se ve mal en móvil) */}
+
               {/* Dropdown de zonas */}
               {showZonas && (
                 <div className="absolute top-full right-0 mt-2 w-48 bg-[#1a1a2e] border border-white/15 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
@@ -232,17 +222,7 @@ function PedidosToolbar() {
               >
                 <Calendar size={18} />
               </div>
-              {filters.fecha && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFilters({ fecha: '' });
-                  }}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs"
-                >
-                  ×
-                </button>
-              )}
+              {/* Quitar filtro: chip "Filtrando" abajo */}
             </div>
 
             {/* Mapa */}
@@ -296,10 +276,12 @@ function PedidosToolbar() {
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 border border-purple-500/30 rounded-md text-xs text-white">
                 📍 {filters.zona}
                 <button
+                  type="button"
                   onClick={() => setFilters({ zona: '' })}
-                  className="hover:text-purple-300"
+                  className="min-w-[32px] min-h-[32px] -mr-1 inline-flex items-center justify-center rounded-md hover:bg-white/10 active:bg-white/15 text-white/80 hover:text-purple-200 touch-manipulation"
+                  aria-label="Quitar filtro de zona"
                 >
-                  ×
+                  <X size={16} />
                 </button>
               </span>
             )}
@@ -307,10 +289,12 @@ function PedidosToolbar() {
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-primary-500/20 border border-primary-500/30 rounded-md text-xs text-white">
                 📅 {new Date(filters.fecha + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
                 <button
+                  type="button"
                   onClick={() => setFilters({ fecha: '' })}
-                  className="hover:text-primary-300"
+                  className="min-w-[32px] min-h-[32px] -mr-1 inline-flex items-center justify-center rounded-md hover:bg-white/10 active:bg-white/15 text-white/80 hover:text-primary-200 touch-manipulation"
+                  aria-label="Quitar filtro de fecha"
                 >
-                  ×
+                  <X size={16} />
                 </button>
               </span>
             )}

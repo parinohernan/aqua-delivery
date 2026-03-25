@@ -30,6 +30,7 @@ interface ClientesState {
   createCliente: (data: Partial<Cliente>) => Promise<void>;
   updateCliente: (id: number, data: Partial<Cliente>) => Promise<void>;
   deleteCliente: (id: number) => Promise<void>;
+  toggleClienteStatus: (id: number, activo: boolean) => Promise<void>;
   setError: (error: string | null) => void;
 }
 
@@ -164,6 +165,17 @@ export const useClientesStore = create<ClientesState>((set, get) => ({
       await get().loadClientes();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error eliminando cliente';
+      set({ error: errorMessage });
+      throw error;
+    }
+  },
+
+  toggleClienteStatus: async (id: number, activo: boolean) => {
+    try {
+      await clientesService.toggleStatus(id, activo);
+      await get().loadClientes();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error actualizando estado del cliente';
       set({ error: errorMessage });
       throw error;
     }

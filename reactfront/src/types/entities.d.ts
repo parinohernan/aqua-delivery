@@ -31,7 +31,26 @@ export interface Cliente {
   activo?: boolean;
   zonaId?: number;
   zona?: Zona;
+  alquileres?: Alquiler[];
   [key: string]: unknown;
+}
+
+export interface Alquiler {
+  id: number;
+  codigoEmpresa: number;
+  codigoCliente: number;
+  tipo: string;
+  marca?: string | null;
+  numeroSerie?: string | null;
+  observacion?: string | null;
+  montoMensual: number;
+  fechaInicio: string;
+  diaCobro: number;
+  estado: 'ACTIVO' | 'CANCELADO';
+  fechaCancelacion?: string | null;
+  motivoCancelacion?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**

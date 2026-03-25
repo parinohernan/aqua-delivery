@@ -2,7 +2,7 @@ import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { cacheData, getCachedData } from '@/services/storage/cache';
 import { DB_STORES } from '@/utils/constants';
-import type { Cliente } from '@/types/entities';
+import type { Alquiler, Cliente } from '@/types/entities';
 
 /**
  * Servicio de Clientes
@@ -87,6 +87,32 @@ class ClientesService {
    */
   async getCached(): Promise<Cliente[]> {
     return await getCachedData<Cliente>(DB_STORES.CLIENTES);
+  }
+
+  async toggleStatus(id: number, activo: boolean): Promise<void> {
+    await apiClient.put(endpoints.clienteToggleStatus(id), { activo });
+  }
+
+  async getAlquileres(clienteId: number): Promise<Alquiler[]> {
+    return apiClient.get<Alquiler[]>(endpoints.clienteAlquileres(clienteId));
+  }
+
+  async createAlquiler(data: {
+    codigoCliente: number;
+    tipo: string;
+    marca?: string;
+    numeroSerie?: string;
+    observacion?: string;
+    montoMensual: number;
+    fechaInicio: string;
+  }): Promise<Alquiler> {
+    return apiClient.post<Alquiler>(endpoints.alquileres(), data);
+  }
+
+  async cancelAlquiler(alquilerId: number, motivoCancelacion?: string): Promise<Alquiler> {
+    return apiClient.patch<Alquiler>(endpoints.alquilerCancelar(alquilerId), {
+      motivoCancelacion: motivoCancelacion || null,
+    });
   }
 }
 

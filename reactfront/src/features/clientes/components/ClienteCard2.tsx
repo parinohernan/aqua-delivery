@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
-import { useClientesStore } from '../stores/clientesStore';
-import { toast, confirm } from '@/utils/feedback';
 import ClienteModal from './ClienteModal';
 import ClientPaymentModal from './ClientPaymentModal';
+import ClienteAlquileresModal from './ClienteAlquileresModal';
 import type { Cliente } from '@/types/entities';
 
 /**
@@ -15,9 +14,9 @@ interface ClienteCard2Props {
 }
 
 function ClienteCard2({ cliente }: ClienteCard2Props) {
-  const { deleteCliente } = useClientesStore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showAlquileresModal, setShowAlquileresModal] = useState(false);
 
   const nombreCompleto = formatFullName(cliente.nombre, cliente.apellido);
   const saldo = cliente.saldo || 0;
@@ -26,24 +25,6 @@ function ClienteCard2({ cliente }: ClienteCard2Props) {
   const saldoNegative = saldo < 0;
   const saldoColor = saldoPositive ? '#EF4444' : saldoNegative ? '#22C55E' : '#94A3B8';
   const saldoLabel = saldoPositive ? 'DEBE' : saldoNegative ? 'A FAVOR' : 'AL DÍA';
-
-  const handleDelete = async () => {
-    const ok = await confirm({
-      title: 'Eliminar cliente',
-      message: '¿Estás seguro de eliminar este cliente?',
-      confirmLabel: 'Eliminar',
-      cancelLabel: 'Cancelar',
-      variant: 'danger',
-    });
-    if (ok) {
-      try {
-        await deleteCliente(cliente.id);
-        toast.success('Cliente eliminado');
-      } catch {
-        toast.error('Error eliminando cliente');
-      }
-    }
-  };
 
   const btnBase = {
     padding: '10px',
@@ -101,11 +82,10 @@ function ClienteCard2({ cliente }: ClienteCard2Props) {
             Editar
           </button>
           <button
-            onClick={handleDelete}
-            title="Eliminar cliente"
-            style={{ ...btnBase, padding: '10px 12px', background: 'transparent', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' }}
+            onClick={() => setShowAlquileresModal(true)}
+            style={{ ...btnBase, flex: 1, background: '#1D4ED8', color: '#fff' }}
           >
-            Eliminar
+            Alquileres
           </button>
         </div>
       </div>
@@ -119,6 +99,11 @@ function ClienteCard2({ cliente }: ClienteCard2Props) {
         isOpen={showPaymentModal}
         cliente={cliente}
         onClose={() => setShowPaymentModal(false)}
+      />
+      <ClienteAlquileresModal
+        isOpen={showAlquileresModal}
+        cliente={cliente}
+        onClose={() => setShowAlquileresModal(false)}
       />
     </>
   );

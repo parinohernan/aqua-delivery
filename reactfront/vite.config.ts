@@ -18,8 +18,8 @@ export default defineConfig({
       },
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'AquaDelivery - Gestión de Pedidos',
-        short_name: 'AquaDelivery',
+        name: 'Aqua Delivery Manager - Gestión de Pedidos',
+        short_name: 'Aqua Delivery Manager',
         description: 'Sistema completo de gestión para delivery de agua con pedidos, clientes y productos',
         theme_color: '#0a1628',
         background_color: '#0a1628',
@@ -120,6 +120,7 @@ export default defineConfig({
     host: true, // Permite acceso desde la red local
     allowedHosts: [
       'aqua.janus314.com.ar',
+      'aquadm.com.ar',
       'localhost',
       '.localhost',
       '127.0.0.1',

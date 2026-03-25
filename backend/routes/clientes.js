@@ -2,6 +2,7 @@ const express = require('express');
 const { query } = require('../config/database');
 const { verifyToken } = require('./auth');
 const { actualizarRutasPorCambioZona } = require('../lib/rutasHelper');
+const { alquilerRepositoryFactory, chargeRepositoryFactory } = require('../modules/alquileres');
 const router = express.Router();
 
 // Obtener clientes de la empresa
@@ -442,6 +443,53 @@ router.put('/:id/toggle-status', verifyToken, async (req, res) => {
         res.json({ success: true, cliente: actualizado[0] });
     } catch (error) {
         console.error('❌ Error alternando estado de cliente:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Listar alquileres por cliente
+router.get('/:id/alquileres', verifyToken, async (req, res) => {
+    try {
+        const alquileres = await alquilerRepositoryFactory().listByCliente(
+            Number(req.params.id),
+            req.user.codigoEmpresa
+        );
+        res.json(alquileres);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Estado de cuenta del cliente (incluye cargos de alquiler)
+router.get('/:id/estado-cuenta', verifyToken, async (req, res) => {
+    try {
+        const clienteId = Number(req.params.id);
+        const { desde, hasta } = req.query;
+
+        const pagos = await query(
+            `SELECT codigo AS id, fechaPago, monto, observaciones, metodoPago, 'PAGO' AS tipo
+             FROM pagos
+             WHERE clienteId = ?
+             ORDER BY fechaPago DESC`,
+            [clienteId]
+        );
+
+        const cargosAlquiler = await chargeRepositoryFactory().listByCliente(
+            clienteId,
+            req.user.codigoEmpresa,
+            typeof desde === 'string' ? desde : null,
+            typeof hasta === 'string' ? hasta : null
+        );
+
+        res.json({
+            clienteId,
+            movimientos: [...cargosAlquiler, ...pagos].sort((a, b) => {
+                const aDate = new Date(a.fechaAplicada || a.fechaPago).getTime();
+                const bDate = new Date(b.fechaAplicada || b.fechaPago).getTime();
+                return bDate - aDate;
+            }),
+        });
+    } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });

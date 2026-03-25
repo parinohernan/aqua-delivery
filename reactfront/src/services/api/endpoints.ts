@@ -10,6 +10,7 @@ export const endpoints = {
   // Clientes
   clientes: () => API_ENDPOINTS.CLIENTES,
   cliente: (id: number) => `${API_ENDPOINTS.CLIENTES}/${id}`,
+  clienteToggleStatus: (id: number) => `${API_ENDPOINTS.CLIENTES}/${id}/toggle-status`,
   
   // Productos
   productos: () => API_ENDPOINTS.PRODUCTOS,
@@ -38,5 +39,13 @@ export const endpoints = {
   
   // Informes
   informes: () => API_ENDPOINTS.INFORMES,
+
+  // Alquileres
+  alquileres: () => API_ENDPOINTS.ALQUILERES,
+  alquiler: (id: number) => `${API_ENDPOINTS.ALQUILERES}/${id}`,
+  alquilerCancelar: (id: number) => `${API_ENDPOINTS.ALQUILERES}/${id}/cancelar`,
+  alquileresCobrosEjecutar: () => `${API_ENDPOINTS.ALQUILERES}/cobros/ejecutar`,
+  clienteAlquileres: (id: number) => `${API_ENDPOINTS.CLIENTES}/${id}/alquileres`,
+  clienteEstadoCuenta: (id: number) => `${API_ENDPOINTS.CLIENTES}/${id}/estado-cuenta`,
 } as const;
 

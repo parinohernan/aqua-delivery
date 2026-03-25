@@ -29,6 +29,7 @@ export const API_ENDPOINTS = {
   RUTAS: '/api/rutas',
   TIPOS_PAGO: '/api/tiposdepago',
   INFORMES: '/api/informes',
+  ALQUILERES: '/api/alquileres',
 } as const;
 
 /**

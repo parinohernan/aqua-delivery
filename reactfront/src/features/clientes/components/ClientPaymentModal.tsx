@@ -29,11 +29,15 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [movimientos, setMovimientos] = useState<Array<Record<string, unknown>>>([]);
 
   // Cargar tipos de pago cuando se abre el modal
   useEffect(() => {
     if (isOpen) {
       loadTiposPago();
+      if (cliente) {
+        void loadEstadoCuenta(cliente.codigo || cliente.id);
+      }
       if (cliente) {
         // Inicializar retornables devueltos en 0; monto en 0 (caso típico: devolución de retornables sin abonar)
         setRetornablesDevueltos(0);
@@ -43,6 +47,18 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
       }
     }
   }, [isOpen, cliente]);
+
+  const loadEstadoCuenta = async (clienteId: number | string) => {
+    try {
+      const data = await apiClient.get<{ movimientos: Array<Record<string, unknown>> }>(
+        endpoints.clienteEstadoCuenta(Number(clienteId))
+      );
+      setMovimientos(data.movimientos || []);
+    } catch (err) {
+      console.error('Error cargando estado de cuenta:', err);
+      setMovimientos([]);
+    }
+  };
 
   const loadTiposPago = async () => {
     try {
@@ -109,6 +125,7 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
 
       // Recargar clientes
       await loadClientes();
+      await loadEstadoCuenta(clienteId);
 
       // Cerrar modal
       handleClose();
@@ -182,6 +199,36 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
                 <div><strong>🔄 Retornables adeudados:</strong> {retornablesActuales}</div>
               )}
             </div>
+          </div>
+
+          <div className="p-4 bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm">
+            <h5 className="mb-2 font-semibold text-white">Estado de cuenta reciente</h5>
+            {movimientos.length === 0 ? (
+              <p className="text-sm text-white/60">Sin movimientos recientes.</p>
+            ) : (
+              <div className="max-h-36 space-y-2 overflow-auto text-sm">
+                {movimientos.slice(0, 5).map((mov) => {
+                  const fecha = String((mov.fechaAplicada || mov.fechaPago || '') as string).slice(0, 10);
+                  const montoMov = Number(mov.monto || 0);
+                  const tipoMov = String(mov.tipo || '');
+                  const detalle = String(mov.detalle || mov.observaciones || '');
+                  return (
+                    <div key={`${tipoMov}-${mov.id as number}`} className="flex items-center justify-between rounded border border-white/10 px-2 py-1">
+                      <div>
+                        <p className="text-white/90">{tipoMov === 'ALQUILER_CARGO' ? 'Cargo alquiler' : 'Pago'}</p>
+                        <p className="text-xs text-white/60">{detalle || '-'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={tipoMov === 'ALQUILER_CARGO' ? 'text-red-300' : 'text-green-300'}>
+                          {tipoMov === 'ALQUILER_CARGO' ? '+' : '-'}{formatCurrency(Math.abs(montoMov))}
+                        </p>
+                        <p className="text-xs text-white/60">{fecha}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Tipo de Pago */}

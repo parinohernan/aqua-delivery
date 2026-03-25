@@ -26,19 +26,12 @@ const LandingFooter = () => {
           Aqua Delivery Manager • Hecho en Argentina
         </p>
         
-        <p className="text-white/20 text-[10px] max-w-sm mx-auto leading-relaxed mb-10">
+        <p className="text-white/60 text-[18px] max-w-sm mx-auto leading-relaxed mb-10">
           Software de gestión profesional para repartidores y distribuidoras de agua. 
-          Desarrollado con ❤️ para La Pampa y todo el país.
+          desarrollado por <a href="https://janus314.com.ar" target="_blank" className="text-white/90 hover:text-blue-400 transition-colors">janus314</a> - Brindando soluciones para la logística de tu negocio desde 2013.
         </p>
 
-        <div className="flex flex-wrap justify-center gap-8 text-[11px] text-white/40 uppercase font-black tracking-widest border-t border-white/5 pt-10">
-          <button 
-            onClick={() => navigate('/login')} 
-            className="hover:text-blue-400 transition-all hover:scale-105"
-          >
-            ACCESO CLIENTES
-          </button>
-          
+        <div className="flex flex-wrap justify-center gap-8 text-[11px] text-white/40 uppercase font-black tracking-widest border-t border-white/5 pt-10">          
           <button 
             onClick={() => openModal('terms')} 
             className="hover:text-white transition-all hover:scale-105"

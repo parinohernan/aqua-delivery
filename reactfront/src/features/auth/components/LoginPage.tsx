@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronRight, Sparkles } from 'lucide-react';
 
 function LoginPage() {
   const [telegramId, setTelegramId] = useState('');
@@ -68,8 +69,35 @@ function LoginPage() {
                   </div>
                 </div>
               </div>
-              <h1 className="text-2xl font-bold text-white">Aqua314</h1>
+              <h1 className="text-2xl font-bold text-white">Aqua</h1>
               <p className="text-white/50 text-xs tracking-widest uppercase mt-0.5">Delivery Manager</p>
+            </div>
+
+            {/* Gancho a landing /info: visible antes del login, sin competir con el CTA principal */}
+            <div className="px-6 -mx-6 border-b border-white/10 bg-white/[0.03]">
+              <Link
+                to="/info"
+                className="group flex items-center gap-3 py-4 px-0 sm:px-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-inset rounded-none sm:rounded-xl sm:my-2 sm:py-3.5 sm:hover:bg-white/5 transition-colors min-h-[52px]"
+              >
+                <span
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/25 to-blue-600/25 border border-white/10 text-cyan-200 shadow-inner"
+                  aria-hidden
+                >
+                  <Sparkles className="h-5 w-5" strokeWidth={2} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-white leading-snug">
+                    ¿Primera vez acá? Conocé la plataforma
+                  </span>
+                  <span className="block text-xs text-white/55 mt-0.5 leading-relaxed">
+                    Funciones, precios, guías y cómo empezar — sin iniciar sesión
+                  </span>
+                </span>
+                <ChevronRight
+                  className="h-5 w-5 shrink-0 text-white/35 transition group-hover:text-cyan-300 group-hover:translate-x-0.5"
+                  aria-hidden
+                />
+              </Link>
             </div>
 
             {/* ── Formulario ── */}
@@ -211,7 +239,7 @@ function LoginPage() {
             </div>
 
             {/* ── Footer / Más Info ── */}
-            <div className="pt-4 pb-6 text-center space-y-2">
+            <div className="pt-4 pb-6 text-center space-y-3">
               <button
                 type="button"
                 onClick={() => navigate('/startnow')}
@@ -222,15 +250,9 @@ function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </button>
-              <button 
-                onClick={() => navigate('/info')}
-                className="text-xs text-blue-400/60 hover:text-blue-400 transition-colors flex items-center justify-center gap-1.5 mx-auto"
-              >
-                <span>¿No tenés cuenta? Conocé AquaDelivery</span>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </button>
+              <p className="text-[11px] text-white/35 leading-relaxed max-w-[280px] mx-auto">
+                ¿Ya viste la info? Volvé acá para ingresar con tu contraseña y código de empresa.
+              </p>
             </div>
 
           </div>

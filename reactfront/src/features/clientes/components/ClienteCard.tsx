@@ -6,10 +6,10 @@ import {
   DollarSign,
   User,
 } from 'lucide-react';
-import { useClientesStore } from '../stores/clientesStore';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
 import ClienteModal from './ClienteModal';
 import ClientPaymentModal from './ClientPaymentModal';
+import ClienteAlquileresModal from './ClienteAlquileresModal';
 import type { Cliente } from '@/types/entities';
 
 interface ClienteCardProps {
@@ -17,9 +17,9 @@ interface ClienteCardProps {
 }
 
 function ClienteCard({ cliente }: ClienteCardProps) {
-  const { deleteCliente: _deleteCliente } = useClientesStore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showAlquileresModal, setShowAlquileresModal] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [isTouchDevice] = useState(() => 'ontouchstart' in window);
 
@@ -154,6 +154,26 @@ function ClienteCard({ cliente }: ClienteCardProps) {
         </div>
 
         {/* ── Acciones ───────────────────────────────────────────── */}
+        <div style={{ display: 'flex', marginTop: '12px', gap: '8px' }}>
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#22C55E', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Cobrar
+          </button>
+          <button
+            onClick={() => setShowEditModal(true)}
+            style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#E2E8F0', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Editar
+          </button>
+          <button
+            onClick={() => setShowAlquileresModal(true)}
+            style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#1D4ED8', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Alquileres
+          </button>
+        </div>
         {/* TEST: botones comentados para descartar si causan el ruido en móvil */}
         {/* <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => setShowPaymentModal(true)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#22C55E', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: isTouchDevice ? 'none' : 'box-shadow 250ms ease, background 250ms ease', fontFamily: 'inherit' }} onMouseEnter={!isTouchDevice ? (e) => { const btn = e.currentTarget as HTMLButtonElement; btn.style.boxShadow = '0 0 0 1px #22C55E, 0 0 14px rgba(34,197,94,0.4)'; btn.style.background = '#16A34A'; } : undefined} onMouseLeave={!isTouchDevice ? (e) => { const btn = e.currentTarget as HTMLButtonElement; btn.style.boxShadow = 'none'; btn.style.background = '#22C55E'; } : undefined}><CreditCard size={15} />Cobrar</button>
@@ -172,6 +192,11 @@ function ClienteCard({ cliente }: ClienteCardProps) {
         isOpen={showPaymentModal}
         cliente={cliente}
         onClose={() => setShowPaymentModal(false)}
+      />
+      <ClienteAlquileresModal
+        isOpen={showAlquileresModal}
+        cliente={cliente}
+        onClose={() => setShowAlquileresModal(false)}
       />
     </>
   );
