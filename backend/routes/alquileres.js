@@ -21,6 +21,7 @@ router.post('/', verifyToken, async (req, res) => {
             observacion,
             montoMensual: Number(montoMensual),
             fechaInicio,
+            vendedorId: req.user.vendedorId,
         });
         res.status(201).json(alquiler);
     } catch (error) {

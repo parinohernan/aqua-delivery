@@ -10,6 +10,28 @@ function assertEqual(actual, expected, message) {
     }
 }
 
+function createMockTransactionQuery() {
+    return async (sql) => {
+        const s = String(sql).toUpperCase();
+        if (s.includes('INSERT INTO PEDIDOS')) {
+            return { insertId: 9001 };
+        }
+        if (s.includes('INSERT INTO PRODUCTOS')) {
+            return { insertId: 500 };
+        }
+        if (s.includes('FROM PRODUCTOS') && s.includes('SELECT')) {
+            return [{ codigo: 500 }];
+        }
+        if (s.includes('ZONA') && s.includes('CLIENTES')) {
+            return [{ zona: null }];
+        }
+        if (s.includes('INSERT INTO PEDIDOSITEMS')) {
+            return { insertId: 1 };
+        }
+        return [];
+    };
+}
+
 async function testReglaFinDeMes() {
     assertEqual(getLastDayOfMonth(2026, 2), 28, 'Febrero 2026 termina día 28');
     const d = getScheduledDateForPeriod('2026-02', 31);
@@ -17,7 +39,6 @@ async function testReglaFinDeMes() {
 }
 
 async function testNoDuplicaCargosYActualizaSaldo() {
-    let saldo = 0;
     const createdKeys = new Set();
     const alquileres = [{
         id: 10,
@@ -29,8 +50,10 @@ async function testNoDuplicaCargosYActualizaSaldo() {
         marca: 'Samsung',
     }];
 
+    const mockTx = createMockTransactionQuery();
+
     const useCase = new GenerateMonthlyCharges({
-        transaction: async (cb) => cb(async () => ({})),
+        transaction: async (cb) => cb(mockTx),
         alquilerRepositoryFactory: () => ({
             listActiveByEmpresa: async () => alquileres,
         }),
@@ -45,11 +68,7 @@ async function testNoDuplicaCargosYActualizaSaldo() {
                 createdKeys.add(key);
             },
         }),
-        clienteSaldoGatewayFactory: () => ({
-            incrementSaldo: async (_cliente, _empresa, monto) => {
-                saldo += Number(monto);
-            },
-        }),
+        getDefaultVendedorIdForEmpresa: async () => 1,
     });
 
     const runDate = new Date('2026-02-21T12:00:00.000Z');
@@ -58,7 +77,6 @@ async function testNoDuplicaCargosYActualizaSaldo() {
 
     assertEqual(first.created, 1, 'Primera ejecución crea 1 cargo');
     assertEqual(second.created, 0, 'Segunda ejecución no duplica cargo');
-    assertEqual(saldo, 15000, 'Saldo se incrementa una sola vez');
 }
 
 async function run() {

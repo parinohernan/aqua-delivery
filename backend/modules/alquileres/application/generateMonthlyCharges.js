@@ -3,19 +3,27 @@ const {
     getScheduledDateForPeriod,
     isDateOnOrAfter,
 } = require('../domain/alquilerRules');
+const { applyAlquilerChargeWithPedido } = require('../infrastructure/alquilerChargeWithPedidoSql');
 
 class GenerateMonthlyCharges {
-    constructor({ transaction, alquilerRepositoryFactory, chargeRepositoryFactory, clienteSaldoGatewayFactory }) {
+    constructor({
+        transaction,
+        alquilerRepositoryFactory,
+        chargeRepositoryFactory,
+        getDefaultVendedorIdForEmpresa,
+    }) {
         this.transaction = transaction;
         this.alquilerRepositoryFactory = alquilerRepositoryFactory;
         this.chargeRepositoryFactory = chargeRepositoryFactory;
-        this.clienteSaldoGatewayFactory = clienteSaldoGatewayFactory;
+        this.getDefaultVendedorIdForEmpresa = getDefaultVendedorIdForEmpresa;
     }
 
     async executeForEmpresa({ codigoEmpresa, runDate = new Date() }) {
         const currentPeriod = toPeriod(runDate);
         const dueDateByPeriod = getScheduledDateForPeriod(currentPeriod, 1);
         const summary = { processed: 0, created: 0, skipped: 0 };
+
+        const vendedorId = await this.getDefaultVendedorIdForEmpresa(codigoEmpresa);
 
         const alquileres = await this.alquilerRepositoryFactory().listActiveByEmpresa(codigoEmpresa);
 
@@ -39,6 +47,7 @@ class GenerateMonthlyCharges {
                 alquiler,
                 periodo,
                 fechaProgramada: scheduledDate.toISOString().slice(0, 10),
+                vendedorId,
             });
             if (created) summary.created += 1;
             else summary.skipped += 1;
@@ -47,28 +56,21 @@ class GenerateMonthlyCharges {
         return summary;
     }
 
-    async tryCreateCharge({ codigoEmpresa, alquiler, periodo, fechaProgramada }) {
+    async tryCreateCharge({ codigoEmpresa, alquiler, periodo, fechaProgramada, vendedorId }) {
         try {
             await this.transaction(async (txQuery) => {
-                const chargeRepository = this.chargeRepositoryFactory(txQuery);
-                const clienteSaldoGateway = this.clienteSaldoGatewayFactory(txQuery);
-
-                const marca = alquiler.marca ? ` (${alquiler.marca})` : '';
-                const detalle = `Cargo alquiler ${alquiler.tipo}${marca} - período ${periodo}`;
-                await chargeRepository.createCharge({
-                    codigoEmpresa,
-                    alquilerId: alquiler.id,
-                    codigoCliente: alquiler.codigoCliente,
-                    periodo,
-                    fechaProgramada,
-                    monto: Number(alquiler.montoMensual),
-                    detalle,
-                });
-
-                await clienteSaldoGateway.incrementSaldo(
-                    alquiler.codigoCliente,
-                    codigoEmpresa,
-                    Number(alquiler.montoMensual)
+                await applyAlquilerChargeWithPedido(
+                    txQuery,
+                    {
+                        chargeRepositoryFactory: this.chargeRepositoryFactory,
+                    },
+                    {
+                        codigoEmpresa,
+                        alquiler,
+                        periodo,
+                        fechaProgramada,
+                        vendedorId,
+                    }
                 );
             });
             return true;

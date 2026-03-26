@@ -6,6 +6,14 @@ const { CreateAlquiler } = require('./application/createAlquiler');
 const { CancelAlquiler } = require('./application/cancelAlquiler');
 const { GenerateMonthlyCharges } = require('./application/generateMonthlyCharges');
 
+async function getDefaultVendedorIdForEmpresa(codigoEmpresa) {
+    const rows = await query(
+        'SELECT codigo FROM vendedores WHERE codigoEmpresa = ? ORDER BY codigo ASC LIMIT 1',
+        [codigoEmpresa]
+    );
+    return rows[0]?.codigo ?? null;
+}
+
 function alquilerRepositoryFactory(customQuery) {
     return new AlquilerRepositorySql(customQuery || query);
 }
@@ -20,8 +28,10 @@ function clienteSaldoGatewayFactory(customQuery) {
 
 function createAlquilerUseCase() {
     return new CreateAlquiler({
-        alquilerRepository: alquilerRepositoryFactory(),
-        clienteSaldoGateway: clienteSaldoGatewayFactory(),
+        transaction,
+        alquilerRepositoryFactory,
+        chargeRepositoryFactory,
+        clienteSaldoGatewayFactory,
     });
 }
 
@@ -36,13 +46,14 @@ function generateMonthlyChargesUseCase() {
         transaction,
         alquilerRepositoryFactory,
         chargeRepositoryFactory,
-        clienteSaldoGatewayFactory,
+        getDefaultVendedorIdForEmpresa,
     });
 }
 
 module.exports = {
     alquilerRepositoryFactory,
     chargeRepositoryFactory,
+    getDefaultVendedorIdForEmpresa,
     createAlquilerUseCase,
     cancelAlquilerUseCase,
     generateMonthlyChargesUseCase,
