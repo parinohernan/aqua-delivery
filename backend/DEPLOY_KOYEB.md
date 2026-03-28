@@ -127,6 +127,11 @@ En la sección **Environment Variables**, agrega:
 | `DB_PORT` | `3306` | Plain text |
 | `JWT_SECRET` | `tu_jwt_secret_muy_seguro` | **Secret** |
 | `FRONTEND_URL` | `https://aquadeliverymanager.netlify.app` | Plain text |
+| `CLOUDINARY_CLOUD_NAME` | (dashboard Cloudinary) | Plain text |
+| `CLOUDINARY_API_KEY` | (dashboard Cloudinary) | **Secret** |
+| `CLOUDINARY_API_SECRET` | (dashboard Cloudinary) | **Secret** |
+
+Opcional: `CLOUDINARY_UPLOAD_FOLDER` (por defecto `productos`). Sin estas variables, la app funciona pero la subida de imágenes desde el modal de productos responde 503.
 
 ⚠️ **Importante:** Marca como **Secret** las variables sensibles (passwords, tokens, etc.)
 

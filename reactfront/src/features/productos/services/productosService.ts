@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/api/client';
+import { apiClient, getApiBaseUrl } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { cacheData, getCachedData } from '@/services/storage/cache';
 import { DB_STORES } from '@/utils/constants';
@@ -56,6 +56,38 @@ class ProductosService {
     await cacheData(DB_STORES.PRODUCTOS, allProductos);
     
     return producto;
+  }
+
+  /**
+   * Sube una imagen de producto a Cloudinary (vía API) y devuelve la URL pública.
+   */
+  async uploadProductImage(file: File): Promise<{ imageURL: string }> {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No se encontró sesión. Inicie sesión de nuevo.');
+    }
+
+    const base = getApiBaseUrl();
+    const path = endpoints.uploadProductImage();
+    const url = `${base || ''}${path}`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    const data = (await res.json()) as { error?: string; imageURL?: string };
+    if (!res.ok) {
+      throw new Error(data.error || 'Error al subir la imagen');
+    }
+    if (!data.imageURL) {
+      throw new Error('Respuesta inválida del servidor');
+    }
+    return { imageURL: data.imageURL };
   }
 
   /**

@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
   TIPOS_PAGO: '/api/tiposdepago',
   INFORMES: '/api/informes',
   ALQUILERES: '/api/alquileres',
+  UPLOAD_PRODUCT_IMAGE: '/api/upload/product-image',
 } as const;
 
 /**

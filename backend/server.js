@@ -69,6 +69,7 @@ app.use(express.json());
 // Rutas API
 app.use('/auth', require('./routes/auth'));
 app.use('/api/clientes', require('./routes/clientes'));
+app.use('/api/upload', require('./routes/upload'));
 app.use('/api/productos', require('./routes/productos'));
 app.use('/api/pedidos', require('./routes/pedidos'));
 app.use('/api/pagos', require('./routes/pagos'));

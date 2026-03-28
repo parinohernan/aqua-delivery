@@ -1,11 +1,11 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { APP_CONFIG, API_ENDPOINTS } from '@/utils/constants';
+import { APP_CONFIG } from '@/utils/constants';
 
 /**
  * Obtiene la URL base del API
  * Si se accede desde la red local (no localhost), usa la IP del servidor
  */
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
   // Si hay una variable de entorno configurada, usarla
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;

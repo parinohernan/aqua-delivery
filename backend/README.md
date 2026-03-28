@@ -74,6 +74,7 @@ backend/
 │   ├── auth.js         # Autenticación
 │   ├── clientes.js     # Gestión de clientes
 │   ├── productos.js    # Gestión de productos
+│   ├── upload.js       # Subida de imágenes (Cloudinary)
 │   ├── pedidos.js      # Gestión de pedidos
 │   ├── pagos.js        # Gestión de pagos
 │   ├── zonas.js        # Gestión de zonas

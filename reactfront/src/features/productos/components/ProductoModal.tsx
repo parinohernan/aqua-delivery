@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useProductosStore } from '../stores/productosStore';
+import { productosService } from '../services/productosService';
 import { toast } from '@/utils/feedback';
 import type { Producto } from '@/types/entities';
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+type ImageInputMode = 'url' | 'upload';
 
 /**
  * Modal para crear o editar un producto
@@ -25,6 +30,9 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageInputMode, setImageInputMode] = useState<ImageInputMode>('url');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Cargar datos cuando se abre el modal
   useEffect(() => {
@@ -52,6 +60,34 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
     setEsRetornable(false);
     setActivo(true);
     setError(null);
+    setImageInputMode('url');
+    setIsUploadingImage(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('La imagen no debe superar 5 MB');
+      return;
+    }
+
+    setError(null);
+    setIsUploadingImage(true);
+    try {
+      const { imageURL: url } = await productosService.uploadProductImage(file);
+      setImageURL(url);
+      toast.success('Imagen subida correctamente');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al subir la imagen';
+      setError(msg);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,6 +109,10 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
     const stockNum = parseInt(stock);
     if (isNaN(stockNum) || stockNum < 0) {
       setError('El stock debe ser un número entero válido mayor o igual a 0');
+      return;
+    }
+
+    if (isUploadingImage) {
       return;
     }
 
@@ -208,18 +248,60 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
             </div>
           </div>
 
-          {/* URL de Imagen */}
+          {/* Imagen: URL o subida */}
           <div>
             <label className="block text-sm font-medium text-white mb-2">
-              URL de Imagen
+              Imagen del producto
             </label>
-            <input
-              type="url"
-              value={imageURL}
-              onChange={(e) => setImageURL(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
-              placeholder="https://ejemplo.com/imagen.jpg"
-            />
+            <div className="flex rounded-lg border border-white/20 overflow-hidden mb-3">
+              <button
+                type="button"
+                onClick={() => setImageInputMode('url')}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  imageInputMode === 'url'
+                    ? 'bg-primary-500/35 text-white border-r border-white/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                Pegar URL
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageInputMode('upload')}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  imageInputMode === 'upload'
+                    ? 'bg-primary-500/35 text-white'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                Subir imagen
+              </button>
+            </div>
+
+            {imageInputMode === 'url' ? (
+              <input
+                type="url"
+                value={imageURL}
+                onChange={(e) => setImageURL(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/50 backdrop-blur-sm"
+                placeholder="https://ejemplo.com/imagen.jpg"
+              />
+            ) : (
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  disabled={isUploadingImage}
+                  className="w-full text-sm text-white/90 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-500/40 file:text-white file:cursor-pointer disabled:opacity-50"
+                />
+                {isUploadingImage && (
+                  <p className="text-sm text-primary-300">Subiendo imagen…</p>
+                )}
+              </div>
+            )}
+
             {imageURL && (
               <div className="mt-2">
                 <img
@@ -282,7 +364,7 @@ function ProductoModal({ isOpen, producto, onClose }: ProductoModalProps) {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploadingImage}
               className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/30"
             >
               {isSubmitting ? 'Guardando...' : isEditMode ? 'Actualizar Producto' : 'Crear Producto'}
