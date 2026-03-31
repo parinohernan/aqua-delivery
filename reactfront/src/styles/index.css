@@ -55,6 +55,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  /* Evita pull-to-refresh del navegador y encadenamiento de scroll al hacer gestos con el dedo */
+  overscroll-behavior-y: contain;
 }
 
 body {
@@ -63,11 +65,13 @@ body {
   background-color: #0B0E11;
   color: #F1F5F9;
   line-height: 1.5;
+  overscroll-behavior-y: contain;
 }
 
 #root {
   min-height: 100vh;
   background-color: #0B0E11;
+  overscroll-behavior-y: contain;
 }
 
 /* Animaciones personalizadas - Disponibles globalmente */

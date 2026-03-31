@@ -22,7 +22,7 @@ function Header() {
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Aqua314</h1>
+              <h1 className="text-xl font-bold text-white">Aqua</h1>
               <span className="text-sm text-white/80">Delivery Manager</span>
             </div>
           </div>

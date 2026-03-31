@@ -42,6 +42,14 @@ function pedidoMatchesCliente(p: Pedido, codigoCliente: number): boolean {
   return cod != null && Number(cod) === codigoCliente;
 }
 
+function getCodigoClienteDesdePedido(p: Pedido): number | null {
+  const c = p.codigoCliente ?? p.clienteId;
+  if (c != null && Number.isFinite(Number(c))) return Number(c);
+  if (p.cliente?.id != null) return Number(p.cliente.id);
+  const cod = (p.cliente as { codigo?: string | number } | undefined)?.codigo;
+  return cod != null && Number.isFinite(Number(cod)) ? Number(cod) : null;
+}
+
 function pickPedidoParaEntregar(candidatos: Pedido[]): Pedido | null {
   const activos = candidatos.filter((p) => p.estado === 'pendient' || p.estado === 'proceso');
   if (activos.length === 0) return null;
@@ -612,7 +620,20 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
         isOpen={entregarPedido !== null}
         pedido={entregarPedido}
         onClose={() => setEntregarPedido(null)}
-        onSuccess={() => onSaved()}
+        onSuccess={(pedidoEntregado) => {
+          const codigo = getCodigoClienteDesdePedido(pedidoEntregado);
+          if (codigo == null) return;
+          setClientes((prev) =>
+            prev.map((c) =>
+              c.codigoCliente === codigo
+                ? {
+                    ...c,
+                    pedidosPendientes: Math.max(0, (c.pedidosPendientes ?? 0) - 1),
+                  }
+                : c
+            )
+          );
+        }}
       />
 
       <div className="flex items-center justify-between flex-wrap gap-2">

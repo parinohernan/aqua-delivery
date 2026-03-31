@@ -17,8 +17,8 @@ interface EntregarPedidoModalProps {
   isOpen: boolean;
   pedido: Pedido | null;
   onClose: () => void;
-  /** Se llama solo tras entrega exitosa (antes de cerrar). Útil para refrescar listas padre. */
-  onSuccess?: () => void;
+  /** Se llama solo tras entrega exitosa (antes de cerrar), con el pedido entregado. */
+  onSuccess?: (pedido: Pedido) => void;
 }
 
 function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPedidoModalProps) {
@@ -227,7 +227,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
       // Recargar pedidos
       await loadPedidos();
 
-      onSuccess?.();
+      onSuccess?.(pedido);
 
       // Cerrar modal
       handleClose();
