@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import GuardedNavLink from '@/components/navigation/GuardedNavLink';
 import { ROUTES } from '@/utils/constants';
 import { preloadAppSection } from '@/app/routePreloads';
 import { Package, Users, ShoppingBag, BarChart2, Route } from 'lucide-react';
@@ -19,7 +19,7 @@ function Navigation() {
   return (
     <nav className="hidden lg:flex flex-col w-64 bg-[#0f1b2e]/80 backdrop-blur-sm border-r border-white/10 shadow-xl p-4 gap-2">
       {navItems.map((item) => (
-        <NavLink
+        <GuardedNavLink
           key={item.path}
           to={item.path}
           onMouseEnter={() => preloadAppSection(item.path)}
@@ -34,7 +34,7 @@ function Navigation() {
         >
           {item.icon}
           <span className="font-medium">{item.label}</span>
-        </NavLink>
+        </GuardedNavLink>
       ))}
     </nav>
   );

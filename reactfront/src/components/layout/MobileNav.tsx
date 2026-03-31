@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import GuardedNavLink from '@/components/navigation/GuardedNavLink';
 import { ROUTES } from '@/utils/constants';
 import { preloadAppSection } from '@/app/routePreloads';
 import { Package, Users, ShoppingBag, BarChart2, Route } from 'lucide-react';
@@ -20,7 +20,7 @@ function MobileNav() {
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0f1b2e] border-t border-white/10 shadow-2xl z-40 safe-area-pb">
       <div className="flex justify-around items-center px-0 py-2 min-h-[56px]">
         {navItems.map((item) => (
-          <NavLink
+          <GuardedNavLink
             key={item.path}
             to={item.path}
             title={item.label}
@@ -34,7 +34,7 @@ function MobileNav() {
             <span className="text-[10px] font-medium leading-tight truncate w-full text-center">
               {item.label}
             </span>
-          </NavLink>
+          </GuardedNavLink>
         ))}
       </div>
     </nav>

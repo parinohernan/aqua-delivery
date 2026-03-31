@@ -6,6 +6,7 @@ import MobileNav from './MobileNav';
 import SectionLoadingFallback from './SectionLoadingFallback';
 import Toast from '@/components/ui/Toast';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import RutasOrdenLeaveDialog from '@/features/rutas/components/RutasOrdenLeaveDialog';
 import { preloadAppSection } from '@/app/routePreloads';
 import { ROUTES } from '@/utils/constants';
 
@@ -58,6 +59,7 @@ function AppLayout() {
       {/* Toast y Confirm globales */}
       <Toast />
       <ConfirmDialog />
+      <RutasOrdenLeaveDialog />
     </div>
   );
 }

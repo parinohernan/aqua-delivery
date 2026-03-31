@@ -25,9 +25,17 @@ interface PedidoItem {
 interface NewPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Si se pasa, al abrir se preselecciona ese cliente (código/id de negocio) */
+  initialClienteCodigo?: number;
 }
 
-function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
+function clienteMatchesCodigoNegocio(c: Cliente, codigo: number): boolean {
+  if (c.id === codigo) return true;
+  if (c.codigo != null && Number(c.codigo) === codigo) return true;
+  return false;
+}
+
+function NewPedidoModal({ isOpen, onClose, initialClienteCodigo }: NewPedidoModalProps) {
   const { loadPedidos } = usePedidosStore();
   
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -50,12 +58,32 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
   const clientSearchRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const getZonaNombre = (c: Cliente): string => {
+    const z = (c as unknown as { zona?: string | { zona?: string } }).zona;
+    return (typeof z === 'string' ? z : z?.zona) ?? '';
+  };
+
   // Cargar datos iniciales
   useEffect(() => {
     if (isOpen) {
       loadInitialData();
     }
   }, [isOpen]);
+
+  // Preseleccionar cliente cuando se abre desde rutas u otro flujo
+  useEffect(() => {
+    if (!isOpen || initialClienteCodigo == null) return;
+    if (isLoading || clientes.length === 0) return;
+    const match = clientes.find((c) => clienteMatchesCodigoNegocio(c, initialClienteCodigo));
+    if (match) {
+      setSelectedCliente(match);
+      setSelectedZona(getZonaNombre(match));
+      setClientSearch('');
+      setShowClientDropdown(false);
+    } else {
+      toast.error('No se encontró el cliente activo para el pedido');
+    }
+  }, [isOpen, isLoading, clientes, initialClienteCodigo]);
 
   // Filtrar clientes cuando cambia la búsqueda
   useEffect(() => {
@@ -99,6 +127,7 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
+      setClientes([]);
       const [clientesData, productosData, zonasData] = await Promise.all([
         clientesService.getAll(),
         productosService.getAll(),
@@ -115,11 +144,6 @@ function NewPedidoModal({ isOpen, onClose }: NewPedidoModalProps) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getZonaNombre = (c: Cliente): string => {
-    const z = (c as unknown as { zona?: string | { zona?: string } }).zona;
-    return (typeof z === 'string' ? z : z?.zona) ?? '';
   };
 
   const clientZonaNombre = selectedCliente ? getZonaNombre(selectedCliente) : '';

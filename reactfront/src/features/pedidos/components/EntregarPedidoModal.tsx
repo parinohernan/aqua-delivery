@@ -17,9 +17,11 @@ interface EntregarPedidoModalProps {
   isOpen: boolean;
   pedido: Pedido | null;
   onClose: () => void;
+  /** Se llama solo tras entrega exitosa (antes de cerrar). Útil para refrescar listas padre. */
+  onSuccess?: () => void;
 }
 
-function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalProps) {
+function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPedidoModalProps) {
   const { loadPedidos } = usePedidosStore();
   const dialogRef = useRef<HTMLDialogElement>(null);
   
@@ -225,6 +227,8 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
       // Recargar pedidos
       await loadPedidos();
 
+      onSuccess?.();
+
       // Cerrar modal
       handleClose();
 
@@ -265,6 +269,10 @@ function EntregarPedidoModal({ isOpen, pedido, onClose }: EntregarPedidoModalPro
   // Saldo retornables: > 0 = adeudados, < 0 = a favor
   const saldoRetornables = Number(pedido?.cliente_retornables ?? pedido?.cliente?.retornables ?? 0);
   const saldoRetornablesDespues = saldoRetornables + totalRetornables - retornablesDevueltos;
+
+  if (!pedido) {
+    return null;
+  }
 
   return (
     <dialog

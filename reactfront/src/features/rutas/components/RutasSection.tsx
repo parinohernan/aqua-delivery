@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Route, MapPin } from 'lucide-react';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { rutasService } from '../services/rutasService';
 import RutaOrdenList from './RutaOrdenList';
 import type { ClienteConOrden } from '@/types/entities';
+import { useRutasOrdenStore } from '@/stores/rutasOrdenStore';
+import { ROUTES } from '@/utils/constants';
 
 interface ZonaItem {
   id: number;
@@ -12,6 +15,10 @@ interface ZonaItem {
 }
 
 function RutasSection() {
+  const location = useLocation();
+  const ordenDirty = useRutasOrdenStore((s) => s.ordenDirty);
+  const openPending = useRutasOrdenStore((s) => s.openPending);
+
   const [zonas, setZonas] = useState<ZonaItem[]>([]);
   const [zonaSeleccionada, setZonaSeleccionada] = useState<string>('');
   const [clientes, setClientes] = useState<ClienteConOrden[]>([]);
@@ -49,6 +56,25 @@ function RutasSection() {
     if (showZonaDropdown) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showZonaDropdown]);
+
+  useEffect(() => {
+    const fn = (zona: string) => {
+      setZonaSeleccionada(zona);
+      setShowZonaDropdown(false);
+    };
+    useRutasOrdenStore.getState().registerZonaCommit(fn);
+    return () => useRutasOrdenStore.getState().registerZonaCommit(null);
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname !== ROUTES.RUTAS || !ordenDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [location.pathname, ordenDirty]);
 
   const handleRefetch = () => {
     if (!zonaSeleccionada) return;
@@ -95,6 +121,15 @@ function RutasSection() {
                   key={z.id}
                   type="button"
                   onClick={() => {
+                    if (z.zona === zonaSeleccionada) {
+                      setShowZonaDropdown(false);
+                      return;
+                    }
+                    if (ordenDirty) {
+                      openPending({ kind: 'zona', zona: z.zona });
+                      setShowZonaDropdown(false);
+                      return;
+                    }
                     setZonaSeleccionada(z.zona);
                     setShowZonaDropdown(false);
                   }}

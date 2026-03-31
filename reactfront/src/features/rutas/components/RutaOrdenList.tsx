@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type MouseEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -17,12 +17,44 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Save, ArrowRightLeft } from 'lucide-react';
+import { Save, ArrowRightLeft, MoreVertical, Plus, Truck } from 'lucide-react';
+import NewPedidoModal from '@/features/pedidos/components/NewPedidoModal';
+import EntregarPedidoModal from '@/features/pedidos/components/EntregarPedidoModal';
+import { pedidosService } from '@/features/pedidos/services/pedidosService';
+import type { Pedido } from '@/types/entities';
 import { formatFullName } from '@/utils/formatters';
 import { toast } from '@/utils/feedback';
 import { rutasService } from '../services/rutasService';
 import { reorderClientesRuta, type MoverModo } from '../utils/reorderRuta';
 import type { ClienteConOrden } from '@/types/entities';
+import { useRutasOrdenStore } from '@/stores/rutasOrdenStore';
+
+function ordenCodigosIguales(a: ClienteConOrden[], b: ClienteConOrden[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((row, i) => row.codigoCliente === b[i]?.codigoCliente);
+}
+
+function pedidoMatchesCliente(p: Pedido, codigoCliente: number): boolean {
+  const c = p.codigoCliente ?? p.clienteId;
+  if (c === codigoCliente) return true;
+  if (p.cliente?.id === codigoCliente) return true;
+  const cod = (p.cliente as { codigo?: string | number } | undefined)?.codigo;
+  return cod != null && Number(cod) === codigoCliente;
+}
+
+function pickPedidoParaEntregar(candidatos: Pedido[]): Pedido | null {
+  const activos = candidatos.filter((p) => p.estado === 'pendient' || p.estado === 'proceso');
+  if (activos.length === 0) return null;
+  const rank = (e: string) => (e === 'pendient' ? 0 : e === 'proceso' ? 1 : 9);
+  activos.sort((a, b) => {
+    const dr = rank(a.estado) - rank(b.estado);
+    if (dr !== 0) return dr;
+    const fa = a.fecha_pedido || a.fecha || '';
+    const fb = b.fecha_pedido || b.fecha || '';
+    return String(fa).localeCompare(String(fb));
+  });
+  return activos[0] ?? null;
+}
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -229,14 +261,113 @@ function MoverModal({
   return createPortal(modal, document.body);
 }
 
+function RutaRowActionsMenu({
+  waUrl,
+  onNuevoPedido,
+  onEntregar,
+  entregarLoading,
+}: {
+  waUrl: string | null;
+  onNuevoPedido: () => void;
+  onEntregar: () => void | Promise<void>;
+  entregarLoading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  return (
+    <div className="relative flex-shrink-0" ref={wrapRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="px-2 py-1.5 rounded-lg border border-white/10 bg-white/[0.06] text-white/85 hover:bg-white/10 flex items-center justify-center min-h-[36px] min-w-[36px]"
+        title="Acciones"
+        aria-label="Abrir menú de acciones"
+      >
+        <MoreVertical size={18} strokeWidth={2.25} />
+      </button>
+      {open && (
+        <ul
+          role="menu"
+          className="absolute right-0 top-full mt-1 z-[80] min-w-[12.5rem] rounded-xl border border-white/15 bg-[#0f1b2e] shadow-2xl py-1 text-sm"
+        >
+          <li>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-white hover:bg-white/10"
+              onClick={() => {
+                setOpen(false);
+                onNuevoPedido();
+              }}
+            >
+              <Plus size={16} className="text-emerald-300/95 shrink-0" />
+              Nuevo pedido
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-white hover:bg-white/10 disabled:opacity-45 disabled:pointer-events-none"
+              disabled={entregarLoading}
+              onClick={() => {
+                setOpen(false);
+                void onEntregar();
+              }}
+            >
+              <Truck size={16} className="text-green-400 shrink-0" />
+              {entregarLoading ? 'Cargando…' : 'Entregar pedido'}
+            </button>
+          </li>
+          {waUrl && (
+            <li>
+              <a
+                role="menuitem"
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2.5 text-[#25D366] hover:bg-white/10"
+                onClick={() => setOpen(false)}
+              >
+                <WhatsAppIcon className="w-4 h-4 shrink-0" />
+                WhatsApp
+              </a>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function SortableRow({
   cliente,
   index,
   onMover,
+  onNuevoPedido,
+  onEntregar,
+  entregarLoading,
 }: {
   cliente: ClienteConOrden;
   index: number;
   onMover: () => void;
+  onNuevoPedido: () => void;
+  onEntregar: () => void | Promise<void>;
+  entregarLoading: boolean;
 }) {
   const {
     attributes,
@@ -253,64 +384,93 @@ function SortableRow({
   };
   const waUrl = whatsappHref(cliente.telefono);
 
+  const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+  const wasDraggingRef = useRef(false);
+  const suppressClickUntilRef = useRef(0);
+
+  useEffect(() => {
+    if (wasDraggingRef.current && !isDragging) {
+      suppressClickUntilRef.current = Date.now() + 350;
+    }
+    wasDraggingRef.current = isDragging;
+  }, [isDragging]);
+
+  const dragListeners = listeners as {
+    onPointerDown?: (e: PointerEvent<HTMLButtonElement>) => void;
+    [key: string]: unknown;
+  };
+  const { onPointerDown: dndPointerDown, ...restDragListeners } = dragListeners;
+
+  const handleOrdenClick = (e: MouseEvent<HTMLButtonElement>) => {
+    if (Date.now() < suppressClickUntilRef.current) return;
+    const start = pointerDownRef.current;
+    pointerDownRef.current = null;
+    if (start) {
+      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      if (dist >= 8) return;
+    }
+    onMover();
+  };
+
   return (
     <li
       ref={setNodeRef}
       style={style}
       className={`
-        flex items-center gap-2 sm:gap-3 p-3 rounded-xl border
+        flex items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 rounded-xl border
         ${isDragging
           ? 'bg-primary-500/30 border-primary-500/60 shadow-lg z-50 opacity-95'
           : 'bg-white/5 border-white/10'
         }
       `}
     >
+      {/* Clic = mover con precisión; arrastrar = reordenar (mismo umbral 8px que el sensor) */}
       <button
         type="button"
-        className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 touch-none cursor-grab active:cursor-grabbing flex-shrink-0"
+        className="px-2 py-1.5 rounded-lg border border-white/10 bg-white/[0.06] text-primary-300/95 hover:bg-white/10 touch-none cursor-grab active:cursor-grabbing flex items-center justify-center min-h-[36px] min-w-[40px] flex-shrink-0"
+        title="Arrastrá para reordenar · Clic para mover con precisión"
+        aria-label="Reordenar arrastrando o abrir mover con precisión al hacer clic"
         {...attributes}
-        {...listeners}
-        aria-label="Arrastrar para reordenar"
+        {...restDragListeners}
+        onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
+          pointerDownRef.current = { x: e.clientX, y: e.clientY };
+          dndPointerDown?.(e);
+        }}
+        onPointerCancel={() => {
+          pointerDownRef.current = null;
+        }}
+        onClick={handleOrdenClick}
       >
-        <GripVertical size={20} />
+        <ArrowRightLeft size={17} strokeWidth={2.25} />
       </button>
-      <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-500/30 text-primary-300 font-bold text-sm flex-shrink-0 tabular-nums">
+
+      <span
+        className="min-w-[1rem] max-w-[1.5rem] shrink-0 text-center text-[11px] font-bold tabular-nums leading-none text-primary-300/95 pt-0.5"
+        title={`Parada ${index + 1}`}
+      >
         {index + 1}
       </span>
+
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-white truncate">
+        <p className="font-medium text-white truncate text-[15px] leading-snug">
           {formatFullName(cliente.nombre, cliente.apellido)}
         </p>
         {cliente.direccion && (
-          <p className="text-sm text-white/60 truncate">{cliente.direccion}</p>
+          <p className="text-xs text-white/60 truncate">{cliente.direccion}</p>
         )}
-        <p className="text-xs text-white/50 mt-0.5">
+        <p className="text-[11px] text-white/45 mt-0.5 leading-tight">
           {cliente.pedidosPendientes != null && cliente.pedidosPendientes > 0
             ? `${cliente.pedidosPendientes} pedido${cliente.pedidosPendientes !== 1 ? 's' : ''} pendiente${cliente.pedidosPendientes !== 1 ? 's' : ''}`
             : 'Sin pedidos pendientes'}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onMover}
-        className="flex-shrink-0 p-2.5 rounded-xl bg-white/10 text-primary-300 hover:bg-white/15 border border-white/10"
-        title="Mover con precisión"
-        aria-label="Mover a otra posición"
-      >
-        <ArrowRightLeft size={18} />
-      </button>
-      {waUrl && (
-        <a
-          href={waUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-shrink-0 p-2.5 rounded-xl bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30 transition-colors"
-          title="Enviar mensaje por WhatsApp"
-          aria-label="Abrir WhatsApp para enviar mensaje"
-        >
-          <WhatsAppIcon className="w-5 h-5" />
-        </a>
-      )}
+
+      <RutaRowActionsMenu
+        waUrl={waUrl}
+        onNuevoPedido={onNuevoPedido}
+        onEntregar={onEntregar}
+        entregarLoading={entregarLoading}
+      />
     </li>
   );
 }
@@ -319,10 +479,60 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
   const [clientes, setClientes] = useState<ClienteConOrden[]>(initialClientes);
   const [isSaving, setIsSaving] = useState(false);
   const [moverCliente, setMoverCliente] = useState<ClienteConOrden | null>(null);
+  const [newPedidoOpen, setNewPedidoOpen] = useState(false);
+  const [newPedidoClienteCodigo, setNewPedidoClienteCodigo] = useState<number | undefined>(undefined);
+  const [entregarPedido, setEntregarPedido] = useState<Pedido | null>(null);
+  const [entregarBusyCodigo, setEntregarBusyCodigo] = useState<number | null>(null);
+
+  const setOrdenDirty = useRutasOrdenStore((s) => s.setOrdenDirty);
+  const registerSaveOrder = useRutasOrdenStore((s) => s.registerSaveOrder);
+  const clientesRef = useRef(clientes);
+  clientesRef.current = clientes;
 
   useEffect(() => {
     setClientes(initialClientes);
   }, [zona, initialClientes]);
+
+  const isDirty = useMemo(
+    () => !ordenCodigosIguales(clientes, initialClientes),
+    [clientes, initialClientes]
+  );
+
+  useEffect(() => {
+    setOrdenDirty(isDirty);
+  }, [isDirty, setOrdenDirty]);
+
+  const saveOrder = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const orden = clientesRef.current.map((c) => c.codigoCliente);
+      await rutasService.guardarOrden(zona, orden);
+      toast.success('Orden de reparto guardado');
+      onSaved();
+    } catch (error) {
+      toast.error('Error guardando el orden');
+      console.error(error);
+      throw error;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [zona, onSaved]);
+
+  useEffect(() => {
+    if (clientes.length === 0) {
+      registerSaveOrder(null);
+      return;
+    }
+    registerSaveOrder(() => saveOrder());
+    return () => registerSaveOrder(null);
+  }, [clientes.length, saveOrder, registerSaveOrder]);
+
+  useEffect(() => {
+    return () => {
+      useRutasOrdenStore.getState().setOrdenDirty(false);
+      useRutasOrdenStore.getState().registerSaveOrder(null);
+    };
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -350,18 +560,22 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
     toast.success('Orden actualizado (guardá para persistir)');
   };
 
-  const handleGuardar = async () => {
-    setIsSaving(true);
+  const handleEntregarPedido = async (cli: ClienteConOrden) => {
+    setEntregarBusyCodigo(cli.codigoCliente);
     try {
-      const orden = clientes.map((c) => c.codigoCliente);
-      await rutasService.guardarOrden(zona, orden);
-      toast.success('Orden de reparto guardado');
-      onSaved();
-    } catch (error) {
-      toast.error('Error guardando el orden');
-      console.error(error);
+      const lista = await pedidosService.getAll(true, undefined, zona);
+      const delCliente = lista.filter((p) => pedidoMatchesCliente(p, cli.codigoCliente));
+      const pedido = pickPedidoParaEntregar(delCliente);
+      if (!pedido) {
+        toast.error('No hay pedidos pendientes o en proceso para entregar');
+        return;
+      }
+      setEntregarPedido(pedido);
+    } catch (e) {
+      console.error(e);
+      toast.error('No se pudieron cargar los pedidos');
     } finally {
-      setIsSaving(false);
+      setEntregarBusyCodigo(null);
     }
   };
 
@@ -385,14 +599,30 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
         />
       )}
 
+      <NewPedidoModal
+        isOpen={newPedidoOpen}
+        onClose={() => {
+          setNewPedidoOpen(false);
+          setNewPedidoClienteCodigo(undefined);
+        }}
+        initialClienteCodigo={newPedidoClienteCodigo}
+      />
+
+      <EntregarPedidoModal
+        isOpen={entregarPedido !== null}
+        pedido={entregarPedido}
+        onClose={() => setEntregarPedido(null)}
+        onSuccess={() => onSaved()}
+      />
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-white/60 max-w-xl">
-          Usá <strong className="text-white/80">Mover</strong> para colocar antes, después o en un número de parada.
-          También podés arrastrar filas. El número es el orden de visita.
+          <strong className="text-white/80">Clic</strong> en las flechas para mover con precisión;{' '}
+          <strong className="text-white/80">arrastrá</strong> las mismas para reordenar. El número es el orden de visita.
         </p>
         <button
           type="button"
-          onClick={handleGuardar}
+          onClick={() => void saveOrder()}
           disabled={isSaving}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-xl font-semibold hover:from-primary-500 hover:to-primary-600 disabled:opacity-50 shadow-lg shadow-primary-500/30"
         >
@@ -417,6 +647,12 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
                 cliente={cliente}
                 index={index}
                 onMover={() => setMoverCliente(cliente)}
+                onNuevoPedido={() => {
+                  setNewPedidoClienteCodigo(cliente.codigoCliente);
+                  setNewPedidoOpen(true);
+                }}
+                onEntregar={() => handleEntregarPedido(cliente)}
+                entregarLoading={entregarBusyCodigo === cliente.codigoCliente}
               />
             ))}
           </ul>
