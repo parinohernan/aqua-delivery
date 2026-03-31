@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePedidosStore } from '../stores/pedidosStore';
-import { clientesService } from '@/features/clientes/services/clientesService';
-import { productosService } from '@/features/productos/services/productosService';
+import { useClientesStore } from '@/features/clientes/stores/clientesStore';
+import { useProductosStore } from '@/features/productos/stores/productosStore';
+import { useZonasStore } from '@/stores/zonasStore';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { formatCurrency, formatFullName } from '@/utils/formatters';
@@ -127,16 +128,22 @@ function NewPedidoModal({ isOpen, onClose, initialClienteCodigo }: NewPedidoModa
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      setClientes([]);
-      const [clientesData, productosData, zonasData] = await Promise.all([
-        clientesService.getAll(),
-        productosService.getAll(),
-        apiClient.get<Array<{ id: number; zona: string }>>(endpoints.zonas()),
+      await Promise.all([
+        useClientesStore.getState().ensureClientesLoaded(),
+        useProductosStore.getState().ensureProductosLoaded(),
+        useZonasStore.getState().loadZonas(),
       ]);
 
-      // Solo clientes y productos activos para crear pedido
-      setClientes(clientesData.filter((c) => Boolean(c.activo)));
-      setProductos(productosData.filter((p) => Boolean(p.activo)));
+      const clientesData = useClientesStore
+        .getState()
+        .clientes.filter((c) => Boolean(c.activo));
+      const productosData = useProductosStore
+        .getState()
+        .productos.filter((p) => Boolean(p.activo));
+      const zonasData = useZonasStore.getState().zonas;
+
+      setClientes(clientesData);
+      setProductos(productosData);
       setZonas(zonasData);
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -436,9 +443,20 @@ function NewPedidoModal({ isOpen, onClose, initialClienteCodigo }: NewPedidoModa
                     key={index}
                     className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm"
                   >
-                    <div className="flex-1">
-                      <div className="font-medium text-white">
-                        {item.producto.descripcion || item.producto.nombre}
+                    <div className="flex-1 w-full">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="font-medium text-white">
+                          {item.producto.descripcion || item.producto.nombre}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="px-2 py-1 bg-red-500/20 border border-red-500/50 text-red-300 rounded hover:bg-red-500/30 transition-colors backdrop-blur-sm shrink-0"
+                          aria-label="Quitar producto"
+                          title="Quitar producto"
+                        >
+                          🗑️
+                        </button>
                       </div>
                       <div className="text-sm text-white/70">
                         {formatCurrency(item.precio)} x {item.cantidad}
@@ -468,13 +486,6 @@ function NewPedidoModal({ isOpen, onClose, initialClienteCodigo }: NewPedidoModa
                         {formatCurrency(item.subtotal)}
                       </div>
                       
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(index)}
-                        className="px-3 py-1 bg-red-500/20 border border-red-500/50 text-red-300 rounded hover:bg-red-500/30 transition-colors backdrop-blur-sm"
-                      >
-                        🗑️
-                      </button>
                     </div>
                   </div>
                 ))}

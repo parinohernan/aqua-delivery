@@ -2,14 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus } from 'lucide-react';
 import { useClientesStore } from '../stores/clientesStore';
+import { useZonasStore } from '@/stores/zonasStore';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { MapPicker } from '@/features/mapa';
 import { toast, confirm } from '@/utils/feedback';
 import type { Cliente } from '@/types/entities';
-
-/** Zona desde API: tiene id y zona (nombre) */
-type ZonaApi = { id: number; zona: string; [k: string]: unknown };
 
 type ClienteFormSnapshot = {
   nombre: string;
@@ -70,6 +68,8 @@ interface ClienteModalProps {
 
 function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   const { createCliente, updateCliente, loadClientes, toggleClienteStatus } = useClientesStore();
+  const zonas = useZonasStore((s) => s.zonas);
+  const loadZonas = useZonasStore((s) => s.loadZonas);
   const formRef = useRef<HTMLFormElement>(null);
   const initialSnapshotRef = useRef<ClienteFormSnapshot | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -82,7 +82,6 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   const [latitud, setLatitud] = useState<string>('');
   const [longitud, setLongitud] = useState<string>('');
   
-  const [zonas, setZonas] = useState<ZonaApi[]>([]);
   const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
   const [nuevaZona, setNuevaZona] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -93,7 +92,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   useEffect(() => {
     if (isOpen) {
       setShowUnsavedDialog(false);
-      loadZonas();
+      loadZonas().catch(console.error);
 
       if (cliente) {
         const snap = buildSnapshotFromCliente(cliente);
@@ -110,17 +109,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
         resetForm();
       }
     }
-  }, [isOpen, cliente]);
-
-  const loadZonas = async () => {
-    try {
-      const zonasData = await apiClient.get<ZonaApi[]>(endpoints.zonas());
-      setZonas(zonasData);
-    } catch (err) {
-      console.error('Error cargando zonas:', err);
-      setZonas([]);
-    }
-  };
+  }, [isOpen, cliente, loadZonas]);
 
   const resetForm = () => {
     setNombre('');
@@ -139,7 +128,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     if (!nuevaZona.trim()) return;
     try {
       await apiClient.post(endpoints.zonas(), { zona: nuevaZona.trim() });
-      await loadZonas();
+      await loadZonas({ force: true });
       setZona(nuevaZona.trim());
       setNuevaZona('');
       setShowNuevaZonaInput(false);

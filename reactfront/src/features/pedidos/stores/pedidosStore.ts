@@ -24,6 +24,7 @@ interface PedidosState {
 
   // Actions
   loadPedidos: (incluirDetalles?: boolean) => Promise<void>;
+  patchPedidoLocal: (id: number, changes: Partial<Pedido>) => void;
   setFilters: (filters: Partial<PedidosFilters>) => void;
   clearFilters: () => void;
   applyFilters: () => void;
@@ -64,6 +65,15 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  patchPedidoLocal: (id: number, changes: Partial<Pedido>) => {
+    set((state) => ({
+      pedidos: state.pedidos.map((pedido) =>
+        pedido.id === id ? { ...pedido, ...changes } : pedido
+      ),
+    }));
+    get().applyFilters();
   },
 
   setFilters: (newFilters: Partial<PedidosFilters>) => {

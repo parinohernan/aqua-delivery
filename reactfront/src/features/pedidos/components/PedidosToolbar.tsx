@@ -3,16 +3,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Map, Search, Calendar, X, MapPin } from 'lucide-react';
 import { ROUTES } from '@/utils/constants';
-import { apiClient } from '@/services/api/client';
-import { endpoints } from '@/services/api/endpoints';
+import { useZonasStore } from '@/stores/zonasStore';
 import NewPedidoModal from './NewPedidoModal';
 
 type EstadoKey = 'pendient' | 'proceso' | 'entregad' | 'anulado' | 'todos';
-
-interface Zona {
-  id: number;
-  zona: string;
-}
 
 const ESTADO_CONFIG: Record<EstadoKey, { letter: string; label: string; bg: string; shadow: string }> = {
   pendient: { letter: 'P', label: 'Pendientes', bg: 'bg-amber-500', shadow: 'shadow-amber-500/40' },
@@ -32,8 +26,9 @@ function PedidosToolbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showZonas, setShowZonas] = useState(false);
-  const [zonas, setZonas] = useState<Zona[]>([]);
-  const [loadingZonas, setLoadingZonas] = useState(false);
+  const zonas = useZonasStore((s) => s.zonas);
+  const loadingZonas = useZonasStore((s) => s.isLoading);
+  const loadZonas = useZonasStore((s) => s.loadZonas);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const zonasRef = useRef<HTMLDivElement>(null);
 
@@ -77,16 +72,9 @@ function PedidosToolbar() {
     }
   }, [showSearch]);
 
-  // Cargar zonas al montar para que el dropdown abra con opciones listas
   useEffect(() => {
-    let cancelled = false;
-    setLoadingZonas(true);
-    apiClient.get<Zona[]>(endpoints.zonas())
-      .then((data) => { if (!cancelled) setZonas(data); })
-      .catch((err) => { if (!cancelled) console.error(err); })
-      .finally(() => { if (!cancelled) setLoadingZonas(false); });
-    return () => { cancelled = true; };
-  }, []);
+    loadZonas().catch(console.error);
+  }, [loadZonas]);
 
   // Cerrar dropdown de zonas al hacer click fuera (click en vez de mousedown para móvil)
   useEffect(() => {

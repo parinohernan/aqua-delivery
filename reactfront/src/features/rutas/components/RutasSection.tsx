@@ -1,39 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Route, MapPin } from 'lucide-react';
-import { apiClient } from '@/services/api/client';
-import { endpoints } from '@/services/api/endpoints';
 import { rutasService } from '../services/rutasService';
+import { useZonasStore } from '@/stores/zonasStore';
 import RutaOrdenList from './RutaOrdenList';
 import type { ClienteConOrden } from '@/types/entities';
 import { useRutasOrdenStore } from '@/stores/rutasOrdenStore';
 import { ROUTES } from '@/utils/constants';
-
-interface ZonaItem {
-  id: number;
-  zona: string;
-}
 
 function RutasSection() {
   const location = useLocation();
   const ordenDirty = useRutasOrdenStore((s) => s.ordenDirty);
   const openPending = useRutasOrdenStore((s) => s.openPending);
 
-  const [zonas, setZonas] = useState<ZonaItem[]>([]);
+  const zonas = useZonasStore((s) => s.zonas);
+  const loadingZonas = useZonasStore((s) => s.isLoading);
+  const loadZonas = useZonasStore((s) => s.loadZonas);
   const [zonaSeleccionada, setZonaSeleccionada] = useState<string>('');
   const [clientes, setClientes] = useState<ClienteConOrden[]>([]);
-  const [loadingZonas, setLoadingZonas] = useState(false);
   const [loadingClientes, setLoadingClientes] = useState(false);
   const [showZonaDropdown, setShowZonaDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setLoadingZonas(true);
-    apiClient.get<ZonaItem[]>(endpoints.zonas())
-      .then(setZonas)
-      .catch(console.error)
-      .finally(() => setLoadingZonas(false));
-  }, []);
+    loadZonas().catch(console.error);
+  }, [loadZonas]);
 
   useEffect(() => {
     if (!zonaSeleccionada) {

@@ -24,6 +24,8 @@ interface ClientesState {
   
   // Actions
   loadClientes: () => Promise<void>;
+  /** Evita GET duplicados si la lista ya está en memoria (p. ej. modal nuevo pedido). */
+  ensureClientesLoaded: () => Promise<void>;
   setFilters: (filters: Partial<ClientesFilters>) => void;
   clearFilters: () => void;
   applyFilters: () => void;
@@ -39,6 +41,8 @@ const initialFilters: ClientesFilters = {
   saldo: 'todos',
   retornables: 'todos',
 };
+
+let ensureClientesPromise: Promise<void> | null = null;
 
 export const useClientesStore = create<ClientesState>((set, get) => ({
   clientes: [],
@@ -62,6 +66,15 @@ export const useClientesStore = create<ClientesState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  ensureClientesLoaded: async () => {
+    if (get().clientes.length > 0) return;
+    if (ensureClientesPromise) return ensureClientesPromise;
+    ensureClientesPromise = get().loadClientes().finally(() => {
+      ensureClientesPromise = null;
+    });
+    return ensureClientesPromise;
   },
 
   /**

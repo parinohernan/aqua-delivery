@@ -9,6 +9,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import RutasOrdenLeaveDialog from '@/features/rutas/components/RutasOrdenLeaveDialog';
 import { preloadAppSection } from '@/app/routePreloads';
 import { ROUTES } from '@/utils/constants';
+import { useZonasStore } from '@/stores/zonasStore';
 
 // Lazy loading para optimización
 const PedidosSection = lazy(() => import('@/features/pedidos/components/PedidosSection'));
@@ -27,8 +28,12 @@ function AppLayout() {
     preloadAppSection(ROUTES.PEDIDOS);
   }, []);
 
+  useEffect(() => {
+    useZonasStore.getState().loadZonas();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] to-[#050a14] mobile-solid-bg text-white pb-20 lg:pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] to-[#050a14] mobile-solid-bg text-white pb-20 lg:pb-0 overscroll-y-contain">
       <Header />
       
       <div className="flex flex-col lg:flex-row">
@@ -36,7 +41,7 @@ function AppLayout() {
         <Navigation />
         
         {/* Contenido principal */}
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-4 lg:p-6 overscroll-y-contain">
           <div className="max-w-7xl mx-auto">
             <Suspense fallback={<SectionLoadingFallback />}>
               <Routes>

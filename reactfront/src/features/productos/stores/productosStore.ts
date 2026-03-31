@@ -22,6 +22,7 @@ interface ProductosState {
   
   // Actions
   loadProductos: () => Promise<void>;
+  ensureProductosLoaded: () => Promise<void>;
   setFilters: (filters: Partial<ProductosFilters>) => void;
   clearFilters: () => void;
   applyFilters: () => void;
@@ -35,6 +36,8 @@ const initialFilters: ProductosFilters = {
   search: '',
   activo: 'todos',
 };
+
+let ensureProductosPromise: Promise<void> | null = null;
 
 export const useProductosStore = create<ProductosState>((set, get) => ({
   productos: [],
@@ -55,6 +58,15 @@ export const useProductosStore = create<ProductosState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  ensureProductosLoaded: async () => {
+    if (get().productos.length > 0) return;
+    if (ensureProductosPromise) return ensureProductosPromise;
+    ensureProductosPromise = get().loadProductos().finally(() => {
+      ensureProductosPromise = null;
+    });
+    return ensureProductosPromise;
   },
 
   setFilters: (newFilters: Partial<ProductosFilters>) => {

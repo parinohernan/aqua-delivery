@@ -17,14 +17,10 @@ import { formatCurrency, formatDateTimeShort } from '@/utils/formatters';
 import { toast, confirm } from '@/utils/feedback';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
+import { useZonasStore } from '@/stores/zonasStore';
 import EntregarPedidoModal from './EntregarPedidoModal';
 import ProgramarEntregaModal from './ProgramarEntregaModal';
 import type { Pedido } from '@/types/entities';
-
-interface Zona {
-  id: number;
-  zona: string;
-}
 
 interface PedidoCardProps {
   pedido: Pedido;
@@ -68,13 +64,14 @@ function getEstadoConfig(estado: string) {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 function PedidoCard({ pedido }: PedidoCardProps) {
-  const { updateStatus, loadPedidos } = usePedidosStore();
+  const { updateStatus, patchPedidoLocal } = usePedidosStore();
+  const zonas = useZonasStore((s) => s.zonas);
+  const loadZonas = useZonasStore((s) => s.loadZonas);
   const [showEntregarModal, setShowEntregarModal] = useState(false);
   const [showProgramarModal, setShowProgramarModal] = useState(false);
   const [hovered, setHovered] = useState(false);
   
   // Estado para zona: en card solo texto; al tocar se abre popover (opción 4)
-  const [zonas, setZonas] = useState<Zona[]>([]);
   const [nuevaZona, setNuevaZona] = useState('');
   const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
   const [showZonaPopover, setShowZonaPopover] = useState(false);
@@ -101,23 +98,20 @@ function PedidoCard({ pedido }: PedidoCardProps) {
 
   const isActive = estado === 'pendient' || estado === 'proceso';
 
-  // Cargar zonas al montar para que el select tenga opciones listas (mejor en móvil)
   useEffect(() => {
-    let cancelled = false;
-    apiClient.get<Zona[]>(endpoints.zonas()).then((data) => {
-      if (!cancelled) setZonas(data);
-    }).catch((err) => { if (!cancelled) console.error(err); });
-    return () => { cancelled = true; };
-  }, []);
+    loadZonas().catch(console.error);
+  }, [loadZonas]);
 
   const handleZonaChange = async (zona: string) => {
+    const zonaAnterior = pedido.zona || '';
     setIsUpdatingZona(true);
+    patchPedidoLocal(pedido.id, { zona });
     try {
       await pedidosService.updateZona(Number(id), zona);
-      await loadPedidos();
       toast.success(`Zona actualizada a "${zona}"`);
       setShowZonaPopover(false);
     } catch (error) {
+      patchPedidoLocal(pedido.id, { zona: zonaAnterior });
       toast.error('Error actualizando zona');
     } finally {
       setIsUpdatingZona(false);
@@ -126,18 +120,20 @@ function PedidoCard({ pedido }: PedidoCardProps) {
 
   const handleCrearZona = async () => {
     if (!nuevaZona.trim()) return;
+    const zonaNueva = nuevaZona.trim();
+    const zonaAnterior = pedido.zona || '';
     setIsUpdatingZona(true);
     try {
-      await apiClient.post(endpoints.zonas(), { zona: nuevaZona.trim() });
-      await pedidosService.updateZona(Number(id), nuevaZona.trim());
-      const data = await apiClient.get<Zona[]>(endpoints.zonas());
-      setZonas(data);
-      await loadPedidos();
+      patchPedidoLocal(pedido.id, { zona: zonaNueva });
+      await apiClient.post(endpoints.zonas(), { zona: zonaNueva });
+      await pedidosService.updateZona(Number(id), zonaNueva);
+      await loadZonas({ force: true });
       toast.success(`Zona "${nuevaZona}" creada y asignada`);
       setNuevaZona('');
       setShowNuevaZonaInput(false);
       setShowZonaPopover(false);
     } catch (error) {
+      patchPedidoLocal(pedido.id, { zona: zonaAnterior });
       toast.error('Error creando zona');
     } finally {
       setIsUpdatingZona(false);
