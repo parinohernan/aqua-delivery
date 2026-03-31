@@ -6,12 +6,12 @@ import ProductosList from './ProductosList';
 import ProductoModal from './ProductoModal';
 
 function ProductosSection() {
-  const { loadProductos, isLoading, error } = useProductosStore();
+  const { ensureProductosLoaded, isLoading, error } = useProductosStore();
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
 
   useEffect(() => {
-    loadProductos();
-  }, [loadProductos]);
+    ensureProductosLoaded().catch(console.error);
+  }, [ensureProductosLoaded]);
 
   return (
     <div

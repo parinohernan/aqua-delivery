@@ -10,11 +10,11 @@ import PedidosList from './PedidosList';
  * Mejorado con mejor jerarquía visual y espaciado consistente
  */
 function PedidosSection() {
-  const { loadPedidos, isLoading, error, filteredPedidos } = usePedidosStore();
+  const { ensurePedidosLoaded, isLoading, error, filteredPedidos } = usePedidosStore();
 
   useEffect(() => {
-    loadPedidos();
-  }, [loadPedidos]);
+    ensurePedidosLoaded().catch(console.error);
+  }, [ensurePedidosLoaded]);
 
   return (
     <div className="min-h-screen bg-transparent">

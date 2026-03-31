@@ -20,10 +20,12 @@ interface PedidosState {
   filteredPedidos: Pedido[];
   isLoading: boolean;
   error: string | null;
+  lastLoadedAt: number | null;
   filters: PedidosFilters;
 
   // Actions
   loadPedidos: (incluirDetalles?: boolean) => Promise<void>;
+  ensurePedidosLoaded: (options?: { maxAgeMs?: number; incluirDetalles?: boolean }) => Promise<void>;
   patchPedidoLocal: (id: number, changes: Partial<Pedido>) => void;
   setFilters: (filters: Partial<PedidosFilters>) => void;
   clearFilters: () => void;
@@ -47,6 +49,7 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
   filteredPedidos: [],
   isLoading: false,
   error: null,
+  lastLoadedAt: null,
   filters: initialFilters,
 
   loadPedidos: async (incluirDetalles: boolean = false) => {
@@ -57,13 +60,30 @@ export const usePedidosStore = create<PedidosState>((set, get) => ({
       const zona = filters.zona?.trim() || undefined;
       const ordenarPorRuta = Boolean(zona);
       const pedidos = await pedidosService.getAll(incluirDetalles, estado, zona, ordenarPorRuta);
-      set({ pedidos });
+      set({ pedidos, lastLoadedAt: Date.now() });
       get().applyFilters();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error cargando pedidos';
       set({ error: errorMessage });
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  ensurePedidosLoaded: async (options) => {
+    const maxAgeMs = options?.maxAgeMs ?? 45000;
+    const incluirDetalles = options?.incluirDetalles ?? false;
+    const { pedidos, lastLoadedAt, isLoading } = get();
+
+    if (isLoading) return;
+    if (pedidos.length === 0 || !lastLoadedAt) {
+      await get().loadPedidos(incluirDetalles);
+      return;
+    }
+
+    const isStale = Date.now() - lastLoadedAt > maxAgeMs;
+    if (isStale) {
+      await get().loadPedidos(incluirDetalles);
     }
   },
 

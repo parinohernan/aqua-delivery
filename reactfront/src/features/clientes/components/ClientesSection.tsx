@@ -9,12 +9,12 @@ import ClienteModal from './ClienteModal';
  * Sección de Clientes
  */
 function ClientesSection() {
-  const { loadClientes, isLoading, error } = useClientesStore();
+  const { ensureClientesLoaded, isLoading, error } = useClientesStore();
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
 
   useEffect(() => {
-    loadClientes();
-  }, [loadClientes]);
+    ensureClientesLoaded().catch(console.error);
+  }, [ensureClientesLoaded]);
 
   return (
     <div
