@@ -7,6 +7,7 @@ import BenefitsSection from './sections/BenefitsSection';
 import TrustSection from './sections/TrustSection';
 import GuidesSection from './sections/GuidesSection';
 import PricingSection from './sections/PricingSection';
+import UpcomingFeaturesSection from './sections/UpcomingFeaturesSection';
 import FAQSection from './sections/FAQSection';
 import FinalCTASection from './sections/FinalCTASection';
 import LandingFooter from './sections/LandingFooter';
@@ -49,6 +50,7 @@ const LandingPage = () => {
         <BenefitsSection />
         <TrustSection />
         <GuidesSection />
+        <UpcomingFeaturesSection />
         <PricingSection />
         <FAQSection />
         <FinalCTASection />

@@ -43,7 +43,8 @@ const ComparisonSection = () => {
                 "Envases que salen y nunca vuelven (un capital perdido).",
                 "Rutas improvisadas que te hacen quemar combustible.",
                 "Horas de cierre de caja manual cada noche.",
-                "Pedidos que se olvidan o no se entregan."
+                "Pedidos que se olvidan o no se entregan.",
+                "Abonos de dispenser que te olvidás de cobrar."
               ].map((text, i) => (
                 <li key={i} className="flex gap-3 text-white/40 text-sm leading-relaxed italic">
                   <span>•</span> {text}
@@ -80,7 +81,8 @@ const ComparisonSection = () => {
                 "Control automático de cada envase.",
                 "Rutas optimizadas con un solo click.",
                 "Cierre de caja automático (ahorro de 2hs).",
-                "Recordatorios de pedidos pendientes."
+                "Recordatorios de pedidos pendientes.",
+                "Control de abonos y cobranza puntual."
               ].map((text, i) => (
                 <li key={i} className="flex gap-3 text-white/80 text-sm font-medium leading-relaxed">
                   <CheckCircle size={16} className="text-blue-400 mt-0.5 flex-shrink-0" /> {text}

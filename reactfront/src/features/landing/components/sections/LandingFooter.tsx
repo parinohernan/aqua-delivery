@@ -19,11 +19,11 @@ const LandingFooter = () => {
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="flex items-center justify-center gap-3 mb-8">
           <img src="/logo2-min.webp" alt="Logo" className="w-10 h-10 opacity-70 group-hover:opacity-100 transition-opacity" />
-          <span className="font-bold text-xl tracking-tight text-white/90">Aqua314</span>
+          <span className="font-bold text-xl tracking-tight text-white/90">Aqua Delivery Manager</span>
         </div>
         
         <p className="text-white/30 text-xs tracking-widest uppercase mb-6 font-bold">
-          Aqua Delivery Manager • Hecho en Argentina
+          Aqua Delivery Manager
         </p>
         
         <p className="text-white/60 text-[18px] max-w-sm mx-auto leading-relaxed mb-10">

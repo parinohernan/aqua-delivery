@@ -1,4 +1,4 @@
-import { ShoppingBag, Users, Box, Map, BarChart } from 'lucide-react';
+import { ShoppingBag, Users, Box, Map, BarChart, CalendarCheck } from 'lucide-react';
 
 const FeaturesSection = () => {
   return (
@@ -40,6 +40,12 @@ const FeaturesSection = () => {
               desc: "Reportes de ventas, deudas y stock. Exportación a Excel para una contabilidad sin errores.",
               icon: <BarChart size={32} />,
               features: ["Reportes por fecha", "Totales por repartidor", "Exportar Excel"]
+            },
+            {
+              title: "6. Alquileres",
+              desc: "Gestión de alquileres de dispenser y equipos. Control de fechas de vencimiento y recordatorios de cobro automáticos.",
+              icon: <CalendarCheck size={32} />,
+              features: ["Control de equipos", "Vencimientos abonos", "Recordatorios de cobro"]
             }
           ].map((item, i) => (
             <div key={i} className="flex flex-col md:flex-row gap-8 items-start p-8 rounded-[40px] bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all">
