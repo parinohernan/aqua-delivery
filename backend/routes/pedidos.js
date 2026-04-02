@@ -816,7 +816,9 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             retornablesDevueltos,
             totalRetornables,
             totalPedido,
-            usarSaldoAFavor
+            usarSaldoAFavor,
+            latitud: latitudGps,
+            longitud: longitudGps,
         } = req.body;
 
         const montoCobradoNum = parseFloat(montoCobrado) || 0;
@@ -961,6 +963,32 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             );
             console.log('✅ Pedido marcado como entregado');
 
+            // 1b. Evento GPS opcional (misma transacción que la entrega)
+            const la = Number(latitudGps);
+            const lo = Number(longitudGps);
+            const gpsOk =
+                Number.isFinite(la) &&
+                Number.isFinite(lo) &&
+                la >= -90 &&
+                la <= 90 &&
+                lo >= -180 &&
+                lo <= 180;
+            if (gpsOk) {
+                await transactionQuery(
+                    `INSERT INTO eventos_gps (codigoEmpresa, codigoVendedor, evento, numeroPedido, ocurridoEn, latitud, longitud)
+                     VALUES (?, ?, ?, ?, NOW(), ?, ?)`,
+                    [
+                        req.user.codigoEmpresa,
+                        req.user.vendedorId,
+                        'Entrega',
+                        String(pedidoId),
+                        la,
+                        lo,
+                    ]
+                );
+                console.log('📍 Evento GPS de entrega registrado');
+            }
+
             // 2. Procesar pago
             if (aplicaSaldo) {
                 console.log(`💳 PROCESANDO CUENTA CORRIENTE...`);
@@ -1055,7 +1083,12 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
         console.log(`   📋 Pedido #${pedidoId} entregado`);
         console.log(`   💳 Cliente ${clienteId}: saldo $${clienteFinal[0]?.saldo || 0}, retornables ${clienteFinal[0]?.retornables || 0}`);
 
-        res.json(result);
+        res.json({
+            ...result,
+            clienteId,
+            clienteSaldo: parseFloat(clienteFinal[0]?.saldo ?? 0) || 0,
+            clienteRetornables: parseFloat(clienteFinal[0]?.retornables ?? 0) || 0,
+        });
 
     } catch (error) {
         console.error('❌ Error procesando entrega:', error);

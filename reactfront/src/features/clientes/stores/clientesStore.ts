@@ -34,6 +34,11 @@ interface ClientesState {
   deleteCliente: (id: number) => Promise<void>;
   toggleClienteStatus: (id: number, activo: boolean) => Promise<void>;
   setError: (error: string | null) => void;
+  /** Actualiza saldo/retornables en memoria sin GET (tras entrega, cobro, etc.) */
+  patchClienteBalances: (
+    clienteCodigo: number,
+    patch: { saldo?: number; retornables?: number }
+  ) => void;
 }
 
 const initialFilters: ClientesFilters = {
@@ -199,6 +204,21 @@ export const useClientesStore = create<ClientesState>((set, get) => ({
    */
   setError: (error: string | null) => {
     set({ error });
+  },
+
+  patchClienteBalances: (clienteCodigo, patch) => {
+    set((state) => ({
+      clientes: state.clientes.map((c) => {
+        const id = Number(c.codigo ?? c.id);
+        if (id !== clienteCodigo) return c;
+        return {
+          ...c,
+          ...(patch.saldo !== undefined ? { saldo: patch.saldo } : {}),
+          ...(patch.retornables !== undefined ? { retornables: patch.retornables } : {}),
+        };
+      }),
+    }));
+    get().applyFilters();
   },
 }));
 

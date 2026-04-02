@@ -274,11 +274,13 @@ function RutaRowActionsMenu({
   onNuevoPedido,
   onEntregar,
   entregarLoading,
+  showEntregar,
 }: {
   waUrl: string | null;
   onNuevoPedido: () => void;
   onEntregar: () => void | Promise<void>;
   entregarLoading: boolean;
+  showEntregar: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -326,21 +328,23 @@ function RutaRowActionsMenu({
               Nuevo pedido
             </button>
           </li>
-          <li>
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-white hover:bg-white/10 disabled:opacity-45 disabled:pointer-events-none"
-              disabled={entregarLoading}
-              onClick={() => {
-                setOpen(false);
-                void onEntregar();
-              }}
-            >
-              <Truck size={16} className="text-green-400 shrink-0" />
-              {entregarLoading ? 'Cargando…' : 'Entregar pedido'}
-            </button>
-          </li>
+          {showEntregar && (
+            <li>
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-white hover:bg-white/10 disabled:opacity-45 disabled:pointer-events-none"
+                disabled={entregarLoading}
+                onClick={() => {
+                  setOpen(false);
+                  void onEntregar();
+                }}
+              >
+                <Truck size={16} className="text-green-400 shrink-0" />
+                {entregarLoading ? 'Cargando…' : 'Entregar pedido'}
+              </button>
+            </li>
+          )}
           {waUrl && (
             <li>
               <a
@@ -391,6 +395,7 @@ function SortableRow({
     transition,
   };
   const waUrl = whatsappHref(cliente.telefono);
+  const showEntregar = (cliente.pedidosPendientes ?? 0) > 0;
 
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
   const wasDraggingRef = useRef(false);
@@ -478,6 +483,7 @@ function SortableRow({
         onNuevoPedido={onNuevoPedido}
         onEntregar={onEntregar}
         entregarLoading={entregarLoading}
+        showEntregar={showEntregar}
       />
     </li>
   );
@@ -614,6 +620,15 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
           setNewPedidoClienteCodigo(undefined);
         }}
         initialClienteCodigo={newPedidoClienteCodigo}
+        onPedidoCreado={(codigo) => {
+          setClientes((prev) =>
+            prev.map((c) =>
+              c.codigoCliente === codigo
+                ? { ...c, pedidosPendientes: (c.pedidosPendientes ?? 0) + 1 }
+                : c
+            )
+          );
+        }}
       />
 
       <EntregarPedidoModal

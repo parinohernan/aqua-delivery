@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react';
 import { usePedidosStore } from '../stores/pedidosStore';
+import { useClientesStore } from '@/features/clientes/stores/clientesStore';
 import { pedidosService } from '../services/pedidosService';
 import { tiposPagoService } from '../services/tiposPagoService';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from '@/utils/feedback';
+import { getCurrentPositionOnce } from '@/utils/geolocation';
 import type { Pedido, TipoPago, PedidoItem } from '@/types/entities';
 
 /**
@@ -23,6 +25,7 @@ interface EntregarPedidoModalProps {
 
 function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPedidoModalProps) {
   const { loadPedidos } = usePedidosStore();
+  const patchClienteBalances = useClientesStore((s) => s.patchClienteBalances);
   const dialogRef = useRef<HTMLDialogElement>(null);
   
   const [tiposPago, setTiposPago] = useState<TipoPago[]>([]);
@@ -209,20 +212,48 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
       const totalPedidoNum = Number(pedido.total) || 0;
 
       const pagoConSaldoAFavor = showMontoCobrado() && usarSaldoAFavor;
-      const entregaData = {
+      const pos = await getCurrentPositionOnce(10000);
+      const entregaData: {
+        tipoPago: number;
+        montoCobrado: number;
+        retornablesDevueltos: number;
+        totalRetornables: number;
+        totalPedido: number;
+        usarSaldoAFavor?: boolean;
+        latitud?: number;
+        longitud?: number;
+      } = {
         tipoPago: tipoPagoId,
         montoCobrado: aplicaSaldo() ? 0 : (pagoConSaldoAFavor ? 0 : monto),
         retornablesDevueltos: retornablesDevueltosNum,
         totalRetornables: totalRetornables,
         totalPedido: totalPedidoNum,
-        ...(pagoConSaldoAFavor ? { usarSaldoAFavor: true } : {}),
+        ...(pagoConSaldoAFavor ? { usarSaldoAFavor: true as const } : {}),
       };
+      if (pos) {
+        entregaData.latitud = pos.latitude;
+        entregaData.longitud = pos.longitude;
+      }
 
       console.log('🚚 Procesando entrega:', entregaData);
 
       // Usar el endpoint de entrega - el backend espera el código en la URL
       const pedidoIdForUrl = typeof pedidoId === 'string' ? pedidoId : String(pedidoId);
-      await apiClient.post(`${endpoints.pedidos()}/${pedidoIdForUrl}/entregar`, entregaData);
+      const entregaRes = await apiClient.post<{
+        clienteId?: number;
+        clienteSaldo?: number;
+        clienteRetornables?: number;
+      }>(`${endpoints.pedidos()}/${pedidoIdForUrl}/entregar`, entregaData);
+
+      if (entregaRes.clienteId != null) {
+        const cid = Number(entregaRes.clienteId);
+        if (Number.isFinite(cid)) {
+          patchClienteBalances(cid, {
+            saldo: entregaRes.clienteSaldo,
+            retornables: entregaRes.clienteRetornables,
+          });
+        }
+      }
 
       // Recargar pedidos
       await loadPedidos();
@@ -232,7 +263,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
       // Cerrar modal
       handleClose();
 
-      toast.success('Pedido entregado correctamente');
+      toast.success(
+        pos
+          ? 'Pedido entregado correctamente (ubicación registrada)'
+          : 'Pedido entregado correctamente (sin ubicación GPS)'
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error procesando entrega';
       setError(errorMessage);

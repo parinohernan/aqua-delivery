@@ -18,7 +18,7 @@ interface ClientPaymentModalProps {
 }
 
 function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProps) {
-  const { loadClientes } = useClientesStore();
+  const { patchClienteBalances } = useClientesStore();
   
   const [tiposPago, setTiposPago] = useState<TipoPago[]>([]);
   const [selectedTipoPago, setSelectedTipoPago] = useState<number | ''>('');
@@ -121,10 +121,18 @@ function ClientPaymentModal({ isOpen, cliente, onClose }: ClientPaymentModalProp
 
       console.log('💰 Registrando pago:', paymentData);
 
-      const result = await apiClient.post(`${endpoints.pagos()}/cliente`, paymentData);
+      const result = await apiClient.post<{
+        nuevoSaldo?: number;
+        nuevosRetornables?: number;
+      }>(`${endpoints.pagos()}/cliente`, paymentData);
 
-      // Recargar clientes
-      await loadClientes();
+      const idNum = Number(clienteId);
+      if (Number.isFinite(idNum)) {
+        patchClienteBalances(idNum, {
+          saldo: result.nuevoSaldo,
+          retornables: result.nuevosRetornables,
+        });
+      }
       await loadEstadoCuenta(clienteId);
 
       // Cerrar modal

@@ -28,6 +28,8 @@ interface NewPedidoModalProps {
   onClose: () => void;
   /** Si se pasa, al abrir se preselecciona ese cliente (código/id de negocio) */
   initialClienteCodigo?: number;
+  /** Tras crear el pedido (ej. actualizar contadores en /rutas) */
+  onPedidoCreado?: (codigoCliente: number) => void;
 }
 
 function clienteMatchesCodigoNegocio(c: Cliente, codigo: number): boolean {
@@ -36,7 +38,7 @@ function clienteMatchesCodigoNegocio(c: Cliente, codigo: number): boolean {
   return false;
 }
 
-function NewPedidoModal({ isOpen, onClose, initialClienteCodigo }: NewPedidoModalProps) {
+function NewPedidoModal({ isOpen, onClose, initialClienteCodigo, onPedidoCreado }: NewPedidoModalProps) {
   const { loadPedidos } = usePedidosStore();
   
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -256,6 +258,11 @@ function NewPedidoModal({ isOpen, onClose, initialClienteCodigo }: NewPedidoModa
       
       // Recargar pedidos
       await loadPedidos();
+
+      const codigoClienteNegocio = Number(selectedCliente.codigo ?? selectedCliente.id);
+      if (onPedidoCreado && Number.isFinite(codigoClienteNegocio)) {
+        onPedidoCreado(codigoClienteNegocio);
+      }
       
       // Cerrar modal y resetear
       handleClose();
