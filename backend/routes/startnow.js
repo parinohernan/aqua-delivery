@@ -307,6 +307,18 @@ router.post('/confirm', confirmLimiter, async (req, res) => {
         ]
       );
 
+      const telegramAuditor = `auditor${codigoEmpresa}`;
+      await tq(
+        `INSERT INTO vendedores (codigoEmpresa, telegramId, nombre, apellido, zona)
+         VALUES (?, ?, 'Auditor', 'Sistema', NULL)`,
+        [codigoEmpresa, telegramAuditor]
+      );
+
+      await tq(
+        `INSERT INTO tiposdepago (codigoEmpresa, pago, aplicaSaldo) VALUES (?, ?, ?), (?, ?, ?)`,
+        [codigoEmpresa, 'Contado', 0, codigoEmpresa, 'Cta cte', 1]
+      );
+
       await tq(`DELETE FROM startnow_pending WHERE email = ?`, [emailNorm]);
 
       const fechas = await tq(
