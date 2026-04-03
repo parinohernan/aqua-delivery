@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import LegalModal from '../LegalModal';
 
 const LandingFooter = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [modalType, setModalType] = useState<'terms' | 'privacy' | null>(null);
 
   const openModal = (type: 'terms' | 'privacy') => {

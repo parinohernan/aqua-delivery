@@ -30,7 +30,12 @@ export const API_ENDPOINTS = {
   TIPOS_PAGO: '/api/tiposdepago',
   INFORMES: '/api/informes',
   ALQUILERES: '/api/alquileres',
+  EVENTOS_GPS: '/api/eventos-gps',
+  VENDEDORES: '/api/vendedores',
   UPLOAD_PRODUCT_IMAGE: '/api/upload/product-image',
+  EXPENSES: '/api/expenses',
+  VEHICLES: '/api/vehicles',
+  EXPENSE_TYPES: '/api/expense-types',
 } as const;
 
 /**
@@ -55,6 +60,8 @@ export const ROUTES = {
   INFORMES: '/informes',
   MAPA: '/mapa',
   RUTAS: '/rutas',
+  GPS: '/gps',
+  EXPENSES: '/expenses',
 } as const;
 
 /**

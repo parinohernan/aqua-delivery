@@ -46,7 +46,7 @@ const HeroSection = () => {
             <span className="flex items-center gap-1.5"><CheckCircle2 size={16} className="text-blue-500" /> Multi-usuario</span>
           </div>
           <p className="text-blue-400 font-bold bg-blue-400/5 px-4 py-1.5 rounded-lg border border-blue-400/20">
-            Solo 10.000 ARS/mes (Promo)
+            Desde 15.000 ARS/mes
           </p>
         </div>
       </div>

@@ -15,12 +15,14 @@ Este documento detalla el estado actual, el futuro inmediato y las ideas creativ
 - **Dashboard Administrativo:** Vista para el dueño con resumen de ventas diarias y recaudación.
 - **Soporte Multi-usuario:** Diferenciación entre administradores y choferes (con diferentes niveles de acceso).
 - **Alquiler y Comodatos de Dispenser:** Registro de equipos, cobro de abonos mensuales automáticos y recordatorios de cobro.
+- **Informacion de GPS de los repartidores** Registro de la ubicacion de los repartidores y el momento en que se entrega un pedido.
+
 
 ---
 
 ## 🛠️ 2. Próximas Funcionalidades (Roadmap 2.0)
 *Lo que viene a continuación para competir con los sistemas "Legacy" (WebSoft/Software JR).*
-
+- **modulo de gastos** Registro de gastos de los repartidores, nafta, reparaciones, etc.
 - **Módulo de Mantenimiento:**
     - Alertas automáticas para limpieza y sanitización de equipos (cada 6 meses).
     - Registro de reparaciones y repuestos (canillas, resistencias, etc.).

@@ -84,7 +84,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   
   const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
   const [nuevaZona, setNuevaZona] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -245,27 +245,27 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     formRef.current?.requestSubmit();
   };
 
-  const handleGetLocation = () => {
-    if (navigator.geolocation) {
-      setIsLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude.toFixed(6);
-          const lng = position.coords.longitude.toFixed(6);
-          setLatitud(lat);
-          setLongitud(lng);
-          setIsLoading(false);
-        },
-        (error) => {
-          console.error('Error obteniendo ubicación:', error);
-          setError('No se pudo obtener la ubicación');
-          setIsLoading(false);
-        }
-      );
-    } else {
-      setError('La geolocalización no está disponible en este navegador');
-    }
-  };
+  // const handleGetLocation = () => {
+  //   if (navigator.geolocation) {
+  //     setIsLoading(true);
+  //     navigator.geolocation.getCurrentPosition(
+  //       (position) => {
+  //         const lat = position.coords.latitude.toFixed(6);
+  //         const lng = position.coords.longitude.toFixed(6);
+  //         setLatitud(lat);
+  //         setLongitud(lng);
+  //         setIsLoading(false);
+  //       },
+  //       (error) => {
+  //         console.error('Error obteniendo ubicación:', error);
+  //         setError('No se pudo obtener la ubicación');
+  //         setIsLoading(false);
+  //       }
+  //     );
+  //   } else {
+  //     setError('La geolocalización no está disponible en este navegador');
+  //   }
+  // };
 
   const handleDisableCliente = async () => {
     if (!cliente) return;
@@ -459,7 +459,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
             </label>
             
             {/* Campos de coordenadas */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            {/* <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-xs text-white/70 mb-1">Latitud</label>
                 <input
@@ -482,9 +482,9 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
                   placeholder="Ej: -58.381592"
                 />
               </div>
-            </div>
+            </div> */}
             
-            <div className="flex flex-col sm:flex-row gap-3 mb-3">
+            {/* <div className="flex flex-col sm:flex-row gap-3 mb-3">
               <button
                 type="button"
                 onClick={handleGetLocation}
@@ -493,7 +493,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
               >
                 📍 Obtener mi ubicación actual
               </button>
-            </div>
+            </div> */}
 
             <div className="mb-2">
               <MapPicker
@@ -541,7 +541,7 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || isLoading}
+              disabled={isSubmitting}
               className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-primary-400 to-primary-600 text-white rounded-lg hover:from-primary-500 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/30"
             >
               {isSubmitting ? 'Guardando...' : isEditMode ? 'Actualizar Cliente' : 'Crear Cliente'}

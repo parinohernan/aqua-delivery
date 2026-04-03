@@ -174,3 +174,28 @@ export interface ClienteConOrden {
   pedidosPendientes?: number;
 }
 
+/** Vendedor listado para filtros (GET /api/vendedores) */
+export interface VendedorLista {
+  id: number;
+  codigo: number;
+  nombre: string;
+  apellido?: string;
+  telegramId?: string;
+  codigoEmpresa: number;
+}
+
+/** Evento georreferenciado (GET /api/eventos-gps) */
+export interface EventoGps {
+  id: number;
+  codigoEmpresa: number;
+  codigoVendedor: number;
+  vendedorNombre?: string | null;
+  vendedorApellido?: string | null;
+  evento: string;
+  numeroPedido?: string | null;
+  ocurridoEn: string;
+  latitud: number | string;
+  longitud: number | string;
+  creadoEn?: string;
+}
+

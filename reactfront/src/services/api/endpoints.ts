@@ -48,5 +48,8 @@ export const endpoints = {
   alquileresCobrosEjecutar: () => `${API_ENDPOINTS.ALQUILERES}/cobros/ejecutar`,
   clienteAlquileres: (id: number) => `${API_ENDPOINTS.CLIENTES}/${id}/alquileres`,
   clienteEstadoCuenta: (id: number) => `${API_ENDPOINTS.CLIENTES}/${id}/estado-cuenta`,
+
+  eventosGps: () => API_ENDPOINTS.EVENTOS_GPS,
+  vendedores: () => API_ENDPOINTS.VENDEDORES,
 } as const;
 

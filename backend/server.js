@@ -64,7 +64,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Rutas API
 app.use('/auth', require('./routes/auth'));
@@ -80,6 +81,13 @@ app.use('/api/informes', require('./routes/informes'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/startnow', require('./routes/startnow'));
 app.use('/api/alquileres', require('./routes/alquileres'));
+app.use('/api/eventos-gps', require('./routes/eventosGps'));
+app.use('/api/vendedores', require('./routes/vendedores'));
+
+// Expenses Module (Supabase)
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/vehicles', require('./routes/vehicles'));
+app.use('/api/expense-types', require('./routes/expenseTypes'));
 
 // Health check
 app.get('/health', (req, res) => {

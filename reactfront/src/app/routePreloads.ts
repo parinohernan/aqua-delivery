@@ -13,6 +13,7 @@ const sectionLoaders: Record<string, () => Promise<unknown>> = {
   [ROUTES.INFORMES]: () => import('@/features/informes/components/InformesSection'),
   [ROUTES.MAPA]: () => import('@/features/mapa/components/MapView'),
   [ROUTES.RUTAS]: () => import('@/features/rutas/components/RutasSection'),
+  [ROUTES.GPS]: () => import('@/features/gps/components/GpsSection'),
 };
 
 function preloadSectionData(path: string): void {

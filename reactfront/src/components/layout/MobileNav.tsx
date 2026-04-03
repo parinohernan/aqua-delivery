@@ -1,7 +1,7 @@
 import GuardedNavLink from '@/components/navigation/GuardedNavLink';
 import { ROUTES } from '@/utils/constants';
 import { preloadAppSection } from '@/app/routePreloads';
-import { Package, Users, ShoppingBag, BarChart2, Route } from 'lucide-react';
+import { Package, Users, ShoppingBag, BarChart2, Route, MapPin } from 'lucide-react';
 
 /**
  * Navegación móvil
@@ -11,6 +11,7 @@ function MobileNav() {
   const navItems = [
     { path: ROUTES.PEDIDOS,   label: 'Pedidos',   icon: <Package size={20} /> },
     { path: ROUTES.RUTAS,     label: 'Rutas',     icon: <Route size={20} /> },
+    { path: ROUTES.GPS,       label: 'GPS',       icon: <MapPin size={20} /> },
     { path: ROUTES.CLIENTES,  label: 'Clientes',  icon: <Users size={20} /> },
     { path: ROUTES.PRODUCTOS, label: 'Productos', icon: <ShoppingBag size={20} /> },
     { path: ROUTES.INFORMES,  label: 'Informes',  icon: <BarChart2 size={20} /> },

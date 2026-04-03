@@ -18,6 +18,8 @@ const ProductosSection = lazy(() => import('@/features/productos/components/Prod
 const InformesSection = lazy(() => import('@/features/informes/components/InformesSection'));
 const MapView = lazy(() => import('@/features/mapa/components/MapView'));
 const RutasSection = lazy(() => import('@/features/rutas/components/RutasSection'));
+const GpsSection = lazy(() => import('@/features/gps/components/GpsSection'));
+const ExpensesSection = lazy(() => import('@/features/expenses/components/ExpensesSection'));
 
 /**
  * Layout principal de la aplicación
@@ -52,6 +54,8 @@ function AppLayout() {
                 <Route path="/informes" element={<InformesSection />} />
                 <Route path="/mapa" element={<MapView />} />
                 <Route path="/rutas" element={<RutasSection />} />
+                <Route path="/gps" element={<GpsSection />} />
+                <Route path="/expenses" element={<ExpensesSection />} />
               </Routes>
             </Suspense>
           </div>
