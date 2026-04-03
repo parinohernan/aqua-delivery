@@ -1,23 +1,25 @@
-import { Fuel, AlertTriangle, Wrench, Settings, Receipt, Milestone, ParkingSquare, Utensils, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Pencil, ReceiptText } from 'lucide-react';
 import { useExpensesStore } from '../stores/expensesStore';
+import ExpenseDetailModal from './ExpenseDetailModal';
+import ExpenseFormModal from './ExpenseFormModal';
+import { resolveExpenseTypeIcon } from './expenseTypeIcon';
 import type { Expense } from '../types';
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  fuel: Fuel,
-  fine: AlertTriangle,
-  repair: Wrench,
-  maintenance: Settings,
-  general: Receipt,
-  toll: Milestone,
-  parking: ParkingSquare,
-  food: Utensils,
-};
-
-function ExpenseCard({ expense }: { expense: Expense }) {
-  const { deleteExpense } = useExpensesStore();
+function ExpenseCard({
+  expense,
+  onClick,
+  onEdit,
+}: {
+  expense: Expense;
+  onClick: () => void;
+  onEdit: (e: React.MouseEvent) => void;
+}) {
+  const [cardHover, setCardHover] = useState(false);
   const typeSlug = expense.expense_types?.slug || 'general';
-  const Icon = ICON_MAP[typeSlug] || Receipt;
+  const apiIcon = expense.expense_types?.icon;
   const color = expense.expense_types?.color || '#6B7280';
+  const Icon = resolveExpenseTypeIcon(typeSlug, apiIcon);
   const docCount = expense.expense_documents?.length || 0;
 
   const formattedAmount = new Intl.NumberFormat('es-AR', {
@@ -33,57 +35,87 @@ function ExpenseCard({ expense }: { expense: Expense }) {
     minute: '2-digit',
   });
 
-  const handleDelete = async () => {
-    if (confirm('¿Eliminar este gasto?')) {
-      await deleteExpense(expense.id);
-    }
-  };
+  const shadowIdle = `0 0 0 1px ${color}28, 0 6px 28px -6px ${color}38, 0 0 52px -16px ${color}32, inset 0 1px 0 ${color}18`;
+  const shadowHover = `0 0 0 1px ${color}45, 0 14px 44px -8px ${color}50, 0 0 72px -12px ${color}42, inset 0 1px 0 ${color}28`;
 
   return (
-    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/[0.07] transition-all group">
-      <div className="flex items-start gap-3">
-        {/* Icon */}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick();
+      }}
+      onMouseEnter={() => setCardHover(true)}
+      onMouseLeave={() => setCardHover(false)}
+      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/10 p-4 transition-all duration-300 ease-out active:scale-[0.98]"
+      style={{
+        background: `linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(15,23,42,0.55) 45%, ${color}14 100%)`,
+        boxShadow: cardHover ? shadowHover : shadowIdle,
+      }}
+    >
+      {/* Brillo de color (esquina) */}
+      <div
+        className="pointer-events-none absolute -left-1/4 -top-1/4 h-2/3 w-2/3 rounded-full opacity-50 blur-3xl transition-opacity duration-300 group-hover:opacity-80"
+        style={{
+          background: `radial-gradient(circle at center, ${color}55 0%, ${color}18 35%, transparent 70%)`,
+        }}
+      />
+      <div
+        className="pointer-events-none absolute bottom-0 right-0 h-1/2 w-1/2 rounded-full opacity-25 blur-2xl transition-opacity duration-300 group-hover:opacity-45"
+        style={{
+          background: `radial-gradient(circle at center, ${color}40 0%, transparent 65%)`,
+        }}
+      />
+
+      <div className="relative z-10 flex items-start gap-3">
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ backgroundColor: `${color}20` }}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 shadow-inner backdrop-blur-sm transition-transform duration-300 group-hover:scale-105"
+          style={{
+            background: `linear-gradient(145deg, ${color}35, rgba(15,23,42,0.55))`,
+            boxShadow: cardHover
+              ? `0 0 28px ${color}50, 0 0 0 1px ${color}35 inset`
+              : `0 0 20px ${color}35, 0 0 0 1px ${color}22 inset`,
+          }}
         >
-          <Icon size={18} style={{ color }} />
+          <Icon size={20} color={color} strokeWidth={2} aria-hidden />
         </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white font-semibold text-sm truncate">
-              {expense.expense_types?.name || 'Expense'}
-            </h3>
-            <span className="text-white font-bold text-sm">{formattedAmount}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-2">
+              {expense.description ? (
+                <p className="truncate text-sm font-bold text-white">{expense.description}</p>
+              ) : (
+                <div />
+              )}
+              <span className="shrink-0 text-sm font-black text-white">{formattedAmount}</span>
+            </div>
           </div>
 
-          {expense.description && (
-            <p className="text-white/40 text-xs mt-0.5 truncate">{expense.description}</p>
-          )}
-
-          <div className="flex items-center gap-3 mt-2 text-white/30 text-[11px]">
-            <span>{formattedDate}</span>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-medium text-white/60">{formattedDate}</span>
             {expense.vehicles && (
-              <span className="bg-white/5 px-2 py-0.5 rounded-md">
-                🚗 {expense.vehicles.plate}
+              <span className="flex items-center gap-1 rounded-lg border border-white/5 bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/90 shadow-sm">
+                <span className="text-xs">🚗</span> {expense.vehicles.plate}
               </span>
             )}
             {docCount > 0 && (
-              <span className="bg-white/5 px-2 py-0.5 rounded-md">
-                📎 {docCount}
+              <span className="flex items-center gap-1 rounded-lg border border-white/5 bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/90 shadow-sm">
+                <span className="text-xs">📎</span> {docCount}
               </span>
             )}
           </div>
         </div>
 
-        {/* Delete */}
         <button
-          onClick={handleDelete}
-          className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+          type="button"
+          onClick={onEdit}
+          className="relative z-10 shrink-0 rounded-lg p-1.5 text-white/35 transition-all hover:bg-emerald-500/15 hover:text-emerald-300"
+          title="Editar gasto"
+          aria-label="Editar gasto"
         >
-          <Trash2 size={14} />
+          <Pencil size={16} strokeWidth={2} />
         </button>
       </div>
     </div>
@@ -96,12 +128,14 @@ interface ExpensesListProps {
 
 function ExpensesList({ isLoading }: ExpensesListProps) {
   const { expenses } = useExpensesStore();
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
 
   if (isLoading) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 rounded-2xl bg-white/5 animate-pulse" />
+          <div key={i} className="h-20 animate-pulse rounded-2xl bg-white/5" />
         ))}
       </div>
     );
@@ -109,20 +143,42 @@ function ExpensesList({ isLoading }: ExpensesListProps) {
 
   if (expenses.length === 0) {
     return (
-      <div className="text-center py-16 text-white/30">
-        <Receipt size={48} className="mx-auto mb-4 opacity-30" />
-        <p className="text-lg font-medium">No expenses found</p>
-        <p className="text-sm mt-1">Click "New Expense" to add your first one</p>
+      <div className="py-16 text-center text-white/30">
+        <ReceiptText size={48} className="mx-auto mb-4 opacity-25" strokeWidth={1.5} />
+        <p className="text-lg font-medium">No se encontraron gastos</p>
+        <p className="mt-1 text-xs">Hacé clic en &quot;Nuevo Gasto&quot; para empezar</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      {expenses.map((expense) => (
-        <ExpenseCard key={expense.id} expense={expense} />
-      ))}
-    </div>
+    <>
+      <div className="space-y-2">
+        {expenses.map((expense) => (
+          <ExpenseCard
+            key={expense.id}
+            expense={expense}
+            onClick={() => setSelectedExpenseId(expense.id)}
+            onEdit={(e) => {
+              e.stopPropagation();
+              setEditExpense(expense);
+            }}
+          />
+        ))}
+      </div>
+
+      {selectedExpenseId && (
+        <ExpenseDetailModal expenseId={selectedExpenseId} onClose={() => setSelectedExpenseId(null)} />
+      )}
+
+      {editExpense && (
+        <ExpenseFormModal
+          key={editExpense.id}
+          expense={editExpense}
+          onClose={() => setEditExpense(null)}
+        />
+      )}
+    </>
   );
 }
 

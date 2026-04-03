@@ -101,7 +101,7 @@ function ExpensesToolbar() {
 
       {/* Modals */}
       {showExpenseModal && (
-        <ExpenseFormModal onClose={() => setShowExpenseModal(false)} />
+        <ExpenseFormModal key="expense-create" onClose={() => setShowExpenseModal(false)} />
       )}
       {showVehicleModal && (
         <VehicleFormModal onClose={() => setShowVehicleModal(false)} />
