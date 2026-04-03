@@ -51,6 +51,7 @@ export interface Expense {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  affects_cashier?: boolean;
   // Joined relations
   expense_types?: ExpenseType;
   vehicles?: Pick<Vehicle, 'plate' | 'brand' | 'model'> | null;
@@ -126,4 +127,5 @@ export interface CreateExpensePayload {
   date?: string;
   metadata?: Record<string, unknown>;
   detail?: Partial<FuelLoadDetail | FineDetail | RepairDetail | MaintenanceDetail>;
+  affects_cashier?: boolean;
 }

@@ -7,6 +7,7 @@ import SectionLoadingFallback from './SectionLoadingFallback';
 import Toast from '@/components/ui/Toast';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import RutasOrdenLeaveDialog from '@/features/rutas/components/RutasOrdenLeaveDialog';
+import PeriodicGpsRegistrar from '@/features/gps/components/PeriodicGpsRegistrar';
 import { preloadAppSection } from '@/app/routePreloads';
 import { ROUTES } from '@/utils/constants';
 import { useZonasStore } from '@/stores/zonasStore';
@@ -20,6 +21,7 @@ const MapView = lazy(() => import('@/features/mapa/components/MapView'));
 const RutasSection = lazy(() => import('@/features/rutas/components/RutasSection'));
 const GpsSection = lazy(() => import('@/features/gps/components/GpsSection'));
 const ExpensesSection = lazy(() => import('@/features/expenses/components/ExpensesSection'));
+const CajaSection = lazy(() => import('@/features/expenses/components/CajaSection'));
 
 /**
  * Layout principal de la aplicación
@@ -56,6 +58,7 @@ function AppLayout() {
                 <Route path="/rutas" element={<RutasSection />} />
                 <Route path="/gps" element={<GpsSection />} />
                 <Route path="/expenses" element={<ExpensesSection />} />
+                <Route path="/caja" element={<CajaSection />} />
               </Routes>
             </Suspense>
           </div>
@@ -69,6 +72,7 @@ function AppLayout() {
       <Toast />
       <ConfirmDialog />
       <RutasOrdenLeaveDialog />
+      <PeriodicGpsRegistrar />
     </div>
   );
 }

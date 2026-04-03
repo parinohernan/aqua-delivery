@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { supabaseAdmin } = require('../services/supabaseClient');
+const { verifyToken } = require('./auth');
+
+router.use(verifyToken);
 
 // ============================================================
 // GET /api/expenses - List expenses with filters
@@ -58,7 +61,12 @@ router.get('/:id', async (req, res) => {
       .eq('id', id)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ success: false, error: 'Expense not found' });
+      }
+      throw error;
+    }
     if (!expense) return res.status(404).json({ success: false, error: 'Expense not found' });
 
     // Fetch detail from the specific table if exists
@@ -75,7 +83,17 @@ router.get('/:id', async (req, res) => {
       if (!detailError) detail = detailData;
     }
 
-    res.json({ success: true, data: { ...expense, detail } });
+    // Check if it affects cashier in MySQL
+    let affects_cashier = false;
+    const { query: mysqlQuery } = require('../config/database');
+    try {
+      const mysqlResult = await mysqlQuery('SELECT id FROM gastos_caja WHERE expense_id_supabase = ?', [id]);
+      affects_cashier = mysqlResult.length > 0;
+    } catch (mysqlErr) {
+      console.warn('Error checking gastos_caja for expense:', mysqlErr.message);
+    }
+
+    res.json({ success: true, data: { ...expense, detail, affects_cashier } });
   } catch (error) {
     console.error('Error fetching expense:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -100,6 +118,7 @@ router.post('/', async (req, res) => {
       date,
       metadata,
       detail, // Object with detail-specific fields
+      affects_cashier, // Used for MySQL sync
     } = req.body;
 
     // 1. Get expense type to know which detail table to use
@@ -149,6 +168,21 @@ router.post('/', async (req, res) => {
       detailData = insertedDetail;
     }
 
+    // 4. Sync with MySQL gastos_caja if it affects cashier
+    if (req.body.affects_cashier && req.user) {
+      const { query: mysqlQuery } = require('../config/database');
+      const syncAmount = parseFloat(amount);
+      const syncDate = date ? new Date(date) : new Date();
+      
+      console.log(`📤 Sincronizando gasto con MySQL: Monto: ${syncAmount}, Vendedor: ${req.user.vendedorId}, Fecha: ${syncDate.toISOString()}`);
+      
+      await mysqlQuery(
+        'INSERT INTO gastos_caja (monto, descripcion, vendedorId, codigoEmpresa, fecha, expense_id_supabase) VALUES (?, ?, ?, ?, ?, ?)',
+        [syncAmount, description || 'Gasto desde App', req.user.vendedorId, req.user.codigoEmpresa, syncDate, expense.id]
+      );
+      console.log(`✅ Gasto sincronizado con MySQL gastos_caja para vendedor ${req.user.vendedorId}`);
+    }
+
     res.status(201).json({
       success: true,
       data: { ...expense, detail: detailData },
@@ -165,9 +199,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { detail, ...expenseFields } = req.body;
+    const { detail, affects_cashier, ...expenseFields } = req.body;
 
-    // 1. Update base expense
+    // 1. Update base expense in Supabase (filtering out affects_cashier)
     const { data: expense, error: expenseError } = await supabaseAdmin
       .from('expenses')
       .update(expenseFields)
@@ -190,6 +224,32 @@ router.put('/:id', async (req, res) => {
         .single();
 
       if (!detailError) detailData = updatedDetail;
+    }
+
+    // 3. Sync with MySQL gastos_caja
+    if (req.user && req.body.affects_cashier !== undefined) {
+      const { query: mysqlQuery } = require('../config/database');
+      const affectsCashier = req.body.affects_cashier;
+
+      // Check if it already exists in MySQL
+      const existing = await mysqlQuery('SELECT id FROM gastos_caja WHERE expense_id_supabase = ?', [id]);
+
+      if (affectsCashier && existing.length === 0) {
+        // Was not in caja, now it is: INSERT
+        await mysqlQuery(
+          'INSERT INTO gastos_caja (monto, descripcion, vendedorId, codigoEmpresa, fecha, expense_id_supabase) VALUES (?, ?, ?, ?, ?, ?)',
+          [expenseFields.amount || expense.amount, expenseFields.description || expense.description || 'Gasto editado', req.user.vendedorId, req.user.codigoEmpresa, expenseFields.date || expense.date || new Date(), id]
+        );
+      } else if (!affectsCashier && existing.length > 0) {
+        // Was in caja, now it's not: DELETE
+        await mysqlQuery('DELETE FROM gastos_caja WHERE expense_id_supabase = ?', [id]);
+      } else if (affectsCashier && existing.length > 0) {
+        // Still in caja: UPDATE amount/description
+        await mysqlQuery(
+          'UPDATE gastos_caja SET monto = ?, descripcion = ?, fecha = ? WHERE expense_id_supabase = ?',
+          [expenseFields.amount || expense.amount, expenseFields.description || expense.description || 'Gasto editado', expenseFields.date || expense.date || new Date(), id]
+        );
+      }
     }
 
     res.json({ success: true, data: { ...expense, detail: detailData } });
@@ -224,6 +284,15 @@ router.delete('/:id', async (req, res) => {
       .eq('id', id);
 
     if (error) throw error;
+
+    // 3. Delete from MySQL gastos_caja if it exists
+    try {
+      const { query: mysqlQuery } = require('../config/database');
+      await mysqlQuery('DELETE FROM gastos_caja WHERE expense_id_supabase = ?', [id]);
+      console.log(`🗑️ Gasto ${id} eliminado de MySQL gastos_caja`);
+    } catch (mysqlErr) {
+      console.warn('Error deleting from MySQL gastos_caja:', mysqlErr.message);
+    }
 
     res.json({ success: true, message: 'Expense deleted successfully' });
   } catch (error) {

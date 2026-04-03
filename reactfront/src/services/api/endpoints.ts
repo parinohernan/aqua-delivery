@@ -51,5 +51,6 @@ export const endpoints = {
 
   eventosGps: () => API_ENDPOINTS.EVENTOS_GPS,
   vendedores: () => API_ENDPOINTS.VENDEDORES,
+  vendedorMe: () => `${API_ENDPOINTS.VENDEDORES}/me`,
 } as const;
 

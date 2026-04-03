@@ -11,6 +11,8 @@ export interface User {
   nombre?: string;
   telegramId?: string;
   codigoEmpresa?: number;
+  /** 1/true: habilitar registro GPS periódico (Check) con la app abierta */
+  registro_gps_periodico?: boolean | number | string;
   [key: string]: unknown;
 }
 
@@ -182,6 +184,7 @@ export interface VendedorLista {
   apellido?: string;
   telegramId?: string;
   codigoEmpresa: number;
+  registro_gps_periodico?: number | boolean;
 }
 
 /** Evento georreferenciado (GET /api/eventos-gps) */

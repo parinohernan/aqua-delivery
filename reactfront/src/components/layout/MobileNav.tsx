@@ -1,26 +1,16 @@
 import GuardedNavLink from '@/components/navigation/GuardedNavLink';
-import { ROUTES } from '@/utils/constants';
 import { preloadAppSection } from '@/app/routePreloads';
-import { Package, Users, ShoppingBag, BarChart2, Route, MapPin } from 'lucide-react';
+import { NAV_MAIN_ITEMS } from './navConfig';
 
 /**
- * Navegación móvil
- * En móvil: solo iconos para que entren 5 ítems sin apretar. title para accesibilidad.
+ * Navegación móvil (5 ítems)
+ * Mapa, GPS, Caja, Gastos e Informes: menú "Más" en el header.
  */
 function MobileNav() {
-  const navItems = [
-    { path: ROUTES.PEDIDOS,   label: 'Pedidos',   icon: <Package size={20} /> },
-    { path: ROUTES.RUTAS,     label: 'Rutas',     icon: <Route size={20} /> },
-    { path: ROUTES.GPS,       label: 'GPS',       icon: <MapPin size={20} /> },
-    { path: ROUTES.CLIENTES,  label: 'Clientes',  icon: <Users size={20} /> },
-    { path: ROUTES.PRODUCTOS, label: 'Productos', icon: <ShoppingBag size={20} /> },
-    { path: ROUTES.INFORMES,  label: 'Informes',  icon: <BarChart2 size={20} /> },
-  ];
-
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0f1b2e] border-t border-white/10 shadow-2xl z-40 safe-area-pb">
       <div className="flex justify-around items-center px-0 py-2 min-h-[56px]">
-        {navItems.map((item) => (
+        {NAV_MAIN_ITEMS.map((item) => (
           <GuardedNavLink
             key={item.path}
             to={item.path}

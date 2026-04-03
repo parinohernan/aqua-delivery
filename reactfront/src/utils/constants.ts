@@ -36,6 +36,7 @@ export const API_ENDPOINTS = {
   EXPENSES: '/api/expenses',
   VEHICLES: '/api/vehicles',
   EXPENSE_TYPES: '/api/expense-types',
+  CAJA: '/api/caja',
 } as const;
 
 /**
@@ -62,6 +63,7 @@ export const ROUTES = {
   RUTAS: '/rutas',
   GPS: '/gps',
   EXPENSES: '/expenses',
+  CAJA: '/caja',
 } as const;
 
 /**

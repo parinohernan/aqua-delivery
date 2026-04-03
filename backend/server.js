@@ -88,6 +88,7 @@ app.use('/api/vendedores', require('./routes/vendedores'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/expense-types', require('./routes/expenseTypes'));
+app.use('/api/caja', require('./routes/caja'));
 
 // Health check
 app.get('/health', (req, res) => {

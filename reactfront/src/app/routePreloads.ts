@@ -14,6 +14,8 @@ const sectionLoaders: Record<string, () => Promise<unknown>> = {
   [ROUTES.MAPA]: () => import('@/features/mapa/components/MapView'),
   [ROUTES.RUTAS]: () => import('@/features/rutas/components/RutasSection'),
   [ROUTES.GPS]: () => import('@/features/gps/components/GpsSection'),
+  [ROUTES.EXPENSES]: () => import('@/features/expenses/components/ExpensesSection'),
+  [ROUTES.CAJA]: () => import('@/features/expenses/components/CajaSection'),
 };
 
 function preloadSectionData(path: string): void {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Camera, Image as ImageIcon, Trash2, Loader2 } from 'lucide-react';
+import { X, Camera, Image as ImageIcon, Trash2, Loader2, Wallet } from 'lucide-react';
 import { useExpensesStore } from '../stores/expensesStore';
 import { useAuthStore } from '@/stores/authStore';
 import { expensesService } from '../services/expensesService';
@@ -13,14 +13,19 @@ interface Props {
   expense?: Expense | null;
 }
 
-export const DETAIL_FIELDS: Record<
-  string,
-  { label: string; key: string; type: string; options?: { value: string; label: string }[] }[]
-> = {
+interface DetailField {
+  label: string;
+  key: string;
+  type: string;
+  required?: boolean;
+  options?: { value: string; label: string }[];
+}
+
+export const DETAIL_FIELDS: Record<string, DetailField[]> = {
   fuel_loads: [
-    { label: 'Litros', key: 'liters', type: 'number' },
-    { label: 'Precio por Litro', key: 'price_per_liter', type: 'number' },
-    { label: 'Odómetro (km)', key: 'odometer_km', type: 'number' },
+    { label: 'Litros', key: 'liters', type: 'number', required: true },
+    { label: 'Precio por Litro', key: 'price_per_liter', type: 'number', required: true },
+    { label: 'Odómetro (km)', key: 'odometer_km', type: 'number', required: true },
     {
       label: 'Tipo de Combustible',
       key: 'fuel_type',
@@ -138,7 +143,8 @@ function ExpenseFormModal({ onClose, expense }: Props) {
     vehicle_id: '',
     date: new Date().toISOString().slice(0, 16),
   });
-  const [detailData, setDetailData] = useState<Record<string, string>>({});
+  const [affectsCashier, setAffectsCashier] = useState(true);
+  const [detailData, setDetailData] = useState<Record<string, any>>({});
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
 
@@ -146,6 +152,18 @@ function ExpenseFormModal({ onClose, expense }: Props) {
   const selectedType = expenseTypes.find((t) => t.id === selectedTypeId) ?? workingExpense?.expense_types;
   const detailTable = selectedType?.detail_table ?? undefined;
   const detailFields = detailTable ? DETAIL_FIELDS[detailTable] || [] : [];
+
+  useEffect(() => {
+    if (!selectedType) return;
+    // Auto-set affectsCashier based on type for convenience
+    const cashTypes = ['food', 'toll', 'parking', 'general'];
+    if (cashTypes.includes(selectedType.slug)) {
+      setAffectsCashier(true);
+    } else {
+      setAffectsCashier(false);
+    }
+  }, [selectedTypeId, selectedType]);
+
 
   useEffect(() => {
     if (!isEditMode || !expense?.id) {
@@ -198,6 +216,8 @@ function ExpenseFormModal({ onClose, expense }: Props) {
     }
     setSelectedFiles([]);
     setPreviews([]);
+
+    setAffectsCashier(loadedExpense.affects_cashier || false); 
   }, [loadedExpense]);
 
   useEffect(() => {
@@ -230,8 +250,18 @@ function ExpenseFormModal({ onClose, expense }: Props) {
 
     setIsSubmitting(true);
     try {
-      const detailPayload =
-        detailFields.length > 0 && Object.keys(detailData).length > 0 ? detailData : undefined;
+      const detailPayload: Record<string, any> = {};
+      
+      if (detailTable && detailFields.length > 0) {
+        for (const f of detailFields) {
+          const val = detailData[f.key];
+          if (f.type === 'number') {
+            detailPayload[f.key] = val ? parseFloat(val) : (f.required ? 0 : null);
+          } else {
+            detailPayload[f.key] = val || null;
+          }
+        }
+      }
 
       if (isEditMode && loadedExpense) {
         const updatePayload: Partial<CreateExpensePayload> = {
@@ -240,6 +270,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
           vehicle_id: formData.vehicle_id || undefined,
           date: formData.date,
           detail: detailPayload,
+          affects_cashier: affectsCashier,
         };
 
         await updateExpense(loadedExpense.id, updatePayload);
@@ -267,7 +298,8 @@ function ExpenseFormModal({ onClose, expense }: Props) {
         amount: parseFloat(formData.amount),
         description: formData.description,
         date: formData.date,
-        detail: detailPayload,
+        detail: Object.keys(detailPayload).length > 0 ? detailPayload : undefined,
+        affects_cashier: affectsCashier,
       };
 
       const created = await createExpense(payload);
@@ -509,6 +541,31 @@ function ExpenseFormModal({ onClose, expense }: Props) {
             />
           </div>
 
+          <div className="flex items-center justify-between p-4 rounded-2xl border border-white/10 bg-white/5 transition-all hover:bg-white/10">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${affectsCashier ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                <Wallet size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">¿Pagar con efectivo de caja?</p>
+                <p className="text-[10px] text-white/40">Si se marca, se restará del saldo de tu caja diaria.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAffectsCashier(!affectsCashier)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                affectsCashier ? 'bg-emerald-600' : 'bg-white/10'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  affectsCashier ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
           {detailFields.length > 0 && (
             <div className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-white/60">
@@ -535,6 +592,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
                   ) : (
                     <input
                       type={field.type}
+                      required={field.required}
                       value={detailData[field.key] || ''}
                       onChange={(e) => setDetailData({ ...detailData, [field.key]: e.target.value })}
                       className={inputClass}

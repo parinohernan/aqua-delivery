@@ -8,6 +8,14 @@ export type EventosGpsQuery = {
   codigoVendedor?: number | 'all';
 };
 
+export type RegistrarEventoGpsBody = {
+  evento: string;
+  latitud: number;
+  longitud: number;
+  numero_pedido?: string | null;
+  ocurrido_en?: string;
+};
+
 function buildQuery(params: EventosGpsQuery): string {
   const sp = new URLSearchParams();
   sp.append('desde', params.desde.toISOString());
@@ -22,6 +30,11 @@ class EventosGpsService {
   async list(q: EventosGpsQuery): Promise<EventoGps[]> {
     const url = buildQuery(q);
     return apiClient.get<EventoGps[]>(url);
+  }
+
+  /** POST /api/eventos-gps (entrega, Check periódico, etc.) */
+  async registrar(body: RegistrarEventoGpsBody): Promise<{ success: boolean }> {
+    return apiClient.post<{ success: boolean }>(endpoints.eventosGps(), body);
   }
 }
 
