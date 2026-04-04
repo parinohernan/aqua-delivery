@@ -95,9 +95,35 @@ export const DETAIL_FIELDS: Record<string, DetailField[]> = {
 
 function toDatetimeLocalValue(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 16);
+  if (Number.isNaN(d.getTime())) return nowDatetimeLocalValue();
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function nowDatetimeLocalValue(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** datetime-local es hora local sin zona; el API/Postgres espera un instante explícito (ISO UTC). */
+function datetimeLocalToIsoUtc(datetimeLocal: string): string {
+  const trimmed = datetimeLocal.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(trimmed);
+  if (m) {
+    const d = new Date(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      Number(m[4]),
+      Number(m[5]),
+      0,
+      0
+    );
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const d = new Date(trimmed);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
 
 function detailToFormData(
@@ -154,15 +180,15 @@ function ExpenseFormModal({ onClose, expense }: Props) {
   const detailFields = detailTable ? DETAIL_FIELDS[detailTable] || [] : [];
 
   useEffect(() => {
+    if (isEditMode) return;
     if (!selectedType) return;
-    // Auto-set affectsCashier based on type for convenience
     const cashTypes = ['food', 'toll', 'parking', 'general'];
     if (cashTypes.includes(selectedType.slug)) {
       setAffectsCashier(true);
     } else {
       setAffectsCashier(false);
     }
-  }, [selectedTypeId, selectedType]);
+  }, [isEditMode, selectedTypeId, selectedType]);
 
 
   useEffect(() => {
@@ -217,7 +243,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
     setSelectedFiles([]);
     setPreviews([]);
 
-    setAffectsCashier(loadedExpense.affects_cashier || false); 
+    setAffectsCashier(Boolean(loadedExpense.affects_cashier)); 
   }, [loadedExpense]);
 
   useEffect(() => {
@@ -268,7 +294,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
           amount: parseFloat(formData.amount),
           description: formData.description,
           vehicle_id: formData.vehicle_id || undefined,
-          date: formData.date,
+          date: datetimeLocalToIsoUtc(formData.date),
           detail: detailPayload,
           affects_cashier: affectsCashier,
         };
@@ -297,7 +323,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
         vehicle_id: formData.vehicle_id || undefined,
         amount: parseFloat(formData.amount),
         description: formData.description,
-        date: formData.date,
+        date: datetimeLocalToIsoUtc(formData.date),
         detail: Object.keys(detailPayload).length > 0 ? detailPayload : undefined,
         affects_cashier: affectsCashier,
       };
