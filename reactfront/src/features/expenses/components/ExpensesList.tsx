@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Pencil, ReceiptText } from 'lucide-react';
 import { useExpensesStore } from '../stores/expensesStore';
+import { useAuthStore } from '@/stores/authStore';
 import ExpenseDetailModal from './ExpenseDetailModal';
 import ExpenseFormModal from './ExpenseFormModal';
 import { resolveExpenseTypeIcon } from './expenseTypeIcon';
@@ -10,10 +11,12 @@ function ExpenseCard({
   expense,
   onClick,
   onEdit,
+  vendorLabel,
 }: {
   expense: Expense;
   onClick: () => void;
   onEdit: (e: React.MouseEvent) => void;
+  vendorLabel?: string | null;
 }) {
   const [cardHover, setCardHover] = useState(false);
   const typeSlug = expense.expense_types?.slug || 'general';
@@ -105,6 +108,9 @@ function ExpenseCard({
                 <span className="text-xs">📎</span> {docCount}
               </span>
             )}
+            {vendorLabel ? (
+              <span className="w-full text-[10px] text-white/45">Vendedor: {vendorLabel}</span>
+            ) : null}
           </div>
         </div>
 
@@ -127,9 +133,30 @@ interface ExpensesListProps {
 }
 
 function ExpensesList({ isLoading }: ExpensesListProps) {
-  const { expenses } = useExpensesStore();
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = String(user?.rol || '').toLowerCase() === 'admin';
+  const { expenses, filters, vendedoresFilter } = useExpensesStore();
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
+
+  const vendorNameByUserId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const v of vendedoresFilter) {
+      const name = [v.nombre, v.apellido].filter(Boolean).join(' ').trim();
+      m.set(String(v.codigo), name || `Vendedor ${v.codigo}`);
+    }
+    return m;
+  }, [vendedoresFilter]);
+
+  const displayExpenses = useMemo(() => {
+    const q = filters.search.trim().toLowerCase();
+    if (!q) return expenses;
+    return expenses.filter(
+      (e) =>
+        (e.description || '').toLowerCase().includes(q) ||
+        (e.expense_types?.name || '').toLowerCase().includes(q)
+    );
+  }, [expenses, filters.search]);
 
   if (isLoading) {
     return (
@@ -141,7 +168,7 @@ function ExpensesList({ isLoading }: ExpensesListProps) {
     );
   }
 
-  if (expenses.length === 0) {
+  if (displayExpenses.length === 0 && expenses.length === 0) {
     return (
       <div className="py-16 text-center text-white/30">
         <ReceiptText size={48} className="mx-auto mb-4 opacity-25" strokeWidth={1.5} />
@@ -151,13 +178,28 @@ function ExpensesList({ isLoading }: ExpensesListProps) {
     );
   }
 
+  if (displayExpenses.length === 0) {
+    return (
+      <div className="py-16 text-center text-white/30">
+        <ReceiptText size={48} className="mx-auto mb-4 opacity-25" strokeWidth={1.5} />
+        <p className="text-lg font-medium">Ningún gasto coincide con la búsqueda</p>
+        <p className="mt-1 text-xs text-white/40">Probá otras palabras o limpiá el filtro de texto</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="space-y-2">
-        {expenses.map((expense) => (
+        {displayExpenses.map((expense) => (
           <ExpenseCard
             key={expense.id}
             expense={expense}
+            vendorLabel={
+              isAdmin
+                ? vendorNameByUserId.get(String(expense.user_id)) || `Código ${expense.user_id}`
+                : null
+            }
             onClick={() => setSelectedExpenseId(expense.id)}
             onEdit={(e) => {
               e.stopPropagation();

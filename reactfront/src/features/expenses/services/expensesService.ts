@@ -15,6 +15,8 @@ interface ExpensesFilters {
   vehicle_id?: string;
   date_from?: string;
   date_to?: string;
+  /** Solo admin: filtrar por código de vendedor (user_id del gasto). */
+  user_id?: string;
   limit?: number;
   offset?: number;
 }

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { expensesService } from '../services/expensesService';
+import { vendedoresService } from '@/features/gps/services/vendedoresService';
 import type { Expense, ExpenseType, Vehicle, CreateExpensePayload } from '../types';
+import type { VendedorLista } from '@/types/entities';
 
 interface ExpensesFilters {
   search: string;
@@ -8,6 +10,8 @@ interface ExpensesFilters {
   vehicle_id: string;
   date_from: string;
   date_to: string;
+  /** Admin: código vendedor; vacío = todos */
+  user_id: string;
 }
 
 interface ExpensesState {
@@ -15,6 +19,8 @@ interface ExpensesState {
   expenses: Expense[];
   expenseTypes: ExpenseType[];
   vehicles: Vehicle[];
+  /** Lista para filtro por vendedor (solo admin). */
+  vendedoresFilter: VendedorLista[];
 
   // UI State
   isLoading: boolean;
@@ -25,6 +31,7 @@ interface ExpensesState {
   loadExpenses: () => Promise<void>;
   loadExpenseTypes: () => Promise<void>;
   loadVehicles: () => Promise<void>;
+  loadVendedoresFilter: () => Promise<void>;
   createExpense: (data: CreateExpensePayload) => Promise<Expense>;
   updateExpense: (id: string, data: Partial<CreateExpensePayload>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
@@ -40,12 +47,14 @@ const initialFilters: ExpensesFilters = {
   vehicle_id: '',
   date_from: '',
   date_to: '',
+  user_id: '',
 };
 
 export const useExpensesStore = create<ExpensesState>((set, get) => ({
   expenses: [],
   expenseTypes: [],
   vehicles: [],
+  vendedoresFilter: [],
   isLoading: false,
   error: null,
   filters: initialFilters,
@@ -59,6 +68,8 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
         vehicle_id: filters.vehicle_id || undefined,
         date_from: filters.date_from || undefined,
         date_to: filters.date_to || undefined,
+        user_id: filters.user_id || undefined,
+        limit: 200,
       });
       set({ expenses });
     } catch (error) {
@@ -84,6 +95,15 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
       set({ vehicles });
     } catch (error) {
       console.error('Error loading vehicles:', error);
+    }
+  },
+
+  loadVendedoresFilter: async () => {
+    try {
+      const vendedoresFilter = await vendedoresService.list();
+      set({ vendedoresFilter });
+    } catch (error) {
+      console.error('Error loading vendedores for expenses filter:', error);
     }
   },
 
@@ -137,7 +157,11 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
     set((state) => ({
       filters: { ...state.filters, ...newFilters },
     }));
-    get().loadExpenses();
+    const keys = Object.keys(newFilters);
+    const onlySearch = keys.length === 1 && keys[0] === 'search';
+    if (!onlySearch) {
+      get().loadExpenses();
+    }
   },
 
   clearFilters: () => {

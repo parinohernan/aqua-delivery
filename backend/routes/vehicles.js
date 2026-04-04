@@ -1,23 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const { supabaseAdmin } = require('../services/supabaseClient');
+const { verifyToken } = require('./auth');
+const { query: mysqlQuery } = require('../config/database');
+
+router.use(verifyToken);
+
+/**
+ * Códigos de vendedor (MySQL) de la empresa: mismos valores que `vehicles.user_id` en Supabase.
+ */
+async function vendorCodigosForEmpresa(codigoEmpresa) {
+  if (codigoEmpresa == null) return [];
+  const rows = await mysqlQuery(
+    'SELECT codigo FROM vendedores WHERE codigoEmpresa = ?',
+    [codigoEmpresa]
+  );
+  return rows.map((r) => String(r.codigo));
+}
 
 // ============================================================
-// GET /api/vehicles - List user's vehicles
+// GET /api/vehicles - Vehículos de la empresa (todos los vendedores de codigoEmpresa)
 // ============================================================
 router.get('/', async (req, res) => {
   try {
     const { status } = req.query;
 
+    const codigos = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (codigos.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
     let query = supabaseAdmin
       .from('vehicles')
       .select('*')
+      .in('user_id', codigos)
       .order('created_at', { ascending: false });
 
     if (status) query = query.eq('status', status);
-
-    // TODO: Filter by user_id from auth token
-    // if (req.userId) query = query.eq('user_id', req.userId);
 
     const { data, error } = await query;
 
@@ -37,6 +56,8 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    const codigos = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+
     const { data: vehicle, error } = await supabaseAdmin
       .from('vehicles')
       .select('*')
@@ -45,6 +66,10 @@ router.get('/:id', async (req, res) => {
 
     if (error) throw error;
     if (!vehicle) return res.status(404).json({ success: false, error: 'Vehicle not found' });
+
+    if (!codigos.includes(String(vehicle.user_id))) {
+      return res.status(404).json({ success: false, error: 'Vehicle not found' });
+    }
 
     res.json({ success: true, data: vehicle });
   } catch (error) {
@@ -58,7 +83,9 @@ router.get('/:id', async (req, res) => {
 // ============================================================
 router.post('/', async (req, res) => {
   try {
-    const { user_id, plate, brand, model, year, current_km, type, avatar_url } = req.body;
+    const { plate, brand, model, year, current_km, type, avatar_url } = req.body;
+
+    const user_id = String(req.user.vendedorId);
 
     const { data: vehicle, error } = await supabaseAdmin
       .from('vehicles')
@@ -91,9 +118,27 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    const codigos = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('vehicles')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !existing) {
+      return res.status(404).json({ success: false, error: 'Vehicle not found' });
+    }
+    if (!codigos.includes(String(existing.user_id))) {
+      return res.status(404).json({ success: false, error: 'Vehicle not found' });
+    }
+
+    const payload = { ...req.body };
+    delete payload.user_id;
+
     const { data: vehicle, error } = await supabaseAdmin
       .from('vehicles')
-      .update(req.body)
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
@@ -113,6 +158,17 @@ router.put('/:id', async (req, res) => {
 router.get('/:id/stats', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const codigos = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    const { data: vehRow, error: vehErr } = await supabaseAdmin
+      .from('vehicles')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (vehErr || !vehRow || !codigos.includes(String(vehRow.user_id))) {
+      return res.status(404).json({ success: false, error: 'Vehicle not found' });
+    }
 
     // Total expenses for this vehicle
     const { data: expenses, error: expError } = await supabaseAdmin

@@ -11,6 +11,13 @@ import { toast } from '@/utils/feedback';
 import { getCurrentPositionOnce } from '@/utils/geolocation';
 import type { Pedido, TipoPago, PedidoItem } from '@/types/entities';
 
+function tipoPagoDisplayName(t: TipoPago): string {
+  const p = t.pago;
+  if (typeof p === 'string' && p.trim()) return p;
+  const n = (t as Record<string, unknown>).nombre;
+  return typeof n === 'string' ? n : '';
+}
+
 /**
  * Modal para entregar un pedido
  * Permite seleccionar tipo de pago, monto cobrado y retornables devueltos
@@ -59,12 +66,12 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
     if (!ok) setSelectedTipoPago('');
   }, [tiposPago, selectedTipoPago]);
 
-  // Sugerir total del pedido al cambiar de medio (si el monto sigue vacío o en cero)
+  // Sugerir total del pedido al cambiar de medio solo si el campo está vacío (0 es válido: nada en efectivo / cuenta)
   useEffect(() => {
     if (!selectedTipoPago || tiposPago.length === 0 || !pedido) return;
     const exists = tiposPago.some((t) => t.id === Number(selectedTipoPago));
     if (!exists) return;
-    const emptyish = !montoCobrado || montoCobrado === '0' || montoCobrado === '0.00';
+    const emptyish = String(montoCobrado).trim() === '';
     if (emptyish) {
       setMontoCobrado((Number(pedido.total) || 0).toFixed(2));
     }
@@ -426,7 +433,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
                 </option>
                 {tiposPago.map((tipo) => (
                   <option key={tipo.id} value={tipo.id} className="bg-[#0f1b2e]">
-                    {tipo.pago || tipo.nombre}
+                    {tipoPagoDisplayName(tipo) || '—'}
                   </option>
                 ))}
               </select>
@@ -463,7 +470,16 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
                     onClick={() => setMontoCobrado(totalPedido.toFixed(2))}
                     className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Total del pedido ({formatCurrency(totalPedido)})
+                    Total ({formatCurrency(totalPedido)})
+                  </button>
+                  <button
+                    type="button"
+                    disabled={usarSaldoAFavor}
+                    onClick={() => setMontoCobrado('0.00')}
+                    title="Nada en efectivo: el pedido queda en cuenta del cliente"
+                    className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/35 text-amber-100 text-sm hover:bg-amber-500/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {formatCurrency(0)}
                   </button>
                   {mostrarBloqueSaldo && (
                     <button
@@ -472,7 +488,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
                       onClick={() => setMontoCobrado(Math.max(0, totalPedido + saldoCliente).toFixed(2))}
                       className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {tieneDeuda ? `Total con deuda (${formatCurrency(totalConDeuda)})` : `Total a pagar (${formatCurrency(totalAPagarConCredito)})`}
+                      {tieneDeuda ? `Total + deuda (${formatCurrency(totalConDeuda)})` : `Total a pagar (${formatCurrency(totalAPagarConCredito)})`}
                     </button>
                   )}
                 </div>
@@ -544,7 +560,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
                   {usarSaldoAFavor ? (
                     <>
                       <div>
-                        <strong>💳 Pago:</strong> {tipoPago?.pago || tipoPago?.nombre} - Con saldo a favor
+                        <strong>💳 Pago:</strong> {tipoPago ? tipoPagoDisplayName(tipoPago) : '—'} - Con saldo a favor
                       </div>
                       <div className="text-emerald-200">
                         <strong>💵 Se usará el saldo a favor</strong> para pagar este pedido ({formatCurrency(totalPedido)}). No se cobra efectivo.
@@ -553,7 +569,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
                   ) : (
                     <>
                       <div>
-                        <strong>💰 Pago:</strong> {tipoPago?.pago || tipoPago?.nombre} - {formatCurrency(monto)}
+                        <strong>💰 Pago:</strong> {tipoPago ? tipoPagoDisplayName(tipoPago) : '—'} - {formatCurrency(monto)}
                       </div>
                       {tieneDeuda && monto >= totalPedido && monto <= totalConDeuda && monto > totalPedido && (
                         <div className="text-white/90">

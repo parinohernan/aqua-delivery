@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Search, Filter, Plus, Car } from 'lucide-react';
 import { useExpensesStore } from '../stores/expensesStore';
+import { useAuthStore } from '@/stores/authStore';
 import ExpenseFormModal from './ExpenseFormModal';
 import VehicleFormModal from './VehicleFormModal';
 
 function ExpensesToolbar() {
-  const { filters, setFilters, expenseTypes, vehicles } = useExpensesStore();
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = String(user?.rol || '').toLowerCase() === 'admin';
+  const { filters, setFilters, expenseTypes, vehicles, vendedoresFilter } = useExpensesStore();
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -57,6 +60,23 @@ function ExpensesToolbar() {
         {/* Filter Panel */}
         {showFilters && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-white/5 border border-white/10 rounded-xl animate-fade-in shadow-xl">
+            {isAdmin && (
+              <select
+                id="filter-vendedor"
+                value={filters.user_id}
+                onChange={(e) => setFilters({ user_id: e.target.value })}
+                className="col-span-2 sm:col-span-4 px-3 py-2 bg-[#121225] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500/50 appearance-none"
+              >
+                <option value="" className="bg-[#1a1a2e]">
+                  Todos los vendedores
+                </option>
+                {vendedoresFilter.map((v) => (
+                  <option key={v.codigo} value={String(v.codigo)} className="bg-[#1a1a2e]">
+                    {[v.nombre, v.apellido].filter(Boolean).join(' ') || `Vendedor ${v.codigo}`}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               id="filter-type"
               value={filters.type}

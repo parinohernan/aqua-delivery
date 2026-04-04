@@ -2,15 +2,60 @@ const express = require('express');
 const router = express.Router();
 const { supabaseAdmin } = require('../services/supabaseClient');
 const { verifyToken } = require('./auth');
+const { query: mysqlQuery } = require('../config/database');
 
 router.use(verifyToken);
+
+function isExpensesAdmin(req) {
+  return String(req.user?.rol || '').toLowerCase() === 'admin';
+}
+
+/** Códigos de vendedor de la empresa (mismo criterio que `expenses.user_id` en Supabase). */
+async function vendorCodigosForEmpresa(codigoEmpresa) {
+  if (codigoEmpresa == null) return [];
+  const rows = await mysqlQuery(
+    'SELECT codigo FROM vendedores WHERE codigoEmpresa = ?',
+    [codigoEmpresa]
+  );
+  return rows.map((r) => String(r.codigo));
+}
+
+function expenseAllowed(req, expenseUserId, codigos) {
+  const uid = String(expenseUserId ?? '');
+  const set = new Set(codigos.map(String));
+  if (!set.has(uid)) return false;
+  if (isExpensesAdmin(req)) return true;
+  return uid === String(req.user?.vendedorId ?? '');
+}
+
+/** DATETIME para MySQL (no usar ISO con Z: strict mode da ER_TRUNCATED_WRONG_VALUE). */
+function toMysqlDateTime(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return toMysqlDateTime(new Date());
+  }
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
 
 // ============================================================
 // GET /api/expenses - List expenses with filters
 // ============================================================
 router.get('/', async (req, res) => {
   try {
-    const { app_id, type, vehicle_id, date_from, date_to, limit = 50, offset = 0 } = req.query;
+    const {
+      app_id,
+      type,
+      vehicle_id,
+      date_from,
+      date_to,
+      user_id: filterUserId,
+      limit: limitRaw,
+      offset: offsetRaw,
+    } = req.query;
+
+    const lim = Math.min(500, Math.max(1, parseInt(String(limitRaw), 10) || 100));
+    const off = Math.max(0, parseInt(String(offsetRaw), 10) || 0);
 
     let query = supabaseAdmin
       .from('expenses')
@@ -21,7 +66,7 @@ router.get('/', async (req, res) => {
         expense_documents (id, file_name, file_type, public_url)
       `)
       .order('date', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(off, off + lim - 1);
 
     if (app_id) query = query.eq('app_id', app_id);
     if (type) query = query.eq('expense_type_id', type);
@@ -29,8 +74,22 @@ router.get('/', async (req, res) => {
     if (date_from) query = query.gte('date', date_from);
     if (date_to) query = query.lte('date', date_to);
 
-    // TODO: Filter by user_id from auth token
-    // if (req.userId) query = query.eq('user_id', req.userId);
+    const codigos = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (codigos.length === 0) {
+      return res.json({ success: true, data: [], count: 0 });
+    }
+
+    if (!isExpensesAdmin(req)) {
+      query = query.eq('user_id', String(req.user.vendedorId));
+    } else if (filterUserId != null && String(filterUserId).trim() !== '') {
+      const fid = String(filterUserId).trim();
+      if (!codigos.includes(fid)) {
+        return res.json({ success: true, data: [], count: 0 });
+      }
+      query = query.eq('user_id', fid);
+    } else {
+      query = query.in('user_id', codigos);
+    }
 
     const { data, error, count } = await query;
 
@@ -69,6 +128,11 @@ router.get('/:id', async (req, res) => {
     }
     if (!expense) return res.status(404).json({ success: false, error: 'Expense not found' });
 
+    const codigos = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (!expenseAllowed(req, expense.user_id, codigos)) {
+      return res.status(403).json({ success: false, error: 'No autorizado' });
+    }
+
     // Fetch detail from the specific table if exists
     let detail = null;
     const detailTable = expense.expense_types?.detail_table;
@@ -106,7 +170,6 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const {
-      user_id,
       app_id,
       expense_type_id,
       vehicle_id,
@@ -120,6 +183,8 @@ router.post('/', async (req, res) => {
       detail, // Object with detail-specific fields
       affects_cashier, // Used for MySQL sync
     } = req.body;
+
+    const user_id = String(req.user.vendedorId);
 
     // 1. Get expense type to know which detail table to use
     const { data: expenseType, error: typeError } = await supabaseAdmin
@@ -178,7 +243,7 @@ router.post('/', async (req, res) => {
       
       await mysqlQuery(
         'INSERT INTO gastos_caja (monto, descripcion, vendedorId, codigoEmpresa, fecha, expense_id_supabase) VALUES (?, ?, ?, ?, ?, ?)',
-        [syncAmount, description || 'Gasto desde App', req.user.vendedorId, req.user.codigoEmpresa, syncDate, expense.id]
+        [syncAmount, description || 'Gasto desde App', req.user.vendedorId, req.user.codigoEmpresa, toMysqlDateTime(syncDate), expense.id]
       );
       console.log(`✅ Gasto sincronizado con MySQL gastos_caja para vendedor ${req.user.vendedorId}`);
     }
@@ -200,6 +265,25 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { detail, affects_cashier, ...expenseFields } = req.body;
+
+    delete expenseFields.user_id;
+
+    const { data: prevExpense, error: existingErr } = await supabaseAdmin
+      .from('expenses')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (existingErr || !prevExpense) {
+      return res.status(404).json({ success: false, error: 'Expense not found' });
+    }
+    const codigosPut = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (!expenseAllowed(req, prevExpense.user_id, codigosPut)) {
+      return res.status(403).json({ success: false, error: 'No autorizado' });
+    }
+
+    /** Vendedor dueño del gasto (no cambia aunque edite un admin). Misma semántica que expenses.user_id. */
+    const ownerVendedorMysql = parseInt(String(prevExpense.user_id), 10);
 
     // 1. Update base expense in Supabase (filtering out affects_cashier)
     const { data: expense, error: expenseError } = await supabaseAdmin
@@ -226,28 +310,26 @@ router.put('/:id', async (req, res) => {
       if (!detailError) detailData = updatedDetail;
     }
 
-    // 3. Sync with MySQL gastos_caja
-    if (req.user && req.body.affects_cashier !== undefined) {
+    // 3. Sync with MySQL gastos_caja (vendedorId = dueño del gasto, no quien edita)
+    if (req.user && req.body.affects_cashier !== undefined && Number.isFinite(ownerVendedorMysql)) {
       const { query: mysqlQuery } = require('../config/database');
       const affectsCashier = req.body.affects_cashier;
 
-      // Check if it already exists in MySQL
-      const existing = await mysqlQuery('SELECT id FROM gastos_caja WHERE expense_id_supabase = ?', [id]);
+      const cajaRows = await mysqlQuery('SELECT id FROM gastos_caja WHERE expense_id_supabase = ?', [id]);
 
-      if (affectsCashier && existing.length === 0) {
-        // Was not in caja, now it is: INSERT
+      const fechaCaja = toMysqlDateTime(expenseFields.date || expense.date || new Date());
+
+      if (affectsCashier && cajaRows.length === 0) {
         await mysqlQuery(
           'INSERT INTO gastos_caja (monto, descripcion, vendedorId, codigoEmpresa, fecha, expense_id_supabase) VALUES (?, ?, ?, ?, ?, ?)',
-          [expenseFields.amount || expense.amount, expenseFields.description || expense.description || 'Gasto editado', req.user.vendedorId, req.user.codigoEmpresa, expenseFields.date || expense.date || new Date(), id]
+          [expenseFields.amount || expense.amount, expenseFields.description || expense.description || 'Gasto editado', ownerVendedorMysql, req.user.codigoEmpresa, fechaCaja, id]
         );
-      } else if (!affectsCashier && existing.length > 0) {
-        // Was in caja, now it's not: DELETE
+      } else if (!affectsCashier && cajaRows.length > 0) {
         await mysqlQuery('DELETE FROM gastos_caja WHERE expense_id_supabase = ?', [id]);
-      } else if (affectsCashier && existing.length > 0) {
-        // Still in caja: UPDATE amount/description
+      } else if (affectsCashier && cajaRows.length > 0) {
         await mysqlQuery(
-          'UPDATE gastos_caja SET monto = ?, descripcion = ?, fecha = ? WHERE expense_id_supabase = ?',
-          [expenseFields.amount || expense.amount, expenseFields.description || expense.description || 'Gasto editado', expenseFields.date || expense.date || new Date(), id]
+          'UPDATE gastos_caja SET monto = ?, descripcion = ?, fecha = ?, vendedorId = ? WHERE expense_id_supabase = ?',
+          [expenseFields.amount || expense.amount, expenseFields.description || expense.description || 'Gasto editado', fechaCaja, ownerVendedorMysql, id]
         );
       }
     }
@@ -265,6 +347,20 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const { data: existing, error: existingErr } = await supabaseAdmin
+      .from('expenses')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (existingErr || !existing) {
+      return res.status(404).json({ success: false, error: 'Expense not found' });
+    }
+    const codigosDel = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (!expenseAllowed(req, existing.user_id, codigosDel)) {
+      return res.status(403).json({ success: false, error: 'No autorizado' });
+    }
 
     // 1. Delete associated files from Storage
     const { data: docs } = await supabaseAdmin
@@ -326,6 +422,11 @@ router.post('/:id/documents', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Expense not found' });
     }
 
+    const codigosDoc = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (!expenseAllowed(req, expense.user_id, codigosDoc)) {
+      return res.status(403).json({ success: false, error: 'No autorizado' });
+    }
+
     const uploadedDocs = [];
 
     for (const file of files) {
@@ -377,6 +478,20 @@ router.get('/:id/documents', async (req, res) => {
   try {
     const { id } = req.params;
 
+    const { data: expRow, error: expErr } = await supabaseAdmin
+      .from('expenses')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (expErr || !expRow) {
+      return res.status(404).json({ success: false, error: 'Expense not found' });
+    }
+    const codigosListDoc = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (!expenseAllowed(req, expRow.user_id, codigosListDoc)) {
+      return res.status(403).json({ success: false, error: 'No autorizado' });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('expense_documents')
       .select('*')
@@ -395,17 +510,35 @@ router.get('/:id/documents', async (req, res) => {
 // DELETE /api/expenses/:id/documents/:docId - Delete a document
 router.delete('/:id/documents/:docId', async (req, res) => {
   try {
-    const { docId } = req.params;
+    const { id: expenseId, docId } = req.params;
 
     // Get storage path before deleting record
     const { data: doc, error: fetchError } = await supabaseAdmin
       .from('expense_documents')
-      .select('storage_path')
+      .select('storage_path, expense_id')
       .eq('id', docId)
       .single();
 
     if (fetchError || !doc) {
       return res.status(404).json({ success: false, error: 'Document not found' });
+    }
+
+    if (String(doc.expense_id) !== String(expenseId)) {
+      return res.status(400).json({ success: false, error: 'Documento no pertenece a este gasto' });
+    }
+
+    const { data: expRow, error: expErr } = await supabaseAdmin
+      .from('expenses')
+      .select('user_id')
+      .eq('id', expenseId)
+      .single();
+
+    if (expErr || !expRow) {
+      return res.status(404).json({ success: false, error: 'Expense not found' });
+    }
+    const codigosRm = await vendorCodigosForEmpresa(req.user.codigoEmpresa);
+    if (!expenseAllowed(req, expRow.user_id, codigosRm)) {
+      return res.status(403).json({ success: false, error: 'No autorizado' });
     }
 
     // Delete from Storage

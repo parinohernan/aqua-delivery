@@ -1,17 +1,27 @@
 import { useEffect } from 'react';
 import { Receipt } from 'lucide-react';
 import { useExpensesStore } from '../stores/expensesStore';
+import { useAuthStore } from '@/stores/authStore';
 import ExpensesToolbar from './ExpensesToolbar';
 import ExpensesList from './ExpensesList';
 
 function ExpensesSection() {
-  const { loadExpenses, loadExpenseTypes, loadVehicles, isLoading, error, expenses } = useExpensesStore();
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = String(user?.rol || '').toLowerCase() === 'admin';
+  const { loadExpenses, loadExpenseTypes, loadVehicles, loadVendedoresFilter, isLoading, error, expenses } =
+    useExpensesStore();
 
   useEffect(() => {
     loadExpenses();
     loadExpenseTypes();
     loadVehicles();
   }, [loadExpenses, loadExpenseTypes, loadVehicles]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      void loadVendedoresFilter();
+    }
+  }, [isAdmin, loadVendedoresFilter]);
 
   return (
     <div className="min-h-screen bg-transparent">
