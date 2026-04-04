@@ -31,6 +31,9 @@ const COBRO_FECHA_EFECTIVA_SQL = `STR_TO_DATE(
   '%Y%m%d%H%i%s'
 )`;
 
+/** Misma expresión con alias de tabla `c` para JOINs. */
+const COBRO_FECHA_C_SQL = COBRO_FECHA_EFECTIVA_SQL.replace(/\bfechaCobro\b/g, 'c.fechaCobro');
+
 /** Caja abierta (sin fecha de cierre en la consulta): tope superior = 20990101010101 en DATETIME. */
 const FECHA_FIN_CAJA_ABIERTA = '2099-01-01 01:01:01';
 
@@ -137,10 +140,24 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
             `📊 Resumen caja vendedor ${req.user.vendedorId} cobros/gastos entre ${inicioStr} y ${finStr} (fechaCobro normalizada desde DOUBLE)`
         );
 
-        // cobros.fechaCobro suele ser DOUBLE (YYYYMMDDHHmmss). BETWEEN con Date/ string DATETIME
-        // hacía que MySQL convirtiera mal y casi todos los cobros entraran al rango.
-        const cobros = await query(
-            `SELECT SUM(total) as totalCobros FROM cobros WHERE codigoVendedor = ? AND codigoEmpresa = ? AND ${COBRO_FECHA_EFECTIVA_SQL} BETWEEN ? AND ?`,
+        // Solo "Contado" suma al arqueo de efectivo; transferencias y demás van a "otros pagos".
+        const cobrosContado = await query(
+            `SELECT COALESCE(SUM(c.total), 0) AS totalContado
+             FROM cobros c
+             INNER JOIN tiposdepago tp ON tp.id = c.pagoTipo AND tp.codigoEmpresa = c.codigoEmpresa
+             WHERE c.codigoVendedor = ? AND c.codigoEmpresa = ?
+               AND LOWER(TRIM(tp.pago)) = 'contado'
+               AND ${COBRO_FECHA_C_SQL} BETWEEN ? AND ?`,
+            [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
+        );
+
+        const cobrosOtros = await query(
+            `SELECT COALESCE(SUM(c.total), 0) AS totalOtros
+             FROM cobros c
+             LEFT JOIN tiposdepago tp ON tp.id = c.pagoTipo AND tp.codigoEmpresa = c.codigoEmpresa
+             WHERE c.codigoVendedor = ? AND c.codigoEmpresa = ?
+               AND ${COBRO_FECHA_C_SQL} BETWEEN ? AND ?
+               AND (tp.id IS NULL OR LOWER(TRIM(tp.pago)) <> 'contado')`,
             [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
         );
 
@@ -149,16 +166,22 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
             'SELECT SUM(monto) as totalGastos FROM gastos_caja WHERE vendedorId = ? AND codigoEmpresa = ? AND fecha BETWEEN ? AND ?',
             [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
         );
-        
-        console.log(`💰 Cobros encontrados: ${cobros[0].totalCobros || 0}, Gastos encontrados: ${gastos[0].totalGastos || 0}`);
 
-        const totalCobros = parseFloat(cobros[0].totalCobros || 0);
+        const totalCobrosContado = parseFloat(cobrosContado[0].totalContado || 0);
+        const totalCobrosOtros = parseFloat(cobrosOtros[0].totalOtros || 0);
         const totalGastos = parseFloat(gastos[0].totalGastos || 0);
-        const balance = (parseFloat(session.montoInicial) + totalCobros) - totalGastos;
+        const balance = (parseFloat(session.montoInicial) + totalCobrosContado) - totalGastos;
+
+        console.log(
+            `💰 Caja: contado ${totalCobrosContado}, otros pagos ${totalCobrosOtros}, gastos ${totalGastos}`
+        );
 
         res.json({
             montoInicial: parseFloat(session.montoInicial),
-            totalCobros,
+            totalCobrosContado,
+            totalCobrosOtros,
+            /** @deprecated Usar totalCobrosContado; se mantiene = contado por compatibilidad. */
+            totalCobros: totalCobrosContado,
             totalGastos,
             balanceEsperado: balance,
             estado: session.estado

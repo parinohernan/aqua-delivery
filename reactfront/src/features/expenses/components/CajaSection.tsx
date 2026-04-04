@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useCashStore } from '../stores/cashStore';
-import { 
-  Wallet, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Lock, 
-  Unlock, 
+import {
+  Wallet,
+  ArrowDownCircle,
+  Lock,
+  Unlock,
   RefreshCw,
   TrendingUp,
+  Banknote,
+  ArrowLeftRight,
 } from 'lucide-react';
 import OpenCajaModal from './OpenCajaModal';
 import CloseCajaModal from './CloseCajaModal';
@@ -92,30 +93,38 @@ const CajaSection: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Tarjetas de Resumen */}
-          <SummaryCard 
-            title="Monto Inicial" 
-            amount={summary?.montoInicial || 0} 
-            icon={<Wallet className="w-5 h-5" />} 
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <SummaryCard
+            title="Monto Inicial"
+            amount={summary?.montoInicial || 0}
+            icon={<Wallet className="w-5 h-5" />}
             color="blue"
           />
-          <SummaryCard 
-            title="Cobranzas" 
-            amount={summary?.totalCobros || 0} 
-            icon={<ArrowUpCircle className="w-5 h-5" />} 
+          <SummaryCard
+            title="Cobranzas (Contado)"
+            hint="Suma al efectivo en caja"
+            amount={summary?.totalCobrosContado ?? summary?.totalCobros ?? 0}
+            icon={<Banknote className="w-5 h-5" />}
             color="green"
           />
-          <SummaryCard 
-            title="Gastos de Caja" 
-            amount={summary?.totalGastos || 0} 
-            icon={<ArrowDownCircle className="w-5 h-5" />} 
+          <SummaryCard
+            title="Otros pagos"
+            hint="Transferencias y otros medios · no suman al arqueo"
+            amount={summary?.totalCobrosOtros || 0}
+            icon={<ArrowLeftRight className="w-5 h-5" />}
+            color="amber"
+          />
+          <SummaryCard
+            title="Gastos de Caja"
+            amount={summary?.totalGastos || 0}
+            icon={<ArrowDownCircle className="w-5 h-5" />}
             color="red"
           />
-          <SummaryCard 
-            title="Balance Esperado" 
-            amount={summary?.balanceEsperado || 0} 
-            icon={<TrendingUp className="w-5 h-5" />} 
+          <SummaryCard
+            title="Balance Esperado"
+            hint="Inicial + contado − gastos"
+            amount={summary?.balanceEsperado || 0}
+            icon={<TrendingUp className="w-5 h-5" />}
             color="purple"
             highlight
           />
@@ -143,25 +152,30 @@ const CajaSection: React.FC = () => {
 
 interface CardProps {
   title: string;
+  hint?: string;
   amount: number;
   icon: React.ReactNode;
-  color: 'blue' | 'green' | 'red' | 'purple';
+  color: 'blue' | 'green' | 'red' | 'purple' | 'amber';
   highlight?: boolean;
 }
 
-const SummaryCard: React.FC<CardProps> = ({ title, amount, icon, color, highlight }) => {
+const SummaryCard: React.FC<CardProps> = ({ title, hint, amount, icon, color, highlight }) => {
   const colors = {
     blue: 'from-blue-500/20 to-blue-600/5 border-blue-500/30 text-blue-400',
     green: 'from-emerald-500/20 to-emerald-600/5 border-emerald-500/30 text-emerald-400',
     red: 'from-rose-500/20 to-rose-600/5 border-rose-500/30 text-rose-400',
     purple: 'from-violet-500/20 to-violet-600/5 border-violet-500/30 text-violet-400',
+    amber: 'from-amber-500/15 to-amber-600/5 border-amber-500/30 text-amber-400',
   };
 
   return (
     <div className={`p-6 rounded-2xl border bg-gradient-to-br ${colors[color]} backdrop-blur-sm ${highlight ? 'ring-2 ring-violet-500/50 scale-105 md:scale-100 lg:scale-105' : ''}`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium uppercase tracking-wider opacity-80">{title}</span>
-        <div className={`p-2 rounded-lg bg-white/10 ${colors[color].split(' ')[2]}`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0">
+          <span className="text-sm font-medium uppercase tracking-wider opacity-80 block">{title}</span>
+          {hint ? <span className="text-[10px] text-white/45 leading-tight block mt-1">{hint}</span> : null}
+        </div>
+        <div className={`p-2 rounded-lg bg-white/10 shrink-0 ${colors[color].split(' ')[2]}`}>
           {icon}
         </div>
       </div>

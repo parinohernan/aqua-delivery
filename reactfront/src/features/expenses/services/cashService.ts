@@ -14,7 +14,12 @@ export interface CashSession {
 
 export interface CashSummary {
   montoInicial: number;
-  totalCobros: number;
+  /** Cobros con tipo de pago "Contado" (entran al arqueo de efectivo). */
+  totalCobrosContado: number;
+  /** Transferencias y demás medios; no suman al balance de caja. */
+  totalCobrosOtros: number;
+  /** Igual que totalCobrosContado (compat API). */
+  totalCobros?: number;
   totalGastos: number;
   balanceEsperado: number;
   estado: string;
