@@ -48,7 +48,8 @@ router.patch('/me', verifyToken, async (req, res) => {
 });
 
 /**
- * Lista vendedores de la empresa autenticada (para filtros en GPS, etc.)
+ * Lista vendedores de la empresa autenticada (para filtros en GPS, etc.).
+ * Excluye el usuario técnico "Auditor" (sigue pudiendo iniciar sesión vía /auth).
  */
 router.get('/', verifyToken, async (req, res) => {
     try {
@@ -63,6 +64,7 @@ router.get('/', verifyToken, async (req, res) => {
                 registro_gps_periodico
             FROM vendedores
             WHERE codigoEmpresa = ?
+              AND LOWER(TRIM(COALESCE(nombre, ''))) <> 'auditor'
             ORDER BY nombre, apellido, codigo`,
             [req.user.codigoEmpresa]
         );
