@@ -34,6 +34,8 @@ router.get('/clientes', verifyToken, async (req, res) => {
         // Clientes de la zona con cantidad de pedidos pendientes (sin depender de tabla rutas)
         const clientes = await query(
             `SELECT c.codigo AS codigoCliente, c.nombre, c.apellido, c.direccion, c.telefono, c.zona,
+                    COALESCE(c.saldo, 0) AS saldo,
+                    COALESCE(c.retornables, 0) AS retornables,
                     (SELECT COUNT(*) FROM pedidos p 
                      WHERE p.codigoCliente = c.codigo AND p.codigoEmpresa = c.codigoEmpresa 
                      AND p.estado IN ('pendient', 'proceso')) AS pedidosPendientes
@@ -59,6 +61,8 @@ router.get('/clientes', verifyToken, async (req, res) => {
             ...c,
             orden: ordenMap[c.codigoCliente] != null ? ordenMap[c.codigoCliente] : 9999,
             pedidosPendientes: Number(c.pedidosPendientes) || 0,
+            saldo: parseFloat(c.saldo) || 0,
+            retornables: Number.parseInt(String(c.retornables), 10) || 0,
         })).sort((a, b) => a.orden - b.orden || (a.nombre || '').localeCompare(b.nombre || ''));
 
         res.json(clientesConOrden);

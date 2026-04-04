@@ -176,6 +176,10 @@ export interface ClienteConOrden {
   zona?: string;
   orden: number;
   pedidosPendientes?: number;
+  /** Deuda del cliente (mismo criterio que en pedidos: positivo = debe). */
+  saldo?: number;
+  /** Envases retornables adeudados (positivo = debe devolver). */
+  retornables?: number;
 }
 
 /** Vendedor listado para filtros (GET /api/vendedores) */

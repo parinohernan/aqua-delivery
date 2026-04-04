@@ -22,7 +22,7 @@ import NewPedidoModal from '@/features/pedidos/components/NewPedidoModal';
 import EntregarPedidoModal from '@/features/pedidos/components/EntregarPedidoModal';
 import { pedidosService } from '@/features/pedidos/services/pedidosService';
 import type { Pedido } from '@/types/entities';
-import { formatFullName } from '@/utils/formatters';
+import { formatCurrency, formatFullName } from '@/utils/formatters';
 import { toast } from '@/utils/feedback';
 import { rutasService } from '../services/rutasService';
 import { reorderClientesRuta, type MoverModo } from '../utils/reorderRuta';
@@ -396,6 +396,11 @@ function SortableRow({
   };
   const waUrl = whatsappHref(cliente.telefono);
   const showEntregar = (cliente.pedidosPendientes ?? 0) > 0;
+  const saldoCliente = Number(cliente.saldo ?? 0);
+  const retornablesCliente = Number(cliente.retornables ?? 0);
+  const muestraSaldoDeuda = saldoCliente > 0;
+  const muestraEnvasesDeuda = retornablesCliente > 0;
+  const muestraLineaSaldoEnvases = muestraSaldoDeuda || muestraEnvasesDeuda;
 
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
   const wasDraggingRef = useRef(false);
@@ -476,6 +481,20 @@ function SortableRow({
             ? `${cliente.pedidosPendientes} pedido${cliente.pedidosPendientes !== 1 ? 's' : ''} pendiente${cliente.pedidosPendientes !== 1 ? 's' : ''}`
             : 'Sin pedidos pendientes'}
         </p>
+        {muestraLineaSaldoEnvases && (
+          <p
+            className="text-[11px] mt-0.5 font-medium tabular-nums leading-tight text-rose-400/75"
+            title="Deuda en pesos y envases retornables pendientes"
+          >
+            {muestraSaldoDeuda && <>Saldo: {formatCurrency(saldoCliente)}</>}
+            {muestraSaldoDeuda && muestraEnvasesDeuda && <span className="mx-1 text-white/35">·</span>}
+            {muestraEnvasesDeuda && (
+              <>
+                Envases: {retornablesCliente}
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       <RutaRowActionsMenu
