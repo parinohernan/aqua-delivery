@@ -3,10 +3,12 @@ import MapGL, { Layer, Marker, Popup, Source } from 'react-map-gl/maplibre';
 import type { MapRef } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { MapPin, Navigation, RefreshCw } from 'lucide-react';
+import { Filter, MapPin, Navigation, RefreshCw } from 'lucide-react';
 import { eventosGpsService, type EventosGpsQuery } from '../services/eventosGpsService';
 import { vendedoresService } from '../services/vendedoresService';
 import type { EventoGps, VendedorLista } from '@/types/entities';
+import { useAuthStore } from '@/stores/authStore';
+import { getSessionCodigoEmpresa } from '@/utils/jwtPayload';
 import {
   formatDateTimeInAppTimeZone,
 } from '@/utils/formatters';
@@ -24,7 +26,18 @@ const MAP_STYLE = MAPTILER_KEY
 
 const DEFAULT_CENTER = { longitude: -58.3816, latitude: -34.6037, zoom: 12 };
 
-const LINE_COLORS = ['#22d3ee', '#f472b6', '#a3e635', '#fb923c', '#818cf8', '#fbbf24', '#2dd4bf'];
+const LINE_COLORS = [
+  '#22d3ee',
+  '#f472b6',
+  '#a3e635',
+  '#fb923c',
+  '#818cf8',
+  '#fbbf24',
+  '#2dd4bf',
+  '#ef4444',
+  '#a78bfa',
+  '#facc15',
+];
 
 function numCoord(v: number | string): number {
   const n = typeof v === 'number' ? v : parseFloat(String(v));
@@ -36,7 +49,31 @@ function vendedorLabel(e: EventoGps): string {
   return n || `Vendedor #${e.codigoVendedor}`;
 }
 
+/** Misma convención que al registrar la entrega en backend: evento "Entrega". */
+function isEventoEntrega(evento: string): boolean {
+  return evento.trim().toLowerCase() === 'entrega';
+}
+
+/** Apellido y nombre para detalle de entrega (estilo listado formal). */
+function clienteEntregaLabel(e: EventoGps): string | null {
+  if (!isEventoEntrega(e.evento)) return null;
+  const ext = e as EventoGps & { clientenombre?: string | null; clienteapellido?: string | null };
+  const nom = String(e.clienteNombre ?? ext.clientenombre ?? '').trim();
+  const ape = String(e.clienteApellido ?? ext.clienteapellido ?? '').trim();
+  if (!nom && !ape) return null;
+  if (ape && nom) return `${ape}, ${nom}`;
+  return ape || nom;
+}
+
+function rowCodigoEmpresa(v: VendedorLista & { codigoempresa?: number }): number {
+  const x = v.codigoEmpresa ?? v.codigoempresa;
+  const n = typeof x === 'number' ? x : Number(x);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function GpsSection() {
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
   const mapRef = useRef<MapRef>(null);
   const today = useMemo(() => new Date(), []);
   const [desdeStr, setDesdeStr] = useState(() => todayDateInputValueInAppTz(today));
@@ -44,16 +81,81 @@ function GpsSection() {
   const [vendedorId, setVendedorId] = useState<string>('all');
   const [vendedores, setVendedores] = useState<VendedorLista[]>([]);
   const [eventos, setEventos] = useState<EventoGps[]>([]);
+  const [hiddenTipos, setHiddenTipos] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [popupEvent, setPopupEvent] = useState<EventoGps | null>(null);
+
+  useEffect(() => {
+    const inData = new Set(eventos.map((e) => e.evento));
+    setHiddenTipos((prev) => {
+      const next = new Set<string>();
+      prev.forEach((t) => {
+        if (inData.has(t)) next.add(t);
+      });
+      return next;
+    });
+  }, [eventos]);
+
+  const tiposUnicos = useMemo(
+    () => [...new Set(eventos.map((e) => e.evento))].sort((a, b) => a.localeCompare(b, 'es')),
+    [eventos]
+  );
+
+  const colorByTipo = useMemo(() => {
+    const m = new globalThis.Map<string, string>();
+    tiposUnicos.forEach((t, i) => m.set(t, LINE_COLORS[i % LINE_COLORS.length]));
+    return m;
+  }, [tiposUnicos]);
+
+  const visibleEventos = useMemo(
+    () => eventos.filter((e) => !hiddenTipos.has(e.evento)),
+    [eventos, hiddenTipos]
+  );
+
+  const visibleSortedChrono = useMemo(
+    () =>
+      [...visibleEventos].sort(
+        (a, b) => new Date(a.ocurridoEn).getTime() - new Date(b.ocurridoEn).getTime()
+      ),
+    [visibleEventos]
+  );
+
+  useEffect(() => {
+    setPopupEvent((p) => {
+      if (!p) return p;
+      return visibleEventos.some((e) => e.id === p.id) ? p : null;
+    });
+  }, [visibleEventos]);
+
+  const lineColorMatchExpr = useMemo((): unknown => {
+    if (tiposUnicos.length === 0) return '#22d3ee';
+    const arr: unknown[] = ['match', ['get', 'tipo']];
+    tiposUnicos.forEach((t) => {
+      arr.push(t, colorByTipo.get(t) ?? '#94a3b8');
+    });
+    arr.push('#94a3b8');
+    return arr;
+  }, [tiposUnicos, colorByTipo]);
+
+  const toggleTipoVisible = useCallback((tipo: string) => {
+    setHiddenTipos((prev) => {
+      const next = new Set(prev);
+      if (next.has(tipo)) next.delete(tipo);
+      else next.add(tipo);
+      return next;
+    });
+  }, []);
+
+  const showAllTipos = useCallback(() => setHiddenTipos(new Set()), []);
+  const hideAllTipos = useCallback(() => setHiddenTipos(new Set(tiposUnicos)), [tiposUnicos]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const list = await vendedoresService.list();
-        if (!cancelled) setVendedores(list);
+        if (!cancelled) setVendedores(Array.isArray(list) ? list : []);
       } catch {
         if (!cancelled) setVendedores([]);
       }
@@ -62,6 +164,26 @@ function GpsSection() {
       cancelled = true;
     };
   }, []);
+
+  const sessionCodigoEmpresa = useMemo(
+    () => getSessionCodigoEmpresa(user, token),
+    [user, token]
+  );
+
+  /** Solo vendedores de la empresa de la sesión (refuerzo en cliente; el API ya filtra por token). */
+  const vendedoresEmpresa = useMemo(() => {
+    if (sessionCodigoEmpresa == null) return [];
+    return vendedores.filter((v) => rowCodigoEmpresa(v) === sessionCodigoEmpresa);
+  }, [vendedores, sessionCodigoEmpresa]);
+
+  useEffect(() => {
+    if (vendedorId === 'all') return;
+    const id = parseInt(vendedorId, 10);
+    if (Number.isNaN(id)) return;
+    if (!vendedoresEmpresa.some((v) => v.codigo === id)) {
+      setVendedorId('all');
+    }
+  }, [vendedoresEmpresa, vendedorId]);
 
   const loadEventos = useCallback(async () => {
     setLoading(true);
@@ -95,54 +217,62 @@ function GpsSection() {
 
   const vendorIdsSorted = useMemo(() => {
     const s = new Set<number>();
-    eventos.forEach((e) => s.add(e.codigoVendedor));
+    visibleEventos.forEach((e) => s.add(e.codigoVendedor));
     return Array.from(s).sort((a, b) => a - b);
-  }, [eventos]);
+  }, [visibleEventos]);
 
-  const colorByVendor = useMemo(() => {
-    const m = new globalThis.Map<number, string>();
-    vendorIdsSorted.forEach((id, i) => m.set(id, LINE_COLORS[i % LINE_COLORS.length]));
-    return m;
-  }, [vendorIdsSorted]);
-
-  const lineFeaturesByVendor = useMemo(() => {
-    type LineFeat = {
+  /** Segmentos entre puntos consecutivos; color según el tipo del evento destino. */
+  const lineSegmentsByVendor = useMemo(() => {
+    type SegFeat = {
       type: 'Feature';
-      properties: Record<string, never>;
+      properties: { tipo: string };
       geometry: { type: 'LineString'; coordinates: [number, number][] };
     };
-    const lineMap = new globalThis.Map<number, LineFeat>();
+    type FC = { type: 'FeatureCollection'; features: SegFeat[] };
+    const lineMap = new globalThis.Map<number, FC>();
     const byV = new globalThis.Map<number, EventoGps[]>();
-    eventos.forEach((e) => {
+    visibleEventos.forEach((e) => {
       const list = byV.get(e.codigoVendedor) ?? [];
       list.push(e);
       byV.set(e.codigoVendedor, list);
     });
-    byV.forEach((list: EventoGps[], vid: number) => {
+    byV.forEach((list, vid) => {
       const sorted = [...list].sort(
         (a, b) => new Date(a.ocurridoEn).getTime() - new Date(b.ocurridoEn).getTime()
       );
-      if (sorted.length < 2) return;
-      const coordinates = sorted.map((e) => [numCoord(e.longitud), numCoord(e.latitud)] as [number, number]);
-      lineMap.set(vid, {
-        type: 'Feature',
-        properties: {},
-        geometry: { type: 'LineString', coordinates },
-      });
+      const features: SegFeat[] = [];
+      for (let i = 1; i < sorted.length; i++) {
+        const a = sorted[i - 1];
+        const b = sorted[i];
+        features.push({
+          type: 'Feature',
+          properties: { tipo: b.evento },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [numCoord(a.longitud), numCoord(a.latitud)],
+              [numCoord(b.longitud), numCoord(b.latitud)],
+            ],
+          },
+        });
+      }
+      if (features.length > 0) {
+        lineMap.set(vid, { type: 'FeatureCollection', features });
+      }
     });
     return lineMap;
-  }, [eventos]);
+  }, [visibleEventos]);
 
-  /** Orden cronológico por vendedor: 1 = primera parada del día (para ese repartidor). */
+  /** Orden cronológico por vendedor (solo eventos visibles). */
   const stopIndexByEventId = useMemo(() => {
     const m = new globalThis.Map<number, { n: number; total: number }>();
     const byV = new globalThis.Map<number, EventoGps[]>();
-    eventos.forEach((e) => {
+    visibleEventos.forEach((e) => {
       const list = byV.get(e.codigoVendedor) ?? [];
       list.push(e);
       byV.set(e.codigoVendedor, list);
     });
-    byV.forEach((list, _vid) => {
+    byV.forEach((list) => {
       const sorted = [...list].sort(
         (a, b) => new Date(a.ocurridoEn).getTime() - new Date(b.ocurridoEn).getTime()
       );
@@ -150,24 +280,24 @@ function GpsSection() {
       sorted.forEach((e, i) => m.set(e.id, { n: i + 1, total }));
     });
     return m;
-  }, [eventos]);
+  }, [visibleEventos]);
 
   const fitBounds = useCallback(() => {
     const map = mapRef.current?.getMap();
-    if (!map || eventos.length === 0) return;
+    if (!map || visibleEventos.length === 0) return;
     const b = new maplibregl.LngLatBounds();
-    eventos.forEach((e) => b.extend([numCoord(e.longitud), numCoord(e.latitud)]));
+    visibleEventos.forEach((e) => b.extend([numCoord(e.longitud), numCoord(e.latitud)]));
     map.fitBounds(b, { padding: 80, maxZoom: 16, duration: 600 });
-  }, [eventos]);
+  }, [visibleEventos]);
 
   useEffect(() => {
-    if (eventos.length === 0) return;
+    if (visibleEventos.length === 0) return;
     const map = mapRef.current?.getMap();
     if (!map) return;
     const run = () => fitBounds();
     if (map.isStyleLoaded()) run();
     else map.once('load', run);
-  }, [eventos, fitBounds]);
+  }, [visibleEventos, fitBounds]);
 
   const focusEventoOnMap = useCallback((e: EventoGps) => {
     setPopupEvent(e);
@@ -232,7 +362,7 @@ function GpsSection() {
             className="rounded-lg bg-[#0f1b2e] border border-white/15 px-3 py-2 text-sm text-white"
           >
             <option value="all">Todos</option>
-            {vendedores.map((v) => (
+            {vendedoresEmpresa.map((v) => (
               <option key={v.codigo} value={String(v.codigo)}>
                 {[v.nombre, v.apellido].filter(Boolean).join(' ') || `#${v.codigo}`}
               </option>
@@ -240,6 +370,64 @@ function GpsSection() {
           </select>
         </label>
       </div>
+
+      {tiposUnicos.length > 0 && (
+        <div className="flex flex-col gap-2 p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-medium text-white/70 inline-flex items-center gap-2">
+              <Filter size={14} className="text-primary-400 shrink-0" aria-hidden />
+              Filtrar por tipo de evento
+            </span>
+            <div className="flex gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={showAllTipos}
+                className="text-primary-300 hover:text-primary-200 underline-offset-2 hover:underline"
+              >
+                Todos
+              </button>
+              <span className="text-white/25">|</span>
+              <button
+                type="button"
+                onClick={hideAllTipos}
+                className="text-white/50 hover:text-white/70 underline-offset-2 hover:underline"
+              >
+                Ninguno
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {tiposUnicos.map((tipo, idx) => {
+              const visible = !hiddenTipos.has(tipo);
+              const color = colorByTipo.get(tipo) ?? '#94a3b8';
+              const id = `gps-tipo-filter-${idx}`;
+              return (
+                <label
+                  key={tipo}
+                  htmlFor={id}
+                  className="inline-flex items-center gap-2 text-sm text-white/85 cursor-pointer select-none"
+                >
+                  <input
+                    id={id}
+                    type="checkbox"
+                    checked={visible}
+                    onChange={() => toggleTipoVisible(tipo)}
+                    className="rounded border-white/30 bg-[#0f1b2e] text-primary-500 focus:ring-primary-500/40"
+                  />
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white/35"
+                    style={{ backgroundColor: color }}
+                    aria-hidden
+                  />
+                  <span className="truncate max-w-[200px]" title={tipo}>
+                    {tipo}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-200">
@@ -250,9 +438,13 @@ function GpsSection() {
       <div className="relative h-[calc(100vh-14rem)] min-h-[420px] rounded-2xl overflow-hidden border border-white/10 bg-white/5">
         <div className="absolute top-0 left-0 right-0 z-10 p-3 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-b from-black/45 to-transparent pointer-events-none">
           <p className="pointer-events-auto text-xs text-white/70">
-            {loading ? 'Cargando…' : `${eventos.length} evento${eventos.length !== 1 ? 's' : ''}`}
+            {loading
+              ? 'Cargando…'
+              : visibleEventos.length === eventos.length
+                ? `${eventos.length} evento${eventos.length !== 1 ? 's' : ''}`
+                : `${visibleEventos.length} de ${eventos.length} evento${eventos.length !== 1 ? 's' : ''}`}
           </p>
-          {eventos.length > 0 && (
+          {visibleEventos.length > 0 && (
             <button
               type="button"
               onClick={fitBounds}
@@ -271,12 +463,10 @@ function GpsSection() {
           style={{ width: '100%', height: '100%' }}
         >
           {vendorIdsSorted.map((vid) => {
-            const feat = lineFeaturesByVendor.get(vid);
-            if (!feat) return null;
-            const color = colorByVendor.get(vid) ?? LINE_COLORS[0];
+            const fc = lineSegmentsByVendor.get(vid);
+            if (!fc) return null;
             return (
-              <Source key={`line-${vid}`} id={`gps-line-${vid}`} type="geojson" data={feat}>
-                {/* Halo: ayuda a ver la ruta sobre el mapa base */}
+              <Source key={`line-${vid}`} id={`gps-line-${vid}`} type="geojson" data={fc}>
                 <Layer
                   id={`gps-line-halo-${vid}`}
                   type="line"
@@ -288,16 +478,12 @@ function GpsSection() {
                     'line-blur': 1,
                   }}
                 />
-                {/*
-                  line-dasharray + line-cap round en MapLibre suele no pintar la línea.
-                  Con line-cap butt el trazo punteado es fiable.
-                */}
                 <Layer
                   id={`gps-line-layer-${vid}`}
                   type="line"
                   layout={{ 'line-join': 'round', 'line-cap': 'butt' }}
                   paint={{
-                    'line-color': color,
+                    'line-color': lineColorMatchExpr as never,
                     'line-width': 4,
                     'line-opacity': 0.95,
                     'line-dasharray': [2, 2],
@@ -307,12 +493,20 @@ function GpsSection() {
             );
           })}
 
-          {eventos.map((e) => {
+          {visibleEventos.map((e) => {
             const lng = numCoord(e.longitud);
             const lat = numCoord(e.latitud);
-            const color = colorByVendor.get(e.codigoVendedor) ?? '#22d3ee';
+            const color = colorByTipo.get(e.evento) ?? '#22d3ee';
             const stop = stopIndexByEventId.get(e.id);
             const label = stop ? String(stop.n) : '·';
+            const clienteLbl = clienteEntregaLabel(e);
+            const pinTitle = [
+              clienteLbl,
+              stop ? `Parada ${stop.n} de ${stop.total}` : null,
+              e.evento,
+            ]
+              .filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+              .join(' · ');
             return (
               <Marker
                 key={e.id}
@@ -327,7 +521,7 @@ function GpsSection() {
                 <div
                   className="flex h-7 min-w-7 px-1 items-center justify-center rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
                   style={{ backgroundColor: color }}
-                  title={stop ? `Parada ${stop.n} de ${stop.total} (orden del día)` : undefined}
+                  title={pinTitle || undefined}
                 >
                   <span className="text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] leading-none">
                     {label}
@@ -347,11 +541,20 @@ function GpsSection() {
             >
               {(() => {
                 const st = stopIndexByEventId.get(popupEvent.id);
+                const clienteLbl = clienteEntregaLabel(popupEvent);
                 return (
                   <div className="p-2 min-w-[200px] max-w-[280px] text-left text-gray-900 text-sm">
                     <p className="font-semibold">{popupEvent.evento}</p>
-                    <p className="text-xs text-gray-600 mt-0.5">{vendedorLabel(popupEvent)}</p>
-                    <p className="text-xs text-gray-600">{formatDateTimeInAppTimeZone(popupEvent.ocurridoEn)}</p>
+                    {clienteLbl != null && (
+                      <p className="text-sm font-medium text-gray-900 mt-1 leading-snug">{clienteLbl}</p>
+                    )}
+                    <p className="text-xs text-gray-600 mt-1">
+                      <span className="text-gray-500">Repartidor: </span>
+                      {vendedorLabel(popupEvent)}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      {formatDateTimeInAppTimeZone(popupEvent.ocurridoEn)}
+                    </p>
                     {st != null && (
                       <p className="text-xs mt-1 text-gray-700">
                         Orden del día: <span className="font-semibold">{st.n}</span> de {st.total}
@@ -380,24 +583,36 @@ function GpsSection() {
             </div>
           </div>
         )}
+        {!loading && eventos.length > 0 && visibleEventos.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none z-[5]">
+            <div className="bg-amber-500/10 backdrop-blur-sm rounded-xl px-6 py-4 text-center max-w-sm border border-amber-500/25">
+              <Filter size={36} className="mx-auto text-amber-400/80 mb-2" />
+              <p className="text-white font-medium">Ningún tipo visible</p>
+              <p className="text-white/60 text-sm mt-1">
+                Activá al menos un tipo de evento en el filtro de arriba para ver el mapa.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {eventos.length > 0 && (
+      {visibleEventos.length > 0 && (
         <div className="rounded-xl border border-white/10 bg-white/[0.04] overflow-hidden">
           <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between gap-2">
             <span className="text-[11px] font-medium uppercase tracking-wider text-white/45">
               Lista cronológica
             </span>
-            <span className="text-[11px] text-white/40 tabular-nums">{eventos.length}</span>
+            <span className="text-[11px] text-white/40 tabular-nums">{visibleEventos.length}</span>
           </div>
           <ul
             className="max-h-[min(42vh,380px)] overflow-y-auto overscroll-contain"
             aria-label="Eventos GPS en orden de tiempo"
           >
-            {eventos.map((e) => {
-              const color = colorByVendor.get(e.codigoVendedor) ?? LINE_COLORS[0];
+            {visibleSortedChrono.map((e) => {
+              const color = colorByTipo.get(e.evento) ?? LINE_COLORS[0];
               const stop = stopIndexByEventId.get(e.id);
               const active = popupEvent?.id === e.id;
+              const clienteLbl = clienteEntregaLabel(e);
               const timeShort = (() => {
                 const d = new Date(e.ocurridoEn);
                 if (Number.isNaN(d.getTime())) return '—';
@@ -440,6 +655,11 @@ function GpsSection() {
                         {e.numeroPedido != null && String(e.numeroPedido).trim() !== '' && (
                           <span className="tabular-nums">Pedido {e.numeroPedido}</span>
                         )}
+                        {clienteLbl != null && (
+                          <span className="text-white/55 truncate max-w-[200px]" title={clienteLbl}>
+                            {clienteLbl}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -450,21 +670,31 @@ function GpsSection() {
         </div>
       )}
 
-      {vendorIdsSorted.length > 0 && (
-        <div className="flex flex-wrap gap-3 text-xs text-white/70">
-          {vendorIdsSorted.map((vid) => {
-            const sample = eventos.find((e) => e.codigoVendedor === vid);
-            const label = sample ? vendedorLabel(sample) : `Vendedor #${vid}`;
-            return (
-              <span key={vid} className="inline-flex items-center gap-2">
+      {tiposUnicos.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-white/45">
+            Leyenda por tipo
+          </span>
+          <div className="flex flex-wrap gap-3 text-xs text-white/70">
+            {tiposUnicos.map((tipo) => {
+              const hidden = hiddenTipos.has(tipo);
+              const color = colorByTipo.get(tipo) ?? '#94a3b8';
+              return (
                 <span
-                  className="inline-block w-3 h-3 rounded-full border border-white/40"
-                  style={{ backgroundColor: colorByVendor.get(vid) }}
-                />
-                {label}
-              </span>
-            );
-          })}
+                  key={tipo}
+                  className={`inline-flex items-center gap-2 ${hidden ? 'opacity-40 line-through' : ''}`}
+                >
+                  <span
+                    className="inline-block w-3 h-3 rounded-full border border-white/40 shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="truncate max-w-[220px]" title={tipo}>
+                    {tipo}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

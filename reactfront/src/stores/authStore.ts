@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { apiClient } from '@/services/api/client';
 import { endpoints } from '@/services/api/endpoints';
 import type { User, LoginParams, LoginResponse } from '@/types';
+import { mergeUserCodigoEmpresaFromJwt } from '@/utils/jwtPayload';
 
 /**
  * Store de autenticación
@@ -40,14 +41,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await apiClient.post<LoginResponse>(endpoints.login(), params);
       
       const token = response.token;
-      const user = response.user || response.vendedor || null;
-      
+      const raw = response.user || response.vendedor || null;
+      const user = mergeUserCodigoEmpresaFromJwt(raw, token);
+
       if (token) {
         localStorage.setItem('token', token);
         if (user) {
           localStorage.setItem('user', JSON.stringify(user));
         }
-        
+
         set({
           token,
           user,
@@ -91,8 +93,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      const user = JSON.parse(userStr) as User;
-      
+      const parsed = JSON.parse(userStr) as User;
+      const user = mergeUserCodigoEmpresaFromJwt(parsed, token);
+      if (user && user.codigoEmpresa !== parsed.codigoEmpresa) {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+
       // Verificar que el token sea válido haciendo una petición
       try {
         await apiClient.get('/api/pedidos');

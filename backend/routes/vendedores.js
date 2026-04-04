@@ -53,6 +53,10 @@ router.patch('/me', verifyToken, async (req, res) => {
  */
 router.get('/', verifyToken, async (req, res) => {
     try {
+        const empresaId = Number(req.user.codigoEmpresa);
+        if (!Number.isFinite(empresaId)) {
+            return res.status(403).json({ error: 'Sesión sin empresa válida' });
+        }
         const rows = await query(
             `SELECT
                 codigo AS id,
@@ -66,9 +70,19 @@ router.get('/', verifyToken, async (req, res) => {
             WHERE codigoEmpresa = ?
               AND LOWER(TRIM(COALESCE(nombre, ''))) <> 'auditor'
             ORDER BY nombre, apellido, codigo`,
-            [req.user.codigoEmpresa]
+            [empresaId]
         );
-        res.json(rows);
+        const out = rows.map((r) => ({
+            id: Number(r.id ?? r.codigo),
+            codigo: Number(r.codigo),
+            nombre: r.nombre,
+            apellido: r.apellido,
+            telegramId: r.telegramId,
+            codigoEmpresa: Number(r.codigoEmpresa ?? r.codigoempresa),
+            registro_gps_periodico: r.registro_gps_periodico,
+        }));
+        console.log(`📋 GET /api/vendedores empresa=${empresaId} → ${out.length} filas`);
+        res.json(out);
     } catch (error) {
         if (error.code === 'ER_BAD_FIELD_ERROR') {
             return res.status(503).json({

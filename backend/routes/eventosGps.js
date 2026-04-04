@@ -42,12 +42,20 @@ router.get('/', verifyToken, async (req, res) => {
                 v.apellido AS vendedorApellido,
                 e.evento,
                 e.numeroPedido,
+                c.apellido AS clienteApellido,
+                c.nombre AS clienteNombre,
                 CONCAT(DATE_FORMAT(e.ocurridoEn, '%Y-%m-%dT%H:%i:%s'), '.000Z') AS ocurridoEn,
                 e.latitud,
                 e.longitud,
                 CONCAT(DATE_FORMAT(e.creadoEn, '%Y-%m-%dT%H:%i:%s'), '.000Z') AS creadoEn
             FROM eventos_gps e
             LEFT JOIN vendedores v ON v.codigo = e.codigoVendedor AND v.codigoEmpresa = e.codigoEmpresa
+            LEFT JOIN pedidos p ON p.codigoEmpresa = e.codigoEmpresa
+                AND e.numeroPedido IS NOT NULL
+                AND TRIM(e.numeroPedido) <> ''
+                AND TRIM(e.numeroPedido) REGEXP '^[0-9]+$'
+                AND p.codigo = CAST(TRIM(e.numeroPedido) AS UNSIGNED)
+            LEFT JOIN clientes c ON c.codigo = p.codigoCliente
             WHERE e.codigoEmpresa = ?
         `;
         const params = [empresa];

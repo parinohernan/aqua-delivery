@@ -202,6 +202,9 @@ export interface EventoGps {
   vendedorApellido?: string | null;
   evento: string;
   numeroPedido?: string | null;
+  /** Cliente del pedido vinculado (GET con join); útil para eventos tipo Entrega */
+  clienteNombre?: string | null;
+  clienteApellido?: string | null;
   ocurridoEn: string;
   latitud: number | string;
   longitud: number | string;
