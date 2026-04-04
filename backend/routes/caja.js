@@ -37,6 +37,38 @@ const COBRO_FECHA_C_SQL = COBRO_FECHA_EFECTIVA_SQL.replace(/\bfechaCobro\b/g, 'c
 /** Caja abierta (sin fecha de cierre en la consulta): tope superior = 20990101010101 en DATETIME. */
 const FECHA_FIN_CAJA_ABIERTA = '2099-01-01 01:01:01';
 
+function isCajaAdmin(req) {
+    return String(req.user?.rol || '').toLowerCase() === 'admin';
+}
+
+/**
+ * Listado de sesiones de caja: admin ve todas las de la empresa; el resto solo las propias.
+ */
+router.get('/sessions', verifyToken, async (req, res) => {
+    try {
+        const emp = req.user.codigoEmpresa;
+        const baseSelect = `SELECT c.id, c.vendedorId, c.codigoEmpresa, c.montoInicial, c.fechaApertura, c.fechaCierre, c.estado,
+                c.montoRealEntregado, c.montoFinalEsperado,
+                v.nombre AS vendedorNombre, v.apellido AS vendedorApellido
+         FROM cajas c
+         LEFT JOIN vendedores v ON v.codigo = c.vendedorId AND v.codigoEmpresa = c.codigoEmpresa`;
+
+        const rows = isCajaAdmin(req)
+            ? await query(
+                  `${baseSelect} WHERE c.codigoEmpresa = ? ORDER BY c.fechaApertura DESC LIMIT 200`,
+                  [emp]
+              )
+            : await query(
+                  `${baseSelect} WHERE c.codigoEmpresa = ? AND c.vendedorId = ? ORDER BY c.fechaApertura DESC LIMIT 200`,
+                  [emp, req.user.vendedorId]
+              );
+
+        res.json({ sessions: rows });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 /**
  * Obtener la sesión de caja activa del vendedor
  */
@@ -103,6 +135,13 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
         }
 
         const session = caja[0];
+        const sessionOwnerId = session.vendedorId;
+        const canView =
+            isCajaAdmin(req) || Number(sessionOwnerId) === Number(req.user.vendedorId);
+        if (!canView) {
+            return res.status(403).json({ error: 'No autorizado a ver esta caja' });
+        }
+
         const apertura = toDate(session.fechaApertura) || new Date();
         const cierre = toDate(session.fechaCierre);
         const cierreValido = Boolean(cierre && !Number.isNaN(cierre.getTime()));
@@ -137,10 +176,10 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
             : `abierta (fin consulta = ${FECHA_FIN_CAJA_ABIERTA} / 20990101010101)`;
         console.log(`📦 Caja id=${session.id} · apertura: ${aperturaLog} · modo: ${modoSesion}`);
         console.log(
-            `📊 Resumen caja vendedor ${req.user.vendedorId} cobros/gastos entre ${inicioStr} y ${finStr} (fechaCobro normalizada desde DOUBLE)`
+            `📊 Resumen caja id=${session.id} vendedor dueño ${sessionOwnerId} cobros/gastos entre ${inicioStr} y ${finStr}`
         );
 
-        // Solo "Contado" suma al arqueo de efectivo; transferencias y demás van a "otros pagos".
+        // Cobros y gastos del vendedor dueño de la sesión (no del usuario que consulta).
         const cobrosContado = await query(
             `SELECT COALESCE(SUM(c.total), 0) AS totalContado
              FROM cobros c
@@ -148,7 +187,7 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
              WHERE c.codigoVendedor = ? AND c.codigoEmpresa = ?
                AND LOWER(TRIM(tp.pago)) = 'contado'
                AND ${COBRO_FECHA_C_SQL} BETWEEN ? AND ?`,
-            [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
+            [sessionOwnerId, req.user.codigoEmpresa, inicioStr, finStr]
         );
 
         const cobrosOtros = await query(
@@ -158,13 +197,12 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
              WHERE c.codigoVendedor = ? AND c.codigoEmpresa = ?
                AND ${COBRO_FECHA_C_SQL} BETWEEN ? AND ?
                AND (tp.id IS NULL OR LOWER(TRIM(tp.pago)) <> 'contado')`,
-            [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
+            [sessionOwnerId, req.user.codigoEmpresa, inicioStr, finStr]
         );
 
-        // 3. Sumar Gastos que afectan caja en ese periodo (MySQL - gastos_caja)
         const gastos = await query(
             'SELECT SUM(monto) as totalGastos FROM gastos_caja WHERE vendedorId = ? AND codigoEmpresa = ? AND fecha BETWEEN ? AND ?',
-            [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
+            [sessionOwnerId, req.user.codigoEmpresa, inicioStr, finStr]
         );
 
         const totalCobrosContado = parseFloat(cobrosContado[0].totalContado || 0);
@@ -176,7 +214,27 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
             `💰 Caja: contado ${totalCobrosContado}, otros pagos ${totalCobrosOtros}, gastos ${totalGastos}`
         );
 
+        const montoEsperadoAlCierre =
+            session.montoFinalEsperado != null && session.montoFinalEsperado !== ''
+                ? parseFloat(session.montoFinalEsperado)
+                : null;
+        const montoRealEntregado =
+            session.montoRealEntregado != null && session.montoRealEntregado !== ''
+                ? parseFloat(session.montoRealEntregado)
+                : null;
+        let diferenciaArqueo = null;
+        if (
+            montoEsperadoAlCierre != null &&
+            montoRealEntregado != null &&
+            !Number.isNaN(montoEsperadoAlCierre) &&
+            !Number.isNaN(montoRealEntregado)
+        ) {
+            diferenciaArqueo = montoRealEntregado - montoEsperadoAlCierre;
+        }
+
         res.json({
+            sessionId: session.id,
+            vendedorId: sessionOwnerId,
             montoInicial: parseFloat(session.montoInicial),
             totalCobrosContado,
             totalCobrosOtros,
@@ -184,7 +242,11 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
             totalCobros: totalCobrosContado,
             totalGastos,
             balanceEsperado: balance,
-            estado: session.estado
+            estado: session.estado,
+            fechaCierre: session.fechaCierre || null,
+            montoEsperadoAlCierre,
+            montoRealEntregado,
+            diferenciaArqueo,
         });
 
     } catch (error) {

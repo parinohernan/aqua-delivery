@@ -13,6 +13,8 @@ export interface CashSession {
 }
 
 export interface CashSummary {
+  sessionId?: number;
+  vendedorId?: number;
   montoInicial: number;
   /** Cobros con tipo de pago "Contado" (entran al arqueo de efectivo). */
   totalCobrosContado: number;
@@ -23,6 +25,28 @@ export interface CashSummary {
   totalGastos: number;
   balanceEsperado: number;
   estado: string;
+  /** Solo cajas cerradas: fecha/hora de cierre. */
+  fechaCierre?: string | null;
+  /** Efectivo que debía haber según el cierre registrado. */
+  montoEsperadoAlCierre?: number | null;
+  /** Efectivo contado y entregado al cerrar. */
+  montoRealEntregado?: number | null;
+  /** real − esperado al cierre (positivo sobró, negativo faltó). */
+  diferenciaArqueo?: number | null;
+}
+
+export interface CajaListSession {
+  id: number;
+  vendedorId: number;
+  codigoEmpresa: number;
+  montoInicial: number;
+  estado: string;
+  fechaApertura: string;
+  fechaCierre?: string | null;
+  montoRealEntregado?: number | null;
+  montoFinalEsperado?: number | null;
+  vendedorNombre?: string | null;
+  vendedorApellido?: string | null;
 }
 
 /** Usa el mismo baseURL que el resto de la app (red local, proxy, producción). */
@@ -37,6 +61,10 @@ export const cashService = {
 
   async getSummary(sessionId: number): Promise<CashSummary> {
     return apiClient.get(`/api/caja/summary/${sessionId}`);
+  },
+
+  async listSessions(): Promise<{ sessions: CajaListSession[] }> {
+    return apiClient.get('/api/caja/sessions');
   },
 
   async closeSession(payload: {

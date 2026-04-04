@@ -19,10 +19,11 @@ router.post('/login', async (req, res) => {
         }
         
         const token = jwt.sign(
-            { 
+            {
                 vendedorId: vendedor[0].codigo,
                 codigoEmpresa: vendedor[0].codigoEmpresa,
-                telegramId: vendedor[0].telegramId
+                telegramId: vendedor[0].telegramId,
+                rol: vendedor[0].rol != null ? String(vendedor[0].rol) : undefined,
             },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }

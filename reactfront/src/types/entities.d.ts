@@ -11,6 +11,8 @@ export interface User {
   nombre?: string;
   telegramId?: string;
   codigoEmpresa?: number;
+  /** Ej. "admin": permisos extendidos en caja y otros módulos. */
+  rol?: string;
   /** 1/true: habilitar registro GPS periódico (Check) con la app abierta */
   registro_gps_periodico?: boolean | number | string;
   [key: string]: unknown;
