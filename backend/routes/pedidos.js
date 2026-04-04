@@ -2,6 +2,7 @@ const express = require('express');
 const { query, transaction } = require('../config/database');
 const { verifyToken } = require('./auth');
 const { actualizarRutasPorCambioZona } = require('../lib/rutasHelper');
+const { toMysqlUtcDatetime } = require('../utils/mysqlUtcDatetime');
 const router = express.Router();
 
 // Obtener pedidos
@@ -919,14 +920,16 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 lo >= -180 &&
                 lo <= 180;
             if (gpsOk) {
+                const ocurridoGps = toMysqlUtcDatetime(new Date());
                 await transactionQuery(
                     `INSERT INTO eventos_gps (codigoEmpresa, codigoVendedor, evento, numeroPedido, ocurridoEn, latitud, longitud)
-                     VALUES (?, ?, ?, ?, NOW(), ?, ?)`,
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
                     [
                         req.user.codigoEmpresa,
                         req.user.vendedorId,
                         'Entrega',
                         String(pedidoId),
+                        ocurridoGps,
                         la,
                         lo,
                     ]

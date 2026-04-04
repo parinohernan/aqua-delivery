@@ -16,6 +16,10 @@ const sectionLoaders: Record<string, () => Promise<unknown>> = {
   [ROUTES.GPS]: () => import('@/features/gps/components/GpsSection'),
   [ROUTES.EXPENSES]: () => import('@/features/expenses/components/ExpensesSection'),
   [ROUTES.CAJA]: () => import('@/features/expenses/components/CajaSection'),
+  [ROUTES.FACTURACION]: () => import('@/features/facturacion/components/FacturacionSection'),
+  [ROUTES.PERFIL]: () => import('@/features/cuenta/components/PerfilSection'),
+  [ROUTES.CONFIGURACION]: () => import('@/features/cuenta/components/ConfiguracionSection'),
+  [ROUTES.AYUDA]: () => import('@/features/cuenta/components/AyudaSection'),
 };
 
 function preloadSectionData(path: string): void {

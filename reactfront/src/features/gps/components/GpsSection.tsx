@@ -7,7 +7,15 @@ import { MapPin, Navigation, RefreshCw } from 'lucide-react';
 import { eventosGpsService, type EventosGpsQuery } from '../services/eventosGpsService';
 import { vendedoresService } from '../services/vendedoresService';
 import type { EventoGps, VendedorLista } from '@/types/entities';
-import { formatDateTime } from '@/utils/formatters';
+import {
+  formatDateTimeInAppTimeZone,
+} from '@/utils/formatters';
+import {
+  endOfAppDayUtc,
+  getAppTimeZone,
+  startOfAppDayUtc,
+  todayDateInputValueInAppTz,
+} from '@/utils/appTimeZone';
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
 const MAP_STYLE = MAPTILER_KEY
@@ -17,23 +25,6 @@ const MAP_STYLE = MAPTILER_KEY
 const DEFAULT_CENTER = { longitude: -58.3816, latitude: -34.6037, zoom: 12 };
 
 const LINE_COLORS = ['#22d3ee', '#f472b6', '#a3e635', '#fb923c', '#818cf8', '#fbbf24', '#2dd4bf'];
-
-function toLocalDateInputValue(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function startOfDayFromInput(isoDate: string): Date {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return new Date(y, m - 1, d, 0, 0, 0, 0);
-}
-
-function endOfDayFromInput(isoDate: string): Date {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return new Date(y, m - 1, d, 23, 59, 59, 999);
-}
 
 function numCoord(v: number | string): number {
   const n = typeof v === 'number' ? v : parseFloat(String(v));
@@ -48,8 +39,8 @@ function vendedorLabel(e: EventoGps): string {
 function GpsSection() {
   const mapRef = useRef<MapRef>(null);
   const today = useMemo(() => new Date(), []);
-  const [desdeStr, setDesdeStr] = useState(() => toLocalDateInputValue(today));
-  const [hastaStr, setHastaStr] = useState(() => toLocalDateInputValue(today));
+  const [desdeStr, setDesdeStr] = useState(() => todayDateInputValueInAppTz(today));
+  const [hastaStr, setHastaStr] = useState(() => todayDateInputValueInAppTz(today));
   const [vendedorId, setVendedorId] = useState<string>('all');
   const [vendedores, setVendedores] = useState<VendedorLista[]>([]);
   const [eventos, setEventos] = useState<EventoGps[]>([]);
@@ -76,8 +67,8 @@ function GpsSection() {
     setLoading(true);
     setError(null);
     try {
-      const desde = startOfDayFromInput(desdeStr);
-      const hasta = endOfDayFromInput(hastaStr);
+      const desde = startOfAppDayUtc(desdeStr);
+      const hasta = endOfAppDayUtc(hastaStr);
       if (desde > hasta) {
         setError('La fecha "desde" no puede ser posterior a "hasta".');
         setEventos([]);
@@ -142,6 +133,25 @@ function GpsSection() {
     return lineMap;
   }, [eventos]);
 
+  /** Orden cronológico por vendedor: 1 = primera parada del día (para ese repartidor). */
+  const stopIndexByEventId = useMemo(() => {
+    const m = new globalThis.Map<number, { n: number; total: number }>();
+    const byV = new globalThis.Map<number, EventoGps[]>();
+    eventos.forEach((e) => {
+      const list = byV.get(e.codigoVendedor) ?? [];
+      list.push(e);
+      byV.set(e.codigoVendedor, list);
+    });
+    byV.forEach((list, _vid) => {
+      const sorted = [...list].sort(
+        (a, b) => new Date(a.ocurridoEn).getTime() - new Date(b.ocurridoEn).getTime()
+      );
+      const total = sorted.length;
+      sorted.forEach((e, i) => m.set(e.id, { n: i + 1, total }));
+    });
+    return m;
+  }, [eventos]);
+
   const fitBounds = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map || eventos.length === 0) return;
@@ -158,6 +168,19 @@ function GpsSection() {
     if (map.isStyleLoaded()) run();
     else map.once('load', run);
   }, [eventos, fitBounds]);
+
+  const focusEventoOnMap = useCallback((e: EventoGps) => {
+    setPopupEvent(e);
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const lng = numCoord(e.longitud);
+    const lat = numCoord(e.latitud);
+    map.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(map.getZoom(), 15),
+      duration: 450,
+    });
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -253,14 +276,31 @@ function GpsSection() {
             const color = colorByVendor.get(vid) ?? LINE_COLORS[0];
             return (
               <Source key={`line-${vid}`} id={`gps-line-${vid}`} type="geojson" data={feat}>
+                {/* Halo: ayuda a ver la ruta sobre el mapa base */}
                 <Layer
-                  id={`gps-line-layer-${vid}`}
+                  id={`gps-line-halo-${vid}`}
                   type="line"
                   layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{
+                    'line-color': '#0f172a',
+                    'line-width': 10,
+                    'line-opacity': 0.45,
+                    'line-blur': 1,
+                  }}
+                />
+                {/*
+                  line-dasharray + line-cap round en MapLibre suele no pintar la línea.
+                  Con line-cap butt el trazo punteado es fiable.
+                */}
+                <Layer
+                  id={`gps-line-layer-${vid}`}
+                  type="line"
+                  layout={{ 'line-join': 'round', 'line-cap': 'butt' }}
+                  paint={{
                     'line-color': color,
                     'line-width': 4,
-                    'line-opacity': 0.85,
+                    'line-opacity': 0.95,
+                    'line-dasharray': [2, 2],
                   }}
                 />
               </Source>
@@ -271,6 +311,8 @@ function GpsSection() {
             const lng = numCoord(e.longitud);
             const lat = numCoord(e.latitud);
             const color = colorByVendor.get(e.codigoVendedor) ?? '#22d3ee';
+            const stop = stopIndexByEventId.get(e.id);
+            const label = stop ? String(stop.n) : '·';
             return (
               <Marker
                 key={e.id}
@@ -283,9 +325,14 @@ function GpsSection() {
                 }}
               >
                 <div
-                  className="w-4 h-4 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                  className="flex h-7 min-w-7 px-1 items-center justify-center rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
                   style={{ backgroundColor: color }}
-                />
+                  title={stop ? `Parada ${stop.n} de ${stop.total} (orden del día)` : undefined}
+                >
+                  <span className="text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] leading-none">
+                    {label}
+                  </span>
+                </div>
               </Marker>
             );
           })}
@@ -298,16 +345,26 @@ function GpsSection() {
               onClose={() => setPopupEvent(null)}
               closeOnClick={false}
             >
-              <div className="p-2 min-w-[200px] max-w-[280px] text-left text-gray-900 text-sm">
-                <p className="font-semibold">{popupEvent.evento}</p>
-                <p className="text-xs text-gray-600 mt-0.5">{vendedorLabel(popupEvent)}</p>
-                <p className="text-xs text-gray-600">{formatDateTime(popupEvent.ocurridoEn)}</p>
-                {popupEvent.numeroPedido != null && String(popupEvent.numeroPedido).length > 0 && (
-                  <p className="text-xs mt-1">
-                    Pedido: <span className="font-medium">{popupEvent.numeroPedido}</span>
-                  </p>
-                )}
-              </div>
+              {(() => {
+                const st = stopIndexByEventId.get(popupEvent.id);
+                return (
+                  <div className="p-2 min-w-[200px] max-w-[280px] text-left text-gray-900 text-sm">
+                    <p className="font-semibold">{popupEvent.evento}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">{vendedorLabel(popupEvent)}</p>
+                    <p className="text-xs text-gray-600">{formatDateTimeInAppTimeZone(popupEvent.ocurridoEn)}</p>
+                    {st != null && (
+                      <p className="text-xs mt-1 text-gray-700">
+                        Orden del día: <span className="font-semibold">{st.n}</span> de {st.total}
+                      </p>
+                    )}
+                    {popupEvent.numeroPedido != null && String(popupEvent.numeroPedido).length > 0 && (
+                      <p className="text-xs mt-1">
+                        Pedido: <span className="font-medium">{popupEvent.numeroPedido}</span>
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </Popup>
           )}
         </MapGL>
@@ -324,6 +381,74 @@ function GpsSection() {
           </div>
         )}
       </div>
+
+      {eventos.length > 0 && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.04] overflow-hidden">
+          <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-white/45">
+              Lista cronológica
+            </span>
+            <span className="text-[11px] text-white/40 tabular-nums">{eventos.length}</span>
+          </div>
+          <ul
+            className="max-h-[min(42vh,380px)] overflow-y-auto overscroll-contain"
+            aria-label="Eventos GPS en orden de tiempo"
+          >
+            {eventos.map((e) => {
+              const color = colorByVendor.get(e.codigoVendedor) ?? LINE_COLORS[0];
+              const stop = stopIndexByEventId.get(e.id);
+              const active = popupEvent?.id === e.id;
+              const timeShort = (() => {
+                const d = new Date(e.ocurridoEn);
+                if (Number.isNaN(d.getTime())) return '—';
+                return new Intl.DateTimeFormat('es-AR', {
+                  timeZone: getAppTimeZone(),
+                  day: '2-digit',
+                  month: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(d);
+              })();
+              return (
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    onClick={() => focusEventoOnMap(e)}
+                    className={[
+                      'w-full text-left px-3 py-2.5 flex gap-3 items-start border-b border-white/[0.06] last:border-b-0 transition-colors',
+                      active ? 'bg-white/12' : 'hover:bg-white/[0.06]',
+                    ].join(' ')}
+                  >
+                    <span
+                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full ring-1 ring-white/30"
+                      style={{ backgroundColor: color }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0 text-[13px] leading-snug text-white/90">
+                        <span className="font-mono tabular-nums text-white/55 shrink-0">{timeShort}</span>
+                        <span className="font-medium text-white/95">{e.evento}</span>
+                        <span className="text-white/50">·</span>
+                        <span className="text-white/70 truncate">{vendedorLabel(e)}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0 text-[11px] text-white/45">
+                        {stop != null && (
+                          <span>
+                            Parada {stop.n}/{stop.total}
+                          </span>
+                        )}
+                        {e.numeroPedido != null && String(e.numeroPedido).trim() !== '' && (
+                          <span className="tabular-nums">Pedido {e.numeroPedido}</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {vendorIdsSorted.length > 0 && (
         <div className="flex flex-wrap gap-3 text-xs text-white/70">

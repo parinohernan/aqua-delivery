@@ -1,7 +1,7 @@
 -- eventos_gps: eventos georreferenciados por empresa y vendedor (entregas, combustible, check, etc.)
 --
--- Timestamps:
---   ocurridoEn = momento lógico del hecho (entrega, parada, etc.); usar hora del servidor o la enviada en POST.
+-- Timestamps (convención: reloj UTC en columnas DATETIME; API devuelve ISO con Z):
+--   ocurridoEn = instante del hecho (POST con ISO o UTC desde el backend).
 --   creadoEn   = inserción en BD (auditoría).
 -- Aplicar en MySQL/MariaDB junto al despliegue del backend que usa esta tabla.
 

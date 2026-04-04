@@ -64,5 +64,52 @@ const verifyToken = (req, res, next) => {
     }
 };
 
+/**
+ * Cambiar contraseña de acceso (valor almacenado en vendedores.telegramId).
+ * POST /auth/change-password  body: { currentPassword, newPassword }
+ * 400 si la actual no coincide (evita 401 para no disparar logout en el cliente).
+ */
+router.post('/change-password', verifyToken, async (req, res) => {
+    try {
+        if (Number(req.user.vendedorId) === 1) {
+            return res.status(403).json({ error: 'No está permitido cambiar la contraseña de esta cuenta.' });
+        }
+
+        const { currentPassword, newPassword } = req.body;
+        const cur = currentPassword != null ? String(currentPassword) : '';
+        const neu = newPassword != null ? String(newPassword) : '';
+
+        if (!neu || neu.length < 4) {
+            return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 4 caracteres' });
+        }
+        if (neu.length > 200) {
+            return res.status(400).json({ error: 'La nueva contraseña es demasiado larga' });
+        }
+
+        const rows = await query(
+            'SELECT codigo, telegramId FROM vendedores WHERE codigo = ? AND codigoEmpresa = ?',
+            [req.user.vendedorId, req.user.codigoEmpresa]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const stored = rows[0].telegramId != null ? String(rows[0].telegramId) : '';
+        if (stored !== cur) {
+            return res.status(400).json({ error: 'Contraseña actual incorrecta' });
+        }
+
+        await query(
+            'UPDATE vendedores SET telegramId = ? WHERE codigo = ? AND codigoEmpresa = ?',
+            [neu, req.user.vendedorId, req.user.codigoEmpresa]
+        );
+
+        res.json({ success: true, message: 'Contraseña actualizada' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
 module.exports.verifyToken = verifyToken;

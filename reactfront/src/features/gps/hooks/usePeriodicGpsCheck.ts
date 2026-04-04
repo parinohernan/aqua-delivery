@@ -37,6 +37,7 @@ export function usePeriodicGpsCheck(): void {
           evento: 'Check',
           latitud: pos.latitude,
           longitud: pos.longitude,
+          ocurrido_en: ocurridoEn,
         });
       } catch (err) {
         console.warn('[GPS periódico] No se pudo registrar el evento (se encola para reenvío):', err);

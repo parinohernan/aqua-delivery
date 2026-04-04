@@ -1,6 +1,7 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { verifyToken } = require('./auth');
+const { toMysqlUtcDatetime } = require('../utils/mysqlUtcDatetime');
 const router = express.Router();
 
 function parseDateParam(value, endOfDay = false) {
@@ -41,10 +42,10 @@ router.get('/', verifyToken, async (req, res) => {
                 v.apellido AS vendedorApellido,
                 e.evento,
                 e.numeroPedido,
-                e.ocurridoEn,
+                CONCAT(DATE_FORMAT(e.ocurridoEn, '%Y-%m-%dT%H:%i:%s'), '.000Z') AS ocurridoEn,
                 e.latitud,
                 e.longitud,
-                e.creadoEn
+                CONCAT(DATE_FORMAT(e.creadoEn, '%Y-%m-%dT%H:%i:%s'), '.000Z') AS creadoEn
             FROM eventos_gps e
             LEFT JOIN vendedores v ON v.codigo = e.codigoVendedor AND v.codigoEmpresa = e.codigoEmpresa
             WHERE e.codigoEmpresa = ?
@@ -55,12 +56,18 @@ router.get('/', verifyToken, async (req, res) => {
         const hastaD = parseDateParam(hasta || '', true);
 
         if (desdeD) {
-            sql += ' AND e.ocurridoEn >= ?';
-            params.push(desdeD);
+            const s = toMysqlUtcDatetime(desdeD);
+            if (s) {
+                sql += ' AND e.ocurridoEn >= ?';
+                params.push(s);
+            }
         }
         if (hastaD) {
-            sql += ' AND e.ocurridoEn <= ?';
-            params.push(hastaD);
+            const s = toMysqlUtcDatetime(hastaD);
+            if (s) {
+                sql += ' AND e.ocurridoEn <= ?';
+                params.push(s);
+            }
         }
 
         if (codigoVendedorQ !== undefined && codigoVendedorQ !== '' && codigoVendedorQ !== 'all') {
@@ -110,6 +117,11 @@ router.post('/', verifyToken, async (req, res) => {
                 ? String(numero_pedido).trim().slice(0, 64)
                 : null;
 
+        const ocurridoSql = toMysqlUtcDatetime(ocurrido);
+        if (!ocurridoSql) {
+            return res.status(400).json({ error: 'ocurrido_en inválido' });
+        }
+
         await query(
             `INSERT INTO eventos_gps (
                 codigoEmpresa, codigoVendedor, evento, numeroPedido, ocurridoEn, latitud, longitud
@@ -119,7 +131,7 @@ router.post('/', verifyToken, async (req, res) => {
                 req.user.vendedorId,
                 ev,
                 numeroPedido,
-                ocurrido,
+                ocurridoSql,
                 Number(latitud),
                 Number(longitud),
             ]

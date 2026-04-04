@@ -17,6 +17,8 @@ type ClienteFormSnapshot = {
   zona: string;
   latitud: string;
   longitud: string;
+  saldoDinero: string;
+  saldoRetornables: string;
 };
 
 function zonaDisplayFromCliente(cliente: Cliente): string {
@@ -24,6 +26,12 @@ function zonaDisplayFromCliente(cliente: Cliente): string {
   if (typeof zonaVal === 'string') return zonaVal;
   if (zonaVal && typeof zonaVal === 'object') return zonaVal.nombre ?? zonaVal.zona ?? '';
   return '';
+}
+
+function saldoNumToInput(v: unknown): string {
+  if (v == null || v === '') return '';
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? String(n) : '';
 }
 
 function buildSnapshotFromCliente(cliente: Cliente): ClienteFormSnapshot {
@@ -35,6 +43,8 @@ function buildSnapshotFromCliente(cliente: Cliente): ClienteFormSnapshot {
     zona: zonaDisplayFromCliente(cliente),
     latitud: cliente.latitud != null ? String(cliente.latitud) : '',
     longitud: cliente.longitud != null ? String(cliente.longitud) : '',
+    saldoDinero: saldoNumToInput(cliente.saldo),
+    saldoRetornables: saldoNumToInput(cliente.retornables),
   };
 }
 
@@ -53,7 +63,9 @@ function snapshotsEqual(current: ClienteFormSnapshot, initial: ClienteFormSnapsh
     current.direccion.trim() === initial.direccion.trim() &&
     current.zona.trim() === initial.zona.trim() &&
     coordsEquivalent(current.latitud, initial.latitud) &&
-    coordsEquivalent(current.longitud, initial.longitud)
+    coordsEquivalent(current.longitud, initial.longitud) &&
+    current.saldoDinero.trim() === initial.saldoDinero.trim() &&
+    current.saldoRetornables.trim() === initial.saldoRetornables.trim()
   );
 }
 
@@ -81,7 +93,11 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
   const [zona, setZona] = useState('');
   const [latitud, setLatitud] = useState<string>('');
   const [longitud, setLongitud] = useState<string>('');
-  
+  /** Deuda en $ (positivo = debe; negativo = a favor). */
+  const [saldoDinero, setSaldoDinero] = useState('');
+  /** Envases retornables adeudados (entero ≥ 0 habitualmente). */
+  const [saldoRetornables, setSaldoRetornables] = useState('');
+
   const [showNuevaZonaInput, setShowNuevaZonaInput] = useState(false);
   const [nuevaZona, setNuevaZona] = useState('');
   // const [isLoading, setIsLoading] = useState(false);
@@ -104,6 +120,8 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
         setZona(snap.zona);
         setLatitud(snap.latitud);
         setLongitud(snap.longitud);
+        setSaldoDinero(snap.saldoDinero);
+        setSaldoRetornables(snap.saldoRetornables);
       } else {
         initialSnapshotRef.current = null;
         resetForm();
@@ -121,6 +139,8 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     setShowNuevaZonaInput(false);
     setLatitud('');
     setLongitud('');
+    setSaldoDinero('');
+    setSaldoRetornables('');
     setError(null);
   };
 
@@ -152,6 +172,23 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     try {
       setIsSubmitting(true);
 
+      const saldoNorm = saldoDinero.trim().replace(',', '.');
+      const saldoParsed = saldoNorm === '' ? 0 : parseFloat(saldoNorm);
+      if (!Number.isFinite(saldoParsed)) {
+        setError('Ingresá un importe válido en deuda anterior (o dejalo vacío para 0)');
+        return;
+      }
+
+      const retNorm = saldoRetornables.trim();
+      let retFinal = 0;
+      if (retNorm !== '') {
+        if (!/^\d+$/.test(retNorm)) {
+          setError('Envases adeudados: solo números enteros ≥ 0 (o vacío para 0)');
+          return;
+        }
+        retFinal = parseInt(retNorm, 10);
+      }
+
       // Preparar datos para el backend (zona es el nombre de la zona, string)
       const clienteData: Record<string, unknown> = {
         nombre: nombre.trim(),
@@ -159,17 +196,9 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
         telefono: telefono.trim() || '',
         direccion: direccion.trim() || '',
         zona: zona.trim() || null,
+        saldoDinero: saldoParsed,
+        saldoRetornables: retFinal,
       };
-
-      // Si es edición, mantener saldo y retornables actuales (no se editan desde aquí)
-      if (cliente) {
-        clienteData.saldoDinero = typeof cliente.saldo === 'number' ? cliente.saldo : parseFloat(String(cliente.saldo || 0));
-        clienteData.saldoRetornables = typeof cliente.retornables === 'number' ? cliente.retornables : parseFloat(String(cliente.retornables || 0));
-      } else {
-        // Si es creación, inicializar en 0
-        clienteData.saldoDinero = 0;
-        clienteData.saldoRetornables = 0;
-      }
 
       // Agregar coordenadas si están disponibles
       if (latitud && longitud) {
@@ -221,6 +250,8 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
     zona,
     latitud,
     longitud,
+    saldoDinero,
+    saldoRetornables,
   });
 
   const isDirtyEdit =
@@ -450,6 +481,48 @@ function ClienteModal({ isOpen, cliente, onClose }: ClienteModalProps) {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Deuda anterior / saldo inicial (misma convención que en entregas: + = debe, − = a favor) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Deuda anterior ($)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45">$</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={saldoDinero}
+                  onChange={(e) => setSaldoDinero(e.target.value)}
+                  className="w-full pl-8 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/40 backdrop-blur-sm"
+                  placeholder="0"
+                />
+              </div>
+              <p className="mt-1 text-xs text-white/55">
+                Positivo: el cliente debe dinero. Negativo: saldo a favor. Vacío = 0.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Envases adeudados
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={saldoRetornables}
+                onChange={(e) => setSaldoRetornables(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-white/40 backdrop-blur-sm"
+                placeholder="0"
+              />
+              <p className="mt-1 text-xs text-white/55">
+                Cantidad de retornables que debe el cliente al iniciar. Vacío = 0.
+              </p>
+            </div>
           </div>
 
           {/* Coordenadas */}

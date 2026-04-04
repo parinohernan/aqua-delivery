@@ -21,6 +21,7 @@ export const APP_CONFIG = {
 export const API_ENDPOINTS = {
   AUTH: '/auth',
   LOGIN: '/auth/login',
+  CHANGE_PASSWORD: '/auth/change-password',
   CLIENTES: '/api/clientes',
   PRODUCTOS: '/api/productos',
   PEDIDOS: '/api/pedidos',
@@ -64,6 +65,10 @@ export const ROUTES = {
   GPS: '/gps',
   EXPENSES: '/expenses',
   CAJA: '/caja',
+  FACTURACION: '/facturacion',
+  PERFIL: '/perfil',
+  CONFIGURACION: '/configuracion',
+  AYUDA: '/ayuda',
 } as const;
 
 /**

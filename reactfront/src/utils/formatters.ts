@@ -2,6 +2,8 @@
  * Utilidades para formatear datos
  */
 
+import { getAppTimeZone } from './appTimeZone';
+
 /**
  * Formatea un número como moneda
  */
@@ -31,6 +33,19 @@ export function formatDate(date: string | Date): string {
 export function formatDateTime(date: string | Date): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('es-AR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(dateObj);
+}
+
+/** Fecha/hora en la zona configurada para la empresa (VITE_APP_TIMEZONE). */
+export function formatDateTimeInAppTimeZone(date: string | Date): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: getAppTimeZone(),
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

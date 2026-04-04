@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_ORS_API_KEY?: string;
   /** WhatsApp (solo dígitos, ej. 5492924406159) */
   readonly VITE_WHATSAPP_NUMBER?: string;
+  /** Zona IANA de la empresa (filtros y hora en pantalla, ej. GPS) */
+  readonly VITE_APP_TIMEZONE?: string;
 }
 
 interface ImportMeta {

@@ -22,6 +22,10 @@ const RutasSection = lazy(() => import('@/features/rutas/components/RutasSection
 const GpsSection = lazy(() => import('@/features/gps/components/GpsSection'));
 const ExpensesSection = lazy(() => import('@/features/expenses/components/ExpensesSection'));
 const CajaSection = lazy(() => import('@/features/expenses/components/CajaSection'));
+const FacturacionSection = lazy(() => import('@/features/facturacion/components/FacturacionSection'));
+const PerfilSection = lazy(() => import('@/features/cuenta/components/PerfilSection'));
+const ConfiguracionSection = lazy(() => import('@/features/cuenta/components/ConfiguracionSection'));
+const AyudaSection = lazy(() => import('@/features/cuenta/components/AyudaSection'));
 
 /**
  * Layout principal de la aplicación
@@ -59,6 +63,10 @@ function AppLayout() {
                 <Route path="/gps" element={<GpsSection />} />
                 <Route path="/expenses" element={<ExpensesSection />} />
                 <Route path="/caja" element={<CajaSection />} />
+                <Route path={ROUTES.FACTURACION} element={<FacturacionSection />} />
+                <Route path={ROUTES.PERFIL} element={<PerfilSection />} />
+                <Route path={ROUTES.CONFIGURACION} element={<ConfiguracionSection />} />
+                <Route path={ROUTES.AYUDA} element={<AyudaSection />} />
               </Routes>
             </Suspense>
           </div>
