@@ -3,7 +3,7 @@ import { X, Camera, Image as ImageIcon, Trash2, Loader2, Wallet } from 'lucide-r
 import { useExpensesStore } from '../stores/expensesStore';
 import { useAuthStore } from '@/stores/authStore';
 import { expensesService } from '../services/expensesService';
-import { fileToBase64, getFilePreview } from '../utils/fileUtils';
+import { getFilePreview, prepareExpenseDocumentUpload } from '../utils/fileUtils';
 import { ExpenseTypeIconDisplay } from './expenseTypeIcon';
 import type { CreateExpensePayload, Expense } from '../types';
 
@@ -303,11 +303,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
 
         if (selectedFiles.length > 0) {
           const filesToUpload = await Promise.all(
-            selectedFiles.map(async (file) => ({
-              file_name: file.name,
-              file_type: file.type,
-              base64: await fileToBase64(file),
-            }))
+            selectedFiles.map((file) => prepareExpenseDocumentUpload(file))
           );
           await expensesService.uploadDocuments(loadedExpense.id, filesToUpload);
         }
@@ -332,11 +328,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
 
       if (selectedFiles.length > 0 && created.id) {
         const filesToUpload = await Promise.all(
-          selectedFiles.map(async (file) => ({
-            file_name: file.name,
-            file_type: file.type,
-            base64: await fileToBase64(file),
-          }))
+          selectedFiles.map((file) => prepareExpenseDocumentUpload(file))
         );
         await expensesService.uploadDocuments(created.id, filesToUpload);
       }
