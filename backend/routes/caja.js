@@ -11,13 +11,28 @@ function toDate(value) {
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Garantiza inicio <= fin para consultas BETWEEN (evita rango vacío si hay desajuste de reloj/TZ). */
-function orderRangeForBetween(inicio, fin) {
-    const a = toDate(inicio);
-    const b = toDate(fin);
-    if (!a || !b) return [a, b];
-    return a.getTime() <= b.getTime() ? [a, b] : [b, a];
+/**
+ * Literal MySQL DATETIME desde Date (hora local del proceso Node).
+ * Evita mezclar tipos con cobros.fechaCobro almacenado como DOUBLE (YYYYMMDDHHmmss).
+ */
+function toMysqlDatetime(d) {
+    const x = toDate(d);
+    if (!x) return null;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())} ${pad(x.getHours())}:${pad(x.getMinutes())}:${pad(x.getSeconds())}`;
 }
+
+/**
+ * Expresión SQL: convierte fechaCobro (DOUBLE legacy tipo 20260403211724 o similar) a DATETIME
+ * para comparar bien con BETWEEN. Si STR_TO_DATE falla, la fila no suma (NULL).
+ */
+const COBRO_FECHA_EFECTIVA_SQL = `STR_TO_DATE(
+  LPAD(CAST(CAST(FLOOR(ABS(fechaCobro)) AS UNSIGNED) AS CHAR), 14, '0'),
+  '%Y%m%d%H%i%s'
+)`;
+
+/** Caja abierta (sin fecha de cierre en la consulta): tope superior = 20990101010101 en DATETIME. */
+const FECHA_FIN_CAJA_ABIERTA = '2099-01-01 01:01:01';
 
 /**
  * Obtener la sesión de caja activa del vendedor
@@ -86,27 +101,53 @@ router.get('/summary/:sessionId', verifyToken, async (req, res) => {
 
         const session = caja[0];
         const apertura = toDate(session.fechaApertura) || new Date();
-        const ahora = new Date();
         const cierre = toDate(session.fechaCierre);
-        const esAbierta = session.estado === 'abierta';
-        // Sesión abierta: siempre hasta "ahora"; ignorar fechaCierre por si quedara sucia en BD.
-        const finEfectivo = esAbierta ? ahora : cierre || ahora;
-        const [fechaInicio, fechaFin] = orderRangeForBetween(apertura, finEfectivo);
+        const cierreValido = Boolean(cierre && !Number.isNaN(cierre.getTime()));
+        const estadoNorm = String(session.estado || '').toLowerCase();
+        const esCerrada = estadoNorm === 'cerrada';
+        const sesionCerradaConCierre = esCerrada && cierreValido;
 
+        const fechaInicio = apertura;
+        const inicioStr = toMysqlDatetime(fechaInicio);
+        if (!inicioStr) {
+            return res.status(500).json({ error: 'Fecha de apertura inválida' });
+        }
+
+        let finStr;
+        if (sesionCerradaConCierre) {
+            let fechaFin = cierre;
+            if (fechaFin.getTime() < fechaInicio.getTime()) {
+                fechaFin = new Date(fechaInicio.getTime());
+            }
+            finStr = toMysqlDatetime(fechaFin);
+            if (!finStr) {
+                return res.status(500).json({ error: 'Fecha de cierre inválida' });
+            }
+        } else {
+            // Sin fin de sesión: en SQL usamos tope 20990101010101 (no "ahora", evita mismo segundo que apertura).
+            finStr = FECHA_FIN_CAJA_ABIERTA;
+        }
+
+        const aperturaLog = toMysqlDatetime(apertura) || String(session.fechaApertura ?? '');
+        const modoSesion = sesionCerradaConCierre
+            ? 'cerrada (hasta fechaCierre)'
+            : `abierta (fin consulta = ${FECHA_FIN_CAJA_ABIERTA} / 20990101010101)`;
+        console.log(`📦 Caja id=${session.id} · apertura: ${aperturaLog} · modo: ${modoSesion}`);
         console.log(
-            `📊 Generando resumen para vendedor ${req.user.vendedorId} desde ${fechaInicio.toISOString()} hasta ${fechaFin.toISOString()}`
+            `📊 Resumen caja vendedor ${req.user.vendedorId} cobros/gastos entre ${inicioStr} y ${finStr} (fechaCobro normalizada desde DOUBLE)`
         );
 
-        // 2. Sumar Cobros del vendedor en ese periodo (MySQL)
+        // cobros.fechaCobro suele ser DOUBLE (YYYYMMDDHHmmss). BETWEEN con Date/ string DATETIME
+        // hacía que MySQL convirtiera mal y casi todos los cobros entraran al rango.
         const cobros = await query(
-            'SELECT SUM(total) as totalCobros FROM cobros WHERE codigoVendedor = ? AND codigoEmpresa = ? AND fechaCobro BETWEEN ? AND ?',
-            [req.user.vendedorId, req.user.codigoEmpresa, fechaInicio, fechaFin]
+            `SELECT SUM(total) as totalCobros FROM cobros WHERE codigoVendedor = ? AND codigoEmpresa = ? AND ${COBRO_FECHA_EFECTIVA_SQL} BETWEEN ? AND ?`,
+            [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
         );
 
         // 3. Sumar Gastos que afectan caja en ese periodo (MySQL - gastos_caja)
         const gastos = await query(
             'SELECT SUM(monto) as totalGastos FROM gastos_caja WHERE vendedorId = ? AND codigoEmpresa = ? AND fecha BETWEEN ? AND ?',
-            [req.user.vendedorId, req.user.codigoEmpresa, fechaInicio, fechaFin]
+            [req.user.vendedorId, req.user.codigoEmpresa, inicioStr, finStr]
         );
         
         console.log(`💰 Cobros encontrados: ${cobros[0].totalCobros || 0}, Gastos encontrados: ${gastos[0].totalGastos || 0}`);

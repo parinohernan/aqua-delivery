@@ -582,7 +582,10 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
         const { estado, tipoPago } = req.body;
 
         if (estado === 'entregad') {
-            // Obtener información del pedido
+            if (tipoPago == null || tipoPago === '') {
+                return res.status(400).json({ error: 'Debe indicar tipo de pago' });
+            }
+
             const pedido = await query(
                 'SELECT codigo, codigoCliente, total FROM pedidos WHERE codigo = ? AND codigoEmpresa = ?',
                 [req.params.id, req.user.codigoEmpresa]
@@ -592,9 +595,8 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
                 return res.status(404).json({ error: 'Pedido no encontrado' });
             }
 
-            // Obtener información del tipo de pago para saber si aplica saldo
             const tipoPagoInfo = await query(
-                'SELECT aplicaSaldo FROM tiposdepago WHERE id = ? AND codigoEmpresa = ?',
+                'SELECT id FROM tiposdepago WHERE id = ? AND codigoEmpresa = ?',
                 [tipoPago, req.user.codigoEmpresa]
             );
 
@@ -603,25 +605,34 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
             }
 
             const pedidoData = pedido[0];
-            const aplicaSaldo = tipoPagoInfo[0].aplicaSaldo;
-            const saldoPedido = aplicaSaldo ? pedidoData.total : 0;
-
-            // Actualizar el pedido con todos los datos de entrega
-            await query(
-                'UPDATE pedidos SET estado = ?, codigoVendedorEntrega = ?, tipoPago = ?, saldo = ?, FechaEntrega = NOW() WHERE codigo = ? AND codigoEmpresa = ?',
-                [estado, req.user.vendedorId, tipoPago, saldoPedido, req.params.id, req.user.codigoEmpresa]
-            );
-
-            // Si aplica saldo, actualizar el saldo del cliente
-            if (aplicaSaldo && saldoPedido > 0) {
-                await query(
-                    'UPDATE clientes SET saldo = saldo + ? WHERE codigo = ? AND codigoEmpresa = ?',
-                    [saldoPedido, pedidoData.codigoCliente, req.user.codigoEmpresa]
-                );
-                console.log(`💰 Saldo actualizado para cliente ${pedidoData.codigoCliente}: +${saldoPedido}`);
+            const totalPedidoNum = parseFloat(pedidoData.total) || 0;
+            let montoCobradoNum = parseFloat(req.body.montoCobrado);
+            if (!Number.isFinite(montoCobradoNum) || montoCobradoNum < 0) {
+                montoCobradoNum = 0;
             }
+            const saldoPedidoRow = totalPedidoNum - montoCobradoNum;
 
-            console.log(`📦 Pedido ${req.params.id} entregado - Tipo pago: ${tipoPago}, Aplica saldo: ${aplicaSaldo}, Saldo: ${saldoPedido}`);
+            await transaction(async (tq) => {
+                await tq(
+                    'UPDATE pedidos SET estado = ?, codigoVendedorEntrega = ?, tipoPago = ?, saldo = ?, FechaEntrega = NOW() WHERE codigo = ? AND codigoEmpresa = ?',
+                    [estado, req.user.vendedorId, tipoPago, saldoPedidoRow, req.params.id, req.user.codigoEmpresa]
+                );
+                await tq(
+                    'UPDATE clientes SET saldo = saldo + ? - ? WHERE codigo = ? AND codigoEmpresa = ?',
+                    [totalPedidoNum, montoCobradoNum, pedidoData.codigoCliente, req.user.codigoEmpresa]
+                );
+                if (montoCobradoNum > 0) {
+                    const codigoCobro = Date.now().toString().slice(-6) + String(pedidoData.codigoCliente).padStart(3, '0');
+                    await tq(
+                        'INSERT INTO cobros (codigo, codigoCliente, codigoVendedor, codigoEmpresa, total, pagoTipo, fechaCobro) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                        [codigoCobro, pedidoData.codigoCliente, req.user.vendedorId, req.user.codigoEmpresa, montoCobradoNum, tipoPago]
+                    );
+                }
+            });
+
+            console.log(
+                `📦 Pedido ${req.params.id} entregado (PUT estado) — tipoPago: ${tipoPago}, montoCobrado: ${montoCobradoNum}, total: ${totalPedidoNum}`
+            );
         } else {
             // Si el nuevo estado es "anulado", verificar si debemos devolver stock
             if (estado === 'anulado') {
@@ -854,9 +865,8 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
 
         console.log('✅ Pedido válido para entrega');
 
-        // Obtener información del tipo de pago
         const tipoPagoInfo = await query(
-            'SELECT id, pago, aplicaSaldo FROM tiposdepago WHERE id = ? AND codigoEmpresa = ?',
+            'SELECT id, pago FROM tiposdepago WHERE id = ? AND codigoEmpresa = ?',
             [tipoPago, req.user.codigoEmpresa]
         );
 
@@ -865,75 +875,11 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
         }
 
         const tipoPagoData = tipoPagoInfo[0];
-        console.log('💳 TIPO DE PAGO CONSULTADO:');
-        console.log(`   📋 ID: ${tipoPagoData.id}`);
-        console.log(`   💳 Nombre: ${tipoPagoData.pago}`);
-        console.log(`   💰 aplicaSaldo raw:`, tipoPagoData.aplicaSaldo);
-        console.log(`   💰 aplicaSaldo tipo:`, typeof tipoPagoData.aplicaSaldo);
-
-        // Función helper para convertir aplicaSaldo
-        function convertirAplicaSaldo(valor) {
-            console.log('🔄 CONVIRTIENDO aplicaSaldo:');
-            console.log(`   📝 Valor recibido:`, valor);
-            console.log(`   📝 Tipo:`, typeof valor);
-
-            if (valor === null || valor === undefined) {
-                console.log(`   ❌ Valor es null/undefined, retornando false`);
-                return false;
-            }
-
-            if (typeof valor === 'object' && valor.type === 'Buffer') {
-                // Es un Buffer de MySQL BIT
-                const resultado = valor.data[0] === 1;
-                console.log(`   🔄 Es Buffer, data[0]: ${valor.data[0]}, resultado: ${resultado}`);
-                return resultado;
-            } else if (typeof valor === 'number') {
-                // Es un número
-                const resultado = valor === 1;
-                console.log(`   🔄 Es número, valor: ${valor}, resultado: ${resultado}`);
-                return resultado;
-            } else if (typeof valor === 'string') {
-                // Es un string
-                const resultado = parseInt(valor) === 1;
-                console.log(`   🔄 Es string, valor: "${valor}", resultado: ${resultado}`);
-                return resultado;
-            } else if (typeof valor === 'boolean') {
-                // Es un boolean
-                console.log(`   🔄 Es boolean, valor: ${valor}`);
-                return valor;
-            }
-
-            console.log(`   ❌ Tipo no reconocido, retornando false`);
-            return false;
-        }
-
-        // Verificación adicional
-        if (tipoPagoData.aplicaSaldo && typeof tipoPagoData.aplicaSaldo === 'object' && tipoPagoData.aplicaSaldo.type === 'Buffer') {
-            console.log(`   🔍 VERIFICACIÓN ADICIONAL: Buffer data[0] = ${tipoPagoData.aplicaSaldo.data[0]}`);
-            if (tipoPagoData.aplicaSaldo.data[0] === 1) {
-                console.log(`   ✅ Confirmado: aplicaSaldo debería ser true`);
-            } else {
-                console.log(`   ❌ Confirmado: aplicaSaldo debería ser false`);
-            }
-        }
-
-        // Forzar conversión directa para Buffer de MySQL
-        let aplicaSaldo = false;
-        if (tipoPagoData.aplicaSaldo && typeof tipoPagoData.aplicaSaldo === 'object') {
-            // Es un Buffer de MySQL
-            aplicaSaldo = tipoPagoData.aplicaSaldo[0] === 1;
-            console.log(`   🔄 Conversión directa: Buffer[0] = ${tipoPagoData.aplicaSaldo[0]}, resultado = ${aplicaSaldo}`);
-        } else {
-            console.log(`   ❌ No es Buffer, usando conversión por función`);
-            aplicaSaldo = convertirAplicaSaldo(tipoPagoData.aplicaSaldo);
-        }
-
-        console.log(`   💰 aplicaSaldo final: ${aplicaSaldo}`);
+        console.log('💳 TIPO DE PAGO CONSULTADO:', tipoPagoData.pago, `(ID: ${tipoPago})`);
 
         console.log('🚚 DATOS DE ENTREGA:');
         console.log(`   📋 Pedido: ${pedidoId}`);
         console.log(`   💳 Tipo de pago: ${tipoPagoData.pago} (ID: ${tipoPago})`);
-        console.log(`   💰 Aplica saldo: ${aplicaSaldo}`);
         console.log(`   💵 Total pedido: $${totalPedidoNum}`);
         console.log(`   🔄 Retornables: ${totalRetornables} total, ${retornablesDevueltos} devueltos`);
 
@@ -942,7 +888,6 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
             console.log('🔄 INICIANDO TRANSACCIÓN...');
             console.log(`   📋 Pedido: ${pedidoId}`);
             console.log(`   👤 Cliente: ${clienteId}`);
-            console.log(`   💰 Aplica saldo: ${aplicaSaldo}`);
             console.log(`   💵 Total pedido: ${totalPedidoNum}`);
             console.log(`   🔄 Retornables: ${totalRetornables} total, ${retornablesDevueltos} devueltos`);
 
@@ -958,8 +903,8 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
 
             // 1. Marcar pedido como entregado
             await transactionQuery(
-                'UPDATE pedidos SET estado = "entregad", fechaEntrega = NOW() WHERE codigo = ?',
-                [pedidoId]
+                'UPDATE pedidos SET estado = "entregad", fechaEntrega = NOW(), tipoPago = ?, codigoVendedorEntrega = ? WHERE codigo = ?',
+                [tipoPago, req.user.vendedorId, pedidoId]
             );
             console.log('✅ Pedido marcado como entregado');
 
@@ -989,26 +934,8 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 console.log('📍 Evento GPS de entrega registrado');
             }
 
-            // 2. Procesar pago
-            if (aplicaSaldo) {
-                console.log(`💳 PROCESANDO CUENTA CORRIENTE...`);
-                console.log(`   💰 Sumando $${totalPedidoNum} al saldo del cliente ${clienteId}`);
-
-                // Cuenta corriente: sumar al saldo del cliente
-                const resultadoSaldo = await transactionQuery(
-                    'UPDATE clientes SET saldo = saldo + ? WHERE codigo = ?',
-                    [totalPedidoNum, clienteId]
-                );
-                console.log(`   ✅ Resultado UPDATE saldo:`, resultadoSaldo);
-
-                // Verificar saldo después de la actualización
-                const clienteDespuesSaldo = await transactionQuery(
-                    'SELECT saldo, COALESCE(retornables, 0) as retornables FROM clientes WHERE codigo = ?',
-                    [clienteId]
-                );
-                console.log(`   💳 Saldo después de actualización: $${clienteDespuesSaldo[0]?.saldo || 0}`);
-
-            } else if (pagoConSaldoAFavor && montoCobradoNum === 0) {
+            // 2. Procesar pago (sin rama "cuenta corriente" por tipo: todo pasa por monto cobrado + saldo)
+            if (pagoConSaldoAFavor && montoCobradoNum === 0) {
                 console.log(`💳 PAGO CON SALDO A FAVOR...`);
                 // Usar crédito del cliente para pagar el pedido: saldo = saldo + totalPedido (reduce el crédito)
                 await transactionQuery(
@@ -1018,16 +945,13 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 console.log(`   💰 Crédito aplicado: $${totalPedidoNum} al pedido (saldo del cliente actualizado)`);
 
             } else {
-                console.log(`💰 PROCESANDO PAGO INMEDIATO...`);
-                // Pago inmediato: registrar cobro y descontar del saldo del cliente
+                console.log(`💰 Liquidación: monto cobrado $${montoCobradoNum}, total pedido $${totalPedidoNum}`);
                 const codigoCobro = Date.now().toString().slice(-6) + clienteId.toString().padStart(3, '0');
                 await transactionQuery(
                     'INSERT INTO cobros (codigo, codigoCliente, codigoVendedor, codigoEmpresa, total, pagoTipo, fechaCobro) VALUES (?, ?, ?, ?, ?, ?, NOW())',
                     [codigoCobro, clienteId, req.user.vendedorId, req.user.codigoEmpresa, montoCobradoNum, tipoPago]
                 );
                 console.log(`💰 Cobro registrado: $${montoCobradoNum} (código: ${codigoCobro})`);
-                // El cobro primero paga el pedido; el resto reduce la deuda (o genera crédito)
-                // saldo_nuevo = saldo_viejo + totalPedido - montoCobrado
                 await transactionQuery(
                     'UPDATE clientes SET saldo = saldo + ? - ? WHERE codigo = ?',
                     [totalPedidoNum, montoCobradoNum, clienteId]
@@ -1065,10 +989,9 @@ router.post('/:id/entregar', verifyToken, async (req, res) => {
                 message: 'Pedido entregado correctamente',
                 pedidoId: pedidoId,
                 tipoPago: tipoPago,
-                montoCobrado: aplicaSaldo ? 0 : (pagoConSaldoAFavor ? 0 : montoCobradoNum),
+                montoCobrado: pagoConSaldoAFavor ? 0 : montoCobradoNum,
                 retornablesDevueltos: retornablesDevueltos,
                 retornablesNoDevueltos: totalRetornables - (retornablesDevueltos || 0),
-                aplicaSaldo: aplicaSaldo,
                 usarSaldoAFavor: pagoConSaldoAFavor
             };
         });

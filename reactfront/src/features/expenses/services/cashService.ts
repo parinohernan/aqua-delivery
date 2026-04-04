@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+import apiClient from '@/services/api/client';
 
 export interface CashSession {
   id: number;
@@ -22,36 +20,25 @@ export interface CashSummary {
   estado: string;
 }
 
+/** Usa el mismo baseURL que el resto de la app (red local, proxy, producción). */
 export const cashService = {
   async getActiveSession(): Promise<{ active: boolean; session?: CashSession }> {
-    const token = localStorage.getItem('token');
-    const { data } = await axios.get(`${API_URL}/api/caja/active`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return data;
+    return apiClient.get('/api/caja/active');
   },
 
   async openSession(montoInicial: number): Promise<{ success: boolean; id: number }> {
-    const token = localStorage.getItem('token');
-    const { data } = await axios.post(`${API_URL}/api/caja/open`, { montoInicial }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return data;
+    return apiClient.post('/api/caja/open', { montoInicial });
   },
 
   async getSummary(sessionId: number): Promise<CashSummary> {
-    const token = localStorage.getItem('token');
-    const { data } = await axios.get(`${API_URL}/api/caja/summary/${sessionId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return data;
+    return apiClient.get(`/api/caja/summary/${sessionId}`);
   },
 
-  async closeSession(payload: { sessionId: number; montoRealEntregado: number; montoFinalEsperado: number }): Promise<{ success: boolean }> {
-    const token = localStorage.getItem('token');
-    const { data } = await axios.post(`${API_URL}/api/caja/close`, payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return data;
-  }
+  async closeSession(payload: {
+    sessionId: number;
+    montoRealEntregado: number;
+    montoFinalEsperado: number;
+  }): Promise<{ success: boolean }> {
+    return apiClient.post('/api/caja/close', payload);
+  },
 };

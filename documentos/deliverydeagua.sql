@@ -153,7 +153,7 @@ CREATE TABLE `productos` (
 DROP TABLE IF EXISTS `tiposdepago`;
 CREATE TABLE `tiposdepago` (
   `codigoEmpresa` int(11) NOT NULL,
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `pago` varchar(20) NOT NULL,
   `aplicaSaldo` bit(1) NOT NULL,
   PRIMARY KEY (`id`)

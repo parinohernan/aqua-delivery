@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "build": "echo 'No build step required for Node.js backend'",
     "test": "echo 'No tests configured'",
-    "migrate:startnow": "node scripts/migrate-startnow-pending.js"
+    "migrate:startnow": "node scripts/migrate-startnow-pending.js",
+    "migrate:tiposdepago": "node scripts/migrate-tiposdepago-autoincrement.js"
   },
   "engines": {
     "node": ">=18.0.0",

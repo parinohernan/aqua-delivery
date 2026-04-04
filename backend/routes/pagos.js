@@ -71,11 +71,16 @@ router.post('/', verifyToken, async (req, res) => {
 router.post('/cliente', verifyToken, async (req, res) => {
     try {
         const { clienteId, tipoPagoId, monto, observaciones, retornablesDevueltos } = req.body;
+
+        const montoNum = parseFloat(monto);
+        if (!Number.isFinite(montoNum) || montoNum < 0) {
+            return res.status(400).json({ error: 'Monto inválido' });
+        }
         
         console.log('💰 Procesando pago directo a cliente:', {
             clienteId,
             tipoPagoId,
-            monto,
+            monto: montoNum,
             observaciones,
             retornablesDevueltos: retornablesDevueltos || 0,
             empresa: req.user.codigoEmpresa
@@ -91,10 +96,10 @@ router.post('/cliente', verifyToken, async (req, res) => {
             return res.status(404).json({ error: 'Cliente no encontrado' });
         }
         
-        // Verificar que el tipo de pago existe y NO aplica saldo
+        // Verificar que el tipo de pago existe en la empresa y NO aplica saldo
         const tipoPago = await query(
-            'SELECT * FROM tiposdepago WHERE id = ?',
-            [tipoPagoId]
+            'SELECT * FROM tiposdepago WHERE id = ? AND codigoEmpresa = ?',
+            [tipoPagoId, req.user.codigoEmpresa]
         );
         
         if (tipoPago.length === 0) {
@@ -121,13 +126,13 @@ router.post('/cliente', verifyToken, async (req, res) => {
         
         // Obtener saldo actual del cliente
         const saldoActual = parseFloat(cliente[0].saldo || 0);
-        const nuevoSaldo = saldoActual - monto;
+        const nuevoSaldo = saldoActual - montoNum;
         // Si retornablesADevolver es negativo, significa que el cliente entrega más de los que debe (queda a favor)
         const nuevosRetornables = retornablesActuales - retornablesADevolver;
         
         console.log('💰 Cálculo de saldo y retornables:', {
             saldoActual,
-            monto,
+            monto: montoNum,
             nuevoSaldo,
             retornablesActuales,
             retornablesADevolver,
@@ -170,8 +175,25 @@ router.post('/cliente', verifyToken, async (req, res) => {
             
             await transactionQuery(
                 'INSERT INTO pagos (clienteId, monto, metodoPago, observaciones, fechaPago) VALUES (?, ?, ?, ?, NOW())',
-                [clienteId, monto, tipoPago[0].pago, observacionesCompletas || null]
+                [clienteId, montoNum, tipoPago[0].pago, observacionesCompletas || null]
             );
+
+            // Misma trazabilidad que en entrega: caja / resumen suman `cobros`
+            if (montoNum > 0) {
+                const codigoCobro = Date.now().toString().slice(-6) + String(clienteId).padStart(3, '0');
+                await transactionQuery(
+                    'INSERT INTO cobros (codigo, codigoCliente, codigoVendedor, codigoEmpresa, total, pagoTipo, fechaCobro) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                    [
+                        codigoCobro,
+                        clienteId,
+                        req.user.vendedorId,
+                        req.user.codigoEmpresa,
+                        montoNum,
+                        tipoPagoId,
+                    ]
+                );
+                console.log(`💰 Cobro registrado en caja (tabla cobros): $${montoNum} cliente ${clienteId}`);
+            }
         });
         
         console.log('✅ Pago procesado exitosamente');
@@ -180,7 +202,7 @@ router.post('/cliente', verifyToken, async (req, res) => {
             success: true,
             message: 'Pago registrado exitosamente',
             clienteNombre: `${cliente[0].nombre} ${cliente[0].apellido || ''}`.trim(),
-            monto: monto,
+            monto: montoNum,
             tipoPago: tipoPago[0].pago,
             saldoAnterior: saldoActual,
             nuevoSaldo: nuevoSaldo,

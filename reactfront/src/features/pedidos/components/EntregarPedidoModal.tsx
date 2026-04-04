@@ -53,18 +53,20 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
     }
   }, [isOpen, pedido]);
 
-  // Actualizar monto cobrado cuando cambia el tipo de pago
   useEffect(() => {
-    if (selectedTipoPago && tiposPago.length > 0) {
-      const tipoPago = tiposPago.find(t => t.id === Number(selectedTipoPago));
-      if (tipoPago) {
-        const aplicaSaldo = tiposPagoService.convertirAplicaSaldo(tipoPago.aplicaSaldo);
-        if (aplicaSaldo) {
-          setMontoCobrado('0');
-        } else if (pedido && (!montoCobrado || montoCobrado === '0.00')) {
-          setMontoCobrado((Number(pedido.total) || 0).toFixed(2));
-        }
-      }
+    if (selectedTipoPago === '') return;
+    const ok = tiposPago.some((t) => t.id === Number(selectedTipoPago));
+    if (!ok) setSelectedTipoPago('');
+  }, [tiposPago, selectedTipoPago]);
+
+  // Sugerir total del pedido al cambiar de medio (si el monto sigue vacío o en cero)
+  useEffect(() => {
+    if (!selectedTipoPago || tiposPago.length === 0 || !pedido) return;
+    const exists = tiposPago.some((t) => t.id === Number(selectedTipoPago));
+    if (!exists) return;
+    const emptyish = !montoCobrado || montoCobrado === '0' || montoCobrado === '0.00';
+    if (emptyish) {
+      setMontoCobrado((Number(pedido.total) || 0).toFixed(2));
     }
   }, [selectedTipoPago, tiposPago, pedido, montoCobrado]);
 
@@ -134,8 +136,17 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
         console.log('📊 Cantidad de tipos de pago:', tiposPagoData?.length || 0);
         
         if (tiposPagoData && tiposPagoData.length > 0) {
-          setTiposPago(tiposPagoData);
-          setError(null);
+          const paraEntrega = tiposPagoData.filter(
+            (t) => !tiposPagoService.convertirAplicaSaldo(t.aplicaSaldo)
+          );
+          setTiposPago(paraEntrega);
+          if (paraEntrega.length === 0) {
+            setError(
+              'No hay medios de pago para entrega: todos los tipos están marcados como "aplica saldo". Usá solo efectivo/transferencia u otros inmediatos, o desmarcá esa opción en configuración de tipos de pago.'
+            );
+          } else {
+            setError(null);
+          }
         } else {
           console.warn('⚠️ No se recibieron tipos de pago o el array está vacío');
           setError('No se encontraron tipos de pago disponibles.');
@@ -164,16 +175,6 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
   const getSelectedTipoPago = (): TipoPago | null => {
     if (!selectedTipoPago) return null;
     return tiposPago.find(t => t.id === Number(selectedTipoPago)) || null;
-  };
-
-  const aplicaSaldo = (): boolean => {
-    const tipoPago = getSelectedTipoPago();
-    if (!tipoPago) return false;
-    return tiposPagoService.convertirAplicaSaldo(tipoPago.aplicaSaldo);
-  };
-
-  const showMontoCobrado = (): boolean => {
-    return !aplicaSaldo();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -211,7 +212,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
       const monto = parseFloat(montoCobrado) || 0;
       const totalPedidoNum = Number(pedido.total) || 0;
 
-      const pagoConSaldoAFavor = showMontoCobrado() && usarSaldoAFavor;
+      const pagoConSaldoAFavor = usarSaldoAFavor;
       const pos = await getCurrentPositionOnce(10000);
       const entregaData: {
         tipoPago: number;
@@ -224,7 +225,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
         longitud?: number;
       } = {
         tipoPago: tipoPagoId,
-        montoCobrado: aplicaSaldo() ? 0 : (pagoConSaldoAFavor ? 0 : monto),
+        montoCobrado: pagoConSaldoAFavor ? 0 : monto,
         retornablesDevueltos: retornablesDevueltosNum,
         totalRetornables: totalRetornables,
         totalPedido: totalPedidoNum,
@@ -423,14 +424,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
                 <option value="" className="bg-[#0f1b2e]">
                   {isLoading ? 'Cargando tipos de pago...' : tiposPago.length === 0 ? 'No hay tipos de pago disponibles' : 'Seleccionar tipo de pago...'}
                 </option>
-                {tiposPago.map((tipo) => {
-                  const aplicaSaldo = tiposPagoService.convertirAplicaSaldo(tipo.aplicaSaldo);
-                  return (
-                    <option key={tipo.id} value={tipo.id} className="bg-[#0f1b2e]">
-                      {tipo.pago || tipo.nombre}{aplicaSaldo ? ' (Aplica saldo)' : ''}
-                    </option>
-                  );
-                })}
+                {tiposPago.map((tipo) => (
+                  <option key={tipo.id} value={tipo.id} className="bg-[#0f1b2e]">
+                    {tipo.pago || tipo.nombre}
+                  </option>
+                ))}
               </select>
               {tiposPago.length === 0 && !isLoading && (
                 <p className="mt-1 text-xs text-red-300">
@@ -439,9 +437,8 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
               )}
             </div>
 
-            {/* Monto Cobrado (solo si no aplica saldo) */}
-            {showMontoCobrado() && (
-              <div>
+            {/* Monto cobrado en el acto: 0 = todo queda en cuenta del cliente */}
+            <div>
                 {tieneSaldoAFavor && (
                   <label className="flex items-center gap-2 mb-3 p-3 bg-emerald-500/20 border border-emerald-500/50 rounded-lg cursor-pointer">
                     <input
@@ -495,11 +492,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
                 </div>
                 {!usarSaldoAFavor && (
                   <p className="mt-1 text-xs text-white/60">
-                    Ingreso manual. Total del pedido: {formatCurrency(totalPedido)}.
+                    Total del pedido: {formatCurrency(totalPedido)}. Podés cobrar menos (queda diferencia en cuenta) o más (vuelto / crédito). Con{' '}
+                    <strong className="text-white/80">0</strong> no ingresa efectivo: todo el pedido suma al saldo del cliente.
                   </p>
                 )}
               </div>
-            )}
 
             {/* Retornables (solo si hay productos retornables) */}
             {totalRetornables > 0 && (
@@ -544,16 +541,7 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
               <div className="p-4 bg-green-500/20 border border-green-500/50 rounded-lg backdrop-blur-sm">
                 <h5 className="font-semibold text-white mb-3">📋 Resumen de Entrega</h5>
                 <div className="space-y-2 text-sm text-white/90">
-                  {aplicaSaldo() ? (
-                    <>
-                      <div>
-                        <strong>💳 Pago:</strong> {tipoPago?.pago || tipoPago?.nombre} - Se aplicará a cuenta corriente
-                      </div>
-                      <div>
-                        <strong>💰 Monto:</strong> {formatCurrency(totalPedido)} (se sumará al saldo del cliente)
-                      </div>
-                    </>
-                  ) : usarSaldoAFavor ? (
+                  {usarSaldoAFavor ? (
                     <>
                       <div>
                         <strong>💳 Pago:</strong> {tipoPago?.pago || tipoPago?.nombre} - Con saldo a favor

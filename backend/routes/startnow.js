@@ -315,8 +315,8 @@ router.post('/confirm', confirmLimiter, async (req, res) => {
       );
 
       await tq(
-        `INSERT INTO tiposdepago (codigoEmpresa, pago, aplicaSaldo) VALUES (?, ?, ?), (?, ?, ?)`,
-        [codigoEmpresa, 'Contado', 0, codigoEmpresa, 'Cta cte', 1]
+        `INSERT INTO tiposdepago (codigoEmpresa, pago, aplicaSaldo) VALUES (?, ?, ?)`,
+        [codigoEmpresa, 'Contado', 0]
       );
 
       await tq(`DELETE FROM startnow_pending WHERE email = ?`, [emailNorm]);
@@ -341,6 +341,12 @@ router.post('/confirm', confirmLimiter, async (req, res) => {
       return res.status(503).json({
         error:
           'Falta la tabla startnow_pending. En el servidor backend: npm run migrate:startnow',
+      });
+    }
+    if (error.code === 'ER_NO_DEFAULT_FOR_FIELD' && String(error.sqlMessage || '').includes('id')) {
+      return res.status(503).json({
+        error:
+          'Base de datos desactualizada: tiposdepago.id debe ser AUTO_INCREMENT. En el servidor: npm run migrate:tiposdepago',
       });
     }
     console.error('[startnow] confirm:', error);

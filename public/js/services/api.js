@@ -123,10 +123,14 @@ class ApiService {
         });
     }
 
-    async updatePedidoEstado(id, estado, tipoPago = null) {
+    async updatePedidoEstado(id, estado, tipoPago = null, montoCobrado = undefined) {
+        const body = { estado, tipoPago };
+        if (montoCobrado !== undefined && montoCobrado !== null) {
+            body.montoCobrado = montoCobrado;
+        }
         return this.request(`/pedidos/${id}/estado`, {
             method: 'PUT',
-            body: { estado, tipoPago }
+            body
         });
     }
 

@@ -461,25 +461,23 @@ const PedidosComponent = {
         if (!pedido) return;
 
         // Generar opciones de tipos de pago
-        const opcionesTipoPago = this.tiposPago.map(tipo => {
-            const aplicaSaldo = this.convertirAplicaSaldo(tipo.aplicaSaldo);
-            return `<option value="${tipo.id}">${tipo.pago}${aplicaSaldo ? ' (Aplica saldo)' : ''}</option>`;
-        }).join('');
+        const tiposEntrega = this.tiposPago.filter((tipo) => !this.convertirAplicaSaldo(tipo.aplicaSaldo));
+        const opcionesTipoPago = tiposEntrega.map((tipo) => `<option value="${tipo.id}">${tipo.pago}</option>`).join('');
+        const totalPedido = Number(pedido.total) || 0;
 
         const modalContent = `
             <form id="entregaForm" onsubmit="PedidosComponent.procesarEntrega(event, ${id})">
                 <div class="form-group">
                     <label class="form-label">Tipo de Pago *</label>
-                    <select id="tipoPagoSelect" name="tipoPago" required class="form-select" onchange="PedidosComponent.actualizarInfoTipoPago()">
+                    <select id="tipoPagoSelect" name="tipoPago" required class="form-select">
                         <option value="">Seleccionar tipo de pago...</option>
-                        ${opcionesTipoPago}
+                        ${opcionesTipoPago || '<option value="" disabled>No hay medios inmediatos configurados</option>'}
                     </select>
                 </div>
-
-                <div id="infoTipoPago" class="bg-blue-50 p-3 rounded-lg mb-4" style="display: none;">
-                    <p class="text-sm text-blue-800">
-                        <strong>Nota:</strong> <span id="textoInfoTipoPago"></span>
-                    </p>
+                <div class="form-group">
+                    <label class="form-label">Monto cobrado ahora *</label>
+                    <input type="number" name="montoCobrado" id="montoCobradoEntrega" step="0.01" min="0" class="form-input" value="${totalPedido.toFixed(2)}" required />
+                    <p class="text-xs text-gray-600 mt-1">0 = todo queda en cuenta del cliente. Menor al total = parcial + saldo.</p>
                 </div>
 
                 <div class="flex justify-end gap-2">
@@ -497,59 +495,35 @@ const PedidosComponent = {
         ui.showModal('🚚 Entregar Pedido', modalContent);
     },
 
-    actualizarInfoTipoPago() {
-        const tipoPagoId = document.getElementById('tipoPagoSelect').value;
-        const infoDiv = document.getElementById('infoTipoPago');
-        const textoInfo = document.getElementById('textoInfoTipoPago');
-
-        if (!tipoPagoId) {
-            infoDiv.style.display = 'none';
-            return;
-        }
-
-        const tipoPago = this.tiposPago.find(t => t.id == tipoPagoId);
-        if (tipoPago) {
-            const aplicaSaldo = this.convertirAplicaSaldo(tipoPago.aplicaSaldo);
-
-            if (aplicaSaldo) {
-                textoInfo.textContent = 'Este tipo de pago agregará el importe total al saldo del cliente.';
-                infoDiv.className = 'bg-blue-50 p-3 rounded-lg mb-4';
-            } else {
-                textoInfo.textContent = 'Este es un pago inmediato, no se agregará saldo al cliente.';
-                infoDiv.className = 'bg-green-50 p-3 rounded-lg mb-4';
-            }
-            infoDiv.style.display = 'block';
-        }
-    },
-
     async procesarEntrega(event, id) {
         event.preventDefault();
 
         const formData = new FormData(event.target);
         const tipoPagoId = formData.get('tipoPago');
+        const montoRaw = formData.get('montoCobrado');
+        const montoCobrado = montoRaw === '' || montoRaw == null ? 0 : parseFloat(montoRaw);
 
         if (!tipoPagoId) {
             ui.showToast('Debe seleccionar un tipo de pago', 'error');
             return;
         }
 
+        if (!Number.isFinite(montoCobrado) || montoCobrado < 0) {
+            ui.showToast('Monto cobrado inválido', 'error');
+            return;
+        }
+
         try {
             ui.showLoading('Procesando entrega...');
 
-            // Obtener información del tipo de pago seleccionado
             const tipoPago = this.tiposPago.find(t => t.id == tipoPagoId);
-            const aplicaSaldo = tipoPago ? this.convertirAplicaSaldo(tipoPago.aplicaSaldo) : false;
 
-            // Actualizar estado usando la API (solo enviamos el ID del tipo de pago)
-            await api.updatePedidoEstado(id, 'entregad', tipoPagoId);
+            await api.updatePedidoEstado(id, 'entregad', tipoPagoId, montoCobrado);
 
             ui.hideLoading();
             ui.closeModal();
 
-            const mensaje = aplicaSaldo ?
-                'Pedido entregado correctamente. Saldo actualizado en cuenta corriente.' :
-                'Pedido entregado correctamente.';
-            ui.showToast(mensaje, 'success');
+            ui.showToast('Pedido entregado correctamente.', 'success');
 
             // Emitir evento de pedido actualizado
             if (window.eventBus && window.EVENTS) {
@@ -557,7 +531,7 @@ const PedidosComponent = {
                     pedidoId: id,
                     nuevoEstado: 'entregad',
                     tipoPago: tipoPago,
-                    aplicaSaldo: aplicaSaldo
+                    montoCobrado
                 });
             }
 
