@@ -4,6 +4,25 @@ import { vendedoresService } from '@/features/gps/services/vendedoresService';
 import type { Expense, ExpenseType, Vehicle, CreateExpensePayload } from '../types';
 import type { VendedorLista } from '@/types/entities';
 
+/** El PUT suele devolver `expense_types` solo con `detail_table`; preservamos el join completo de la lista. */
+function coalesceExpenseForList(prev: Expense, next: Expense): Expense {
+  const nt = next.expense_types;
+  const nextHasFullType =
+    nt &&
+    typeof nt === 'object' &&
+    'name' in nt &&
+    typeof (nt as ExpenseType).name === 'string' &&
+    (nt as ExpenseType).name.length > 0;
+  return {
+    ...prev,
+    ...next,
+    expense_types: nextHasFullType ? nt : prev.expense_types,
+    expense_documents: next.expense_documents ?? prev.expense_documents,
+    vehicles: next.vehicles !== undefined ? next.vehicles : prev.vehicles,
+    detail: next.detail !== undefined ? next.detail : prev.detail,
+  };
+}
+
 interface ExpensesFilters {
   search: string;
   type: string;      // expense_type slug
@@ -28,7 +47,7 @@ interface ExpensesState {
   filters: ExpensesFilters;
 
   // Actions
-  loadExpenses: () => Promise<void>;
+  loadExpenses: (opts?: { silent?: boolean }) => Promise<void>;
   loadExpenseTypes: () => Promise<void>;
   loadVehicles: () => Promise<void>;
   loadVendedoresFilter: () => Promise<void>;
@@ -59,8 +78,9 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
   error: null,
   filters: initialFilters,
 
-  loadExpenses: async () => {
-    set({ isLoading: true, error: null });
+  loadExpenses: async (opts) => {
+    const silent = Boolean(opts?.silent);
+    if (!silent) set({ isLoading: true, error: null });
     try {
       const { filters } = get();
       const expenses = await expensesService.getAll({
@@ -76,7 +96,7 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
       const msg = error instanceof Error ? error.message : 'Error loading expenses';
       set({ error: msg });
     } finally {
-      set({ isLoading: false });
+      if (!silent) set({ isLoading: false });
     }
   },
 
@@ -110,7 +130,7 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
   createExpense: async (data) => {
     try {
       const expense = await expensesService.create(data);
-      await get().loadExpenses();
+      await get().loadExpenses({ silent: true });
       return expense;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Error creating expense';
@@ -121,8 +141,13 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
 
   updateExpense: async (id, data) => {
     try {
-      await expensesService.update(id, data);
-      await get().loadExpenses();
+      const updated = await expensesService.update(id, data);
+      set((state) => ({
+        expenses: state.expenses.map((e) =>
+          String(e.id) === String(id) ? coalesceExpenseForList(e, updated) : e
+        ),
+      }));
+      await get().loadExpenses({ silent: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Error updating expense';
       set({ error: msg });
@@ -133,7 +158,7 @@ export const useExpensesStore = create<ExpensesState>((set, get) => ({
   deleteExpense: async (id) => {
     try {
       await expensesService.delete(id);
-      await get().loadExpenses();
+      await get().loadExpenses({ silent: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Error deleting expense';
       set({ error: msg });

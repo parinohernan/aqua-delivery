@@ -1,4 +1,5 @@
-import apiClient from '@/services/api/client';
+import apiClient, { getApiBaseUrl } from '@/services/api/client';
+import { endpoints } from '@/services/api/endpoints';
 import { API_ENDPOINTS } from '@/utils/constants';
 import type { Expense, ExpenseType, Vehicle, VehicleStats, CreateExpensePayload, ExpenseDocument } from '../types';
 
@@ -63,12 +64,46 @@ export const expensesService = {
     return response.data;
   },
 
-  async uploadDocuments(expenseId: string, files: { file_name: string; file_type: string; base64: string }[]): Promise<ExpenseDocument[]> {
+  async uploadDocuments(
+    expenseId: string,
+    files: { file_name: string; file_type: string; base64?: string; public_url?: string }[]
+  ): Promise<ExpenseDocument[]> {
     const response = await apiClient.post<ApiResponse<ExpenseDocument[]>>(
       `${API_ENDPOINTS.EXPENSES}/${expenseId}/documents`,
       { files }
     );
     return response.data;
+  },
+
+  /**
+   * Sube imagen de comprobante a Cloudinary (misma idea que productos).
+   */
+  async uploadExpenseImage(file: File): Promise<{ imageURL: string }> {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No se encontró sesión. Inicie sesión de nuevo.');
+    }
+
+    const base = getApiBaseUrl();
+    const url = `${base || ''}${endpoints.uploadExpenseImage()}`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    const data = (await res.json()) as { error?: string; imageURL?: string };
+    if (!res.ok) {
+      throw new Error(data.error || 'Error al subir la imagen');
+    }
+    if (!data.imageURL) {
+      throw new Error('Respuesta inválida del servidor');
+    }
+    return { imageURL: data.imageURL };
   },
 
   async deleteDocument(expenseId: string, docId: string): Promise<void> {

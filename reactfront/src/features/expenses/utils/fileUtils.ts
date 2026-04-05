@@ -111,6 +111,33 @@ export async function prepareExpenseDocumentUpload(file: File): Promise<{
 }
 
 /**
+ * Imagen lista para subir por multipart (Cloudinary): JPEG comprimido como en prepareExpenseDocumentUpload.
+ */
+export async function prepareImageFileForExpenseUpload(file: File): Promise<File> {
+  const isRasterImage =
+    file.type.startsWith('image/') && file.type !== 'image/svg+xml';
+
+  if (!isRasterImage) {
+    return file;
+  }
+
+  try {
+    const base64 = await compressRasterImageToJpegBase64(
+      file,
+      RECEIPT_IMAGE_MAX_EDGE,
+      RECEIPT_JPEG_QUALITY
+    );
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const baseName = file.name.replace(/\.[^/.]+$/, '') || 'comprobante';
+    return new File([bytes], `${baseName}.jpg`, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
+/**
  * Genera una URL local para previsualización
  */
 export const getFilePreview = (file: File): string => {

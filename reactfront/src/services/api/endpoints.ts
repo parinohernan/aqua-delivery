@@ -16,6 +16,7 @@ export const endpoints = {
   productos: () => API_ENDPOINTS.PRODUCTOS,
   producto: (id: number) => `${API_ENDPOINTS.PRODUCTOS}/${id}`,
   uploadProductImage: () => API_ENDPOINTS.UPLOAD_PRODUCT_IMAGE,
+  uploadExpenseImage: () => API_ENDPOINTS.UPLOAD_EXPENSE_IMAGE,
   
   // Pedidos
   pedidos: () => API_ENDPOINTS.PEDIDOS,

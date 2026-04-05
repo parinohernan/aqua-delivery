@@ -34,6 +34,23 @@ function ordenCodigosIguales(a: ClienteConOrden[], b: ClienteConOrden[]): boolea
   return a.every((row, i) => row.codigoCliente === b[i]?.codigoCliente);
 }
 
+/** Actualiza datos de API manteniendo el orden de filas actual (drag local sin guardar). */
+function mergeClientesConOrdenPreserveOrden(
+  prev: ClienteConOrden[],
+  fresh: ClienteConOrden[]
+): ClienteConOrden[] {
+  const byCod = new Map(fresh.map((c) => [c.codigoCliente, c]));
+  const seen = new Set<number>();
+  const merged = prev.map((row) => {
+    const u = byCod.get(row.codigoCliente);
+    seen.add(row.codigoCliente);
+    if (!u) return row;
+    return { ...u, orden: row.orden };
+  });
+  const extra = fresh.filter((c) => !seen.has(c.codigoCliente));
+  return extra.length > 0 ? [...merged, ...extra] : merged;
+}
+
 function pedidoMatchesCliente(p: Pedido, codigoCliente: number): boolean {
   const c = p.codigoCliente ?? p.clienteId;
   if (c === codigoCliente) return true;
@@ -43,11 +60,19 @@ function pedidoMatchesCliente(p: Pedido, codigoCliente: number): boolean {
 }
 
 function getCodigoClienteDesdePedido(p: Pedido): number | null {
-  const c = p.codigoCliente ?? p.clienteId;
-  if (c != null && Number.isFinite(Number(c))) return Number(c);
-  if (p.cliente?.id != null) return Number(p.cliente.id);
-  const cod = (p.cliente as { codigo?: string | number } | undefined)?.codigo;
-  return cod != null && Number.isFinite(Number(cod)) ? Number(cod) : null;
+  const r = p as Record<string, unknown>;
+  const candidates: unknown[] = [
+    p.codigoCliente,
+    p.clienteId,
+    r.codigo_cliente,
+    r.cliente_id,
+    p.cliente?.id,
+    (p.cliente as { codigo?: string | number } | undefined)?.codigo,
+  ];
+  for (const c of candidates) {
+    if (c != null && c !== '' && Number.isFinite(Number(c))) return Number(c);
+  }
+  return null;
 }
 
 function pickPedidoParaEntregar(candidatos: Pedido[]): Pedido | null {
@@ -654,19 +679,28 @@ function RutaOrdenList({ zona, clientes: initialClientes, onSaved }: RutaOrdenLi
         isOpen={entregarPedido !== null}
         pedido={entregarPedido}
         onClose={() => setEntregarPedido(null)}
-        onSuccess={(pedidoEntregado) => {
-          const codigo = getCodigoClienteDesdePedido(pedidoEntregado);
+        onSuccess={(pedidoEntregado, meta) => {
+          const codigo =
+            meta?.clienteId != null && Number.isFinite(Number(meta.clienteId))
+              ? Number(meta.clienteId)
+              : getCodigoClienteDesdePedido(pedidoEntregado);
           if (codigo == null) return;
           setClientes((prev) =>
-            prev.map((c) =>
-              c.codigoCliente === codigo
-                ? {
-                    ...c,
-                    pedidosPendientes: Math.max(0, (c.pedidosPendientes ?? 0) - 1),
-                  }
-                : c
-            )
+            prev.map((c) => {
+              if (c.codigoCliente !== codigo) return c;
+              return {
+                ...c,
+                pedidosPendientes: Math.max(0, (c.pedidosPendientes ?? 0) - 1),
+                ...(meta?.clienteSaldo !== undefined ? { saldo: Number(meta.clienteSaldo) } : {}),
+                ...(meta?.clienteRetornables !== undefined
+                  ? { retornables: Number(meta.clienteRetornables) }
+                  : {}),
+              };
+            })
           );
+          void rutasService.getClientesConOrdenByZona(zona).then((fresh) => {
+            setClientes((prev) => mergeClientesConOrdenPreserveOrden(prev, fresh));
+          });
         }}
       />
 

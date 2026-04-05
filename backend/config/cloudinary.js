@@ -36,6 +36,25 @@ function uploadBufferToCloudinary(buffer, codigoEmpresa) {
   });
 }
 
+/**
+ * Comprobantes de gastos: carpeta gastos/{codigoEmpresa}.
+ * @returns {Promise<{ secure_url: string }>}
+ */
+function uploadExpenseImageBufferToCloudinary(buffer, codigoEmpresa) {
+  const folderPath = `gastos/${codigoEmpresa}`;
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: folderPath, resource_type: 'image' },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+}
+
 configure();
 
 module.exports = {
@@ -43,4 +62,5 @@ module.exports = {
   configure,
   cloudinaryConfigured,
   uploadBufferToCloudinary,
+  uploadExpenseImageBufferToCloudinary,
 };

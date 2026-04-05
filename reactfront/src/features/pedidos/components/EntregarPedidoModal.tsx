@@ -26,8 +26,8 @@ interface EntregarPedidoModalProps {
   isOpen: boolean;
   pedido: Pedido | null;
   onClose: () => void;
-  /** Se llama solo tras entrega exitosa (antes de cerrar), con el pedido entregado. */
-  onSuccess?: (pedido: Pedido) => void;
+  /** Tras entrega exitosa (antes de cerrar). `meta.clienteId` viene del API (fiable en /rutas). */
+  onSuccess?: (pedido: Pedido, meta?: { clienteId?: number; clienteSaldo?: number; clienteRetornables?: number }) => void;
 }
 
 function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPedidoModalProps) {
@@ -253,9 +253,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
         clienteRetornables?: number;
       }>(`${endpoints.pedidos()}/${pedidoIdForUrl}/entregar`, entregaData);
 
+      let clienteIdEntrega: number | undefined;
       if (entregaRes.clienteId != null) {
         const cid = Number(entregaRes.clienteId);
         if (Number.isFinite(cid)) {
+          clienteIdEntrega = cid;
           patchClienteBalances(cid, {
             saldo: entregaRes.clienteSaldo,
             retornables: entregaRes.clienteRetornables,
@@ -266,7 +268,11 @@ function EntregarPedidoModal({ isOpen, pedido, onClose, onSuccess }: EntregarPed
       // Recargar pedidos
       await loadPedidos();
 
-      onSuccess?.(pedido);
+      onSuccess?.(pedido, {
+        clienteId: clienteIdEntrega,
+        clienteSaldo: entregaRes.clienteSaldo,
+        clienteRetornables: entregaRes.clienteRetornables,
+      });
 
       // Cerrar modal
       handleClose();

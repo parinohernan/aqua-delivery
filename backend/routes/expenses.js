@@ -369,8 +369,12 @@ router.delete('/:id', async (req, res) => {
       .eq('expense_id', id);
 
     if (docs && docs.length > 0) {
-      const paths = docs.map(d => d.storage_path);
-      await supabaseAdmin.storage.from('expense-docs').remove(paths);
+      const paths = docs
+        .map((d) => d.storage_path)
+        .filter((p) => p && p !== 'cloudinary');
+      if (paths.length > 0) {
+        await supabaseAdmin.storage.from('expense-docs').remove(paths);
+      }
     }
 
     // 2. Delete expense (cascades to detail tables and documents)
@@ -401,11 +405,21 @@ router.delete('/:id', async (req, res) => {
 // DOCUMENTS SUB-ROUTES
 // ============================================================
 
+function isTrustedCloudinaryReceiptUrl(url) {
+  try {
+    const u = new URL(String(url));
+    return u.protocol === 'https:' && u.hostname.endsWith('res.cloudinary.com');
+  } catch {
+    return false;
+  }
+}
+
 // POST /api/expenses/:id/documents - Upload document(s)
 router.post('/:id/documents', async (req, res) => {
   try {
     const { id } = req.params;
-    const { files } = req.body; // Array of { file_name, file_type, base64 }
+    /** @type {Array<{ file_name: string, file_type?: string, base64?: string, public_url?: string }>} */
+    const { files } = req.body;
 
     if (!files || files.length === 0) {
       return res.status(400).json({ success: false, error: 'No files provided' });
@@ -430,10 +444,41 @@ router.post('/:id/documents', async (req, res) => {
     const uploadedDocs = [];
 
     for (const file of files) {
+      if (file.public_url && typeof file.public_url === 'string') {
+        if (!isTrustedCloudinaryReceiptUrl(file.public_url)) {
+          return res.status(400).json({
+            success: false,
+            error: 'URL de comprobante no válida (solo Cloudinary)',
+          });
+        }
+        const { data: doc, error: docError } = await supabaseAdmin
+          .from('expense_documents')
+          .insert({
+            expense_id: id,
+            file_name: file.file_name || 'comprobante.jpg',
+            file_type: file.file_type || 'image/jpeg',
+            storage_path: 'cloudinary',
+            public_url: file.public_url,
+            file_size: 0,
+          })
+          .select()
+          .single();
+
+        if (docError) throw docError;
+        uploadedDocs.push(doc);
+        continue;
+      }
+
+      if (!file.base64 || typeof file.base64 !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'Cada adjunto requiere base64 o public_url (Cloudinary)',
+        });
+      }
+
       const storagePath = `${expense.user_id}/${id}/${Date.now()}_${file.file_name}`;
       const fileBuffer = Buffer.from(file.base64, 'base64');
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabaseAdmin.storage
         .from('expense-docs')
         .upload(storagePath, fileBuffer, {
@@ -443,12 +488,10 @@ router.post('/:id/documents', async (req, res) => {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: urlData } = supabaseAdmin.storage
         .from('expense-docs')
         .getPublicUrl(storagePath);
 
-      // Insert document record
       const { data: doc, error: docError } = await supabaseAdmin
         .from('expense_documents')
         .insert({
@@ -541,8 +584,9 @@ router.delete('/:id/documents/:docId', async (req, res) => {
       return res.status(403).json({ success: false, error: 'No autorizado' });
     }
 
-    // Delete from Storage
-    await supabaseAdmin.storage.from('expense-docs').remove([doc.storage_path]);
+    if (doc.storage_path && doc.storage_path !== 'cloudinary') {
+      await supabaseAdmin.storage.from('expense-docs').remove([doc.storage_path]);
+    }
 
     // Delete record
     const { error } = await supabaseAdmin

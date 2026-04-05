@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Camera, Image as ImageIcon, Trash2, Loader2, Wallet } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, FileText, Trash2, Loader2, Wallet } from 'lucide-react';
 import { useExpensesStore } from '../stores/expensesStore';
 import { useAuthStore } from '@/stores/authStore';
 import { expensesService } from '../services/expensesService';
-import { getFilePreview, prepareExpenseDocumentUpload } from '../utils/fileUtils';
+import { prepareExpenseDocumentUpload } from '../utils/fileUtils';
 import { ExpenseTypeIconDisplay } from './expenseTypeIcon';
+import { toast } from '@/utils/feedback';
 import type { CreateExpensePayload, Expense } from '../types';
 
 interface Props {
@@ -149,11 +151,28 @@ const inputClass =
   'w-full px-3 py-2.5 bg-[#121225] border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:border-emerald-500/50 transition-colors selection:bg-emerald-500/30';
 const labelClass = 'block text-white/50 text-xs font-medium mb-1';
 
+/** Máximo antes de comprimir (multipart); mismo límite que product-image en API. */
+const MAX_RECEIPT_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+type AttachmentItem =
+  | { kind: 'cloud'; public_url: string; file_name: string; file_type: string }
+  | { kind: 'pdf'; file: File };
+
+function isProbablyImageFile(file: File): boolean {
+  if (file.type.startsWith('image/')) return true;
+  if (!file.type || file.type === 'application/octet-stream') {
+    return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(file.name);
+  }
+  return false;
+}
+
 function ExpenseFormModal({ onClose, expense }: Props) {
-  const { expenseTypes, vehicles, createExpense, updateExpense } = useExpensesStore();
+  const { expenseTypes, vehicles, createExpense, updateExpense, loadExpenses } = useExpensesStore();
   const { user } = useAuthStore();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const expenseImageInputRef = useRef<HTMLInputElement>(null);
+  const expensePdfInputRef = useRef<HTMLInputElement>(null);
 
   const isEditMode = Boolean(expense?.id);
 
@@ -171,8 +190,9 @@ function ExpenseFormModal({ onClose, expense }: Props) {
   });
   const [affectsCashier, setAffectsCashier] = useState(true);
   const [detailData, setDetailData] = useState<Record<string, any>>({});
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [receiptUploadBusy, setReceiptUploadBusy] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   const workingExpense = isEditMode ? loadedExpense : null;
   const selectedType = expenseTypes.find((t) => t.id === selectedTypeId) ?? workingExpense?.expense_types;
@@ -196,12 +216,16 @@ function ExpenseFormModal({ onClose, expense }: Props) {
       setLoadedExpense(null);
       setLoadError(null);
       setLoadingExpense(false);
+      setAttachments([]);
+      setAttachmentError(null);
       return;
     }
 
     let cancelled = false;
     setLoadingExpense(true);
     setLoadError(null);
+    setAttachments([]);
+    setAttachmentError(null);
 
     expensesService
       .getById(expense.id)
@@ -240,10 +264,8 @@ function ExpenseFormModal({ onClose, expense }: Props) {
     } else {
       setDetailData({});
     }
-    setSelectedFiles([]);
-    setPreviews([]);
 
-    setAffectsCashier(Boolean(loadedExpense.affects_cashier)); 
+    setAffectsCashier(Boolean(loadedExpense.affects_cashier));
   }, [loadedExpense]);
 
   useEffect(() => {
@@ -274,6 +296,10 @@ function ExpenseFormModal({ onClose, expense }: Props) {
       return;
     }
 
+    if (receiptUploadBusy) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const detailPayload: Record<string, any> = {};
@@ -301,11 +327,23 @@ function ExpenseFormModal({ onClose, expense }: Props) {
 
         await updateExpense(loadedExpense.id, updatePayload);
 
-        if (selectedFiles.length > 0) {
-          const filesToUpload = await Promise.all(
-            selectedFiles.map((file) => prepareExpenseDocumentUpload(file))
-          );
-          await expensesService.uploadDocuments(loadedExpense.id, filesToUpload);
+        if (attachments.length > 0) {
+          const cloudParts = attachments
+            .filter((a): a is Extract<AttachmentItem, { kind: 'cloud' }> => a.kind === 'cloud')
+            .map((a) => ({
+              file_name: a.file_name,
+              file_type: a.file_type,
+              public_url: a.public_url,
+            }));
+          const pdfFiles = attachments
+            .filter((a): a is Extract<AttachmentItem, { kind: 'pdf' }> => a.kind === 'pdf')
+            .map((a) => a.file);
+          const pdfParts =
+            pdfFiles.length > 0
+              ? await Promise.all(pdfFiles.map((file) => prepareExpenseDocumentUpload(file)))
+              : [];
+          await expensesService.uploadDocuments(loadedExpense.id, [...cloudParts, ...pdfParts]);
+          await loadExpenses({ silent: true });
         }
 
         onCloseRef.current();
@@ -326,11 +364,22 @@ function ExpenseFormModal({ onClose, expense }: Props) {
 
       const created = await createExpense(payload);
 
-      if (selectedFiles.length > 0 && created.id) {
-        const filesToUpload = await Promise.all(
-          selectedFiles.map((file) => prepareExpenseDocumentUpload(file))
-        );
-        await expensesService.uploadDocuments(created.id, filesToUpload);
+      if (attachments.length > 0 && created.id) {
+        const cloudParts = attachments
+          .filter((a): a is Extract<AttachmentItem, { kind: 'cloud' }> => a.kind === 'cloud')
+          .map((a) => ({
+            file_name: a.file_name,
+            file_type: a.file_type,
+            public_url: a.public_url,
+          }));
+        const pdfFiles = attachments
+          .filter((a): a is Extract<AttachmentItem, { kind: 'pdf' }> => a.kind === 'pdf')
+          .map((a) => a.file);
+        const pdfParts =
+          pdfFiles.length > 0
+            ? await Promise.all(pdfFiles.map((file) => prepareExpenseDocumentUpload(file)))
+            : [];
+        await expensesService.uploadDocuments(created.id, [...cloudParts, ...pdfParts]);
       }
 
       onCloseRef.current();
@@ -342,58 +391,102 @@ function ExpenseFormModal({ onClose, expense }: Props) {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      setSelectedFiles((prev) => [...prev, ...files]);
-      const newPreviews = files.map((file) => getFilePreview(file));
-      setPreviews((prev) => [...prev, ...newPreviews]);
+  /** Igual que ProductoModal: un archivo, input visible con ref, subida directa (sin canvas). */
+  const handleExpenseImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const input = e.target;
+    if (!file) return;
+
+    if (file.size > MAX_RECEIPT_UPLOAD_BYTES) {
+      setAttachmentError('La imagen no debe superar 5 MB');
+      input.value = '';
+      return;
+    }
+    if (!isProbablyImageFile(file)) {
+      setAttachmentError('Elegí un archivo de imagen (JPG, PNG, etc.).');
+      input.value = '';
+      return;
+    }
+
+    setAttachmentError(null);
+    setReceiptUploadBusy(true);
+    try {
+      const { imageURL } = await expensesService.uploadExpenseImage(file);
+      setAttachments((prev) => [
+        ...prev,
+        {
+          kind: 'cloud',
+          public_url: imageURL,
+          file_name: file.name || 'imagen.jpg',
+          file_type: file.type || 'image/jpeg',
+        },
+      ]);
+      toast.success('Imagen subida correctamente');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo subir la imagen';
+      setAttachmentError(msg);
+    } finally {
+      setReceiptUploadBusy(false);
+      input.value = '';
     }
   };
 
-  const removeFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-    setPreviews((prev) => {
-      URL.revokeObjectURL(prev[index]);
-      return prev.filter((_, i) => i !== index);
-    });
+  const handlePdfFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    const input = e.target;
+    if (!list?.length) return;
+
+    for (const file of Array.from(list)) {
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+      if (!isPdf) continue;
+      if (file.size > MAX_RECEIPT_UPLOAD_BYTES) {
+        setAttachmentError('Cada PDF debe pesar como máximo 5 MB.');
+        continue;
+      }
+      setAttachmentError(null);
+      setAttachments((prev) => [...prev, { kind: 'pdf', file }]);
+    }
+    input.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const existingDocs = workingExpense?.expense_documents ?? [];
   const typeColor = selectedType?.color || '#34d399';
   const modalTitle = isEditMode ? 'Editar gasto' : 'Nuevo gasto';
 
-  if (isEditMode && loadingExpense) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-[#1a1a2e] px-10 py-12">
-          <Loader2 className="h-10 w-10 animate-spin text-emerald-400" />
-          <p className="text-sm text-white/70">Cargando gasto…</p>
-        </div>
-      </div>
-    );
-  }
+  const backdropClose = () => onCloseRef.current();
 
-  if (isEditMode && loadError) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1a2e] p-6 text-center">
-          <p className="text-red-300">{loadError}</p>
-          <button
-            type="button"
-            onClick={() => onCloseRef.current()}
-            className="mt-4 rounded-xl bg-white/10 px-4 py-2 text-white"
-          >
-            Cerrar
-          </button>
-        </div>
+  const modalBody =
+    isEditMode && loadingExpense ? (
+      <div
+        className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-[#1a1a2e] px-10 py-12"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-400" />
+        <p className="text-sm text-white/70">Cargando gasto…</p>
       </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-[#1a1a2e] border border-white/10 rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+    ) : isEditMode && loadError ? (
+      <div
+        className="w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1a2e] p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-red-300">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => onCloseRef.current()}
+          className="mt-4 rounded-xl bg-white/10 px-4 py-2 text-white"
+        >
+          Cerrar
+        </button>
+      </div>
+    ) : (
+      <div
+        className="w-full max-w-lg bg-[#1a1a2e] border border-white/10 rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="relative p-5 border-b border-white/10">
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
           <div className="flex items-center justify-between">
@@ -659,18 +752,30 @@ function ExpenseFormModal({ onClose, expense }: Props) {
               {isEditMode ? 'Agregar adjuntos (nuevos)' : 'Adjuntos (opcional)'}
             </label>
 
-            {previews.length > 0 && (
+            {attachmentError && (
+              <p className="mb-2 text-xs text-amber-300/90">{attachmentError}</p>
+            )}
+
+            {attachments.length > 0 && (
               <div className="mb-3 grid grid-cols-4 gap-2">
-                {previews.map((url, i) => (
+                {attachments.map((item, i) => (
                   <div
-                    key={url}
+                    key={`${item.kind}-${i}-${item.kind === 'cloud' ? item.public_url : item.file.name}`}
                     className="group relative aspect-square overflow-hidden rounded-xl border border-white/10"
                   >
-                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    {item.kind === 'cloud' ? (
+                      <img src={item.public_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-white/5 p-2">
+                        <FileText size={28} className="text-white/40" />
+                        <span className="line-clamp-2 text-center text-[9px] text-white/50">{item.file.name}</span>
+                      </div>
+                    )}
                     <button
                       type="button"
-                      onClick={() => removeFile(i)}
-                      className="absolute right-1 top-1 rounded-lg bg-red-500 p-1 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
+                      onClick={() => removeAttachment(i)}
+                      disabled={receiptUploadBusy}
+                      className="absolute right-1 top-1 rounded-lg bg-red-500 p-1 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 disabled:opacity-50"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -679,28 +784,37 @@ function ExpenseFormModal({ onClose, expense }: Props) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="group flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 p-4 transition-all hover:border-emerald-500/50 hover:bg-white/10">
-                <Camera size={24} className="mb-1 text-white/30 group-hover:text-emerald-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">
-                  Tomar foto
-                </span>
-                <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
-              </label>
+            {receiptUploadBusy && (
+              <p className="mb-2 flex items-center gap-2 text-sm text-emerald-300/90">
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                Subiendo imagen…
+              </p>
+            )}
 
-              <label className="group flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 p-4 transition-all hover:border-emerald-500/50 hover:bg-white/10">
-                <ImageIcon size={24} className="mb-1 text-white/30 group-hover:text-emerald-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 group-hover:text-white">
-                  Galería / PDF
-                </span>
+            <div className="space-y-3">
+              <div>
+                <p className="mb-1.5 text-xs text-white/50">Subir imagen (Cloudinary, como productos)</p>
                 <input
+                  ref={expenseImageInputRef}
                   type="file"
-                  accept="image/*,application/pdf"
-                  multiple
-                  onChange={handleFileChange}
-                  className="hidden"
+                  accept="image/*"
+                  onChange={(ev) => void handleExpenseImageFileChange(ev)}
+                  disabled={receiptUploadBusy}
+                  className="w-full text-sm text-white/90 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600/50 file:px-4 file:py-2 file:text-white file:cursor-pointer disabled:opacity-50"
                 />
-              </label>
+              </div>
+              <div>
+                <p className="mb-1.5 text-xs text-white/50">Adjuntar PDF (se envía al guardar)</p>
+                <input
+                  ref={expensePdfInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  multiple
+                  disabled={receiptUploadBusy}
+                  onChange={handlePdfFilesChange}
+                  className="w-full text-sm text-white/90 file:mr-3 file:rounded-lg file:border-0 file:bg-white/15 file:px-4 file:py-2 file:text-white file:cursor-pointer disabled:opacity-50"
+                />
+              </div>
             </div>
           </div>
 
@@ -708,6 +822,7 @@ function ExpenseFormModal({ onClose, expense }: Props) {
             type="submit"
             disabled={
               isSubmitting ||
+              receiptUploadBusy ||
               (!isEditMode && !selectedTypeId) ||
               !formData.amount ||
               (isEditMode && !loadedExpense)
@@ -718,7 +833,18 @@ function ExpenseFormModal({ onClose, expense }: Props) {
           </button>
         </form>
       </div>
-    </div>
+    );
+
+  return createPortal(
+    <div
+      role="presentation"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      style={{ isolation: 'isolate' }}
+      onClick={backdropClose}
+    >
+      {modalBody}
+    </div>,
+    document.body
   );
 }
 

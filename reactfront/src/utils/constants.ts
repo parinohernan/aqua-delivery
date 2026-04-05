@@ -34,6 +34,7 @@ export const API_ENDPOINTS = {
   EVENTOS_GPS: '/api/eventos-gps',
   VENDEDORES: '/api/vendedores',
   UPLOAD_PRODUCT_IMAGE: '/api/upload/product-image',
+  UPLOAD_EXPENSE_IMAGE: '/api/upload/expense-image',
   EXPENSES: '/api/expenses',
   VEHICLES: '/api/vehicles',
   EXPENSE_TYPES: '/api/expense-types',
